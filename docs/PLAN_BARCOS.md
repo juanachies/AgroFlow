@@ -18,13 +18,21 @@ flowchart LR
 
 ## 2. Módulos y contratos
 
+Ubicados en la arquitectura hexagonal del repo ([ARQUITECTURA.md](ARQUITECTURA.md)):
+
 ```
 src/
-  barcos/     analizarBarcos()  -> { disponibilidad, senal[], calado, avisos }   NO importa a nadie
-  venta/      decidirVenta({ barcos, ... }) -> { decision, canal, mejorVenta, silobolsa, hastaDondeRinde, curva, avisos }
-  cadetes/    avisoCadetes({ venta, ... })  -> { destino, camiones | embolsadoras, inicio, fin, pedirEl, aviso }
-  comun/      util.js (fechas, normal), logistica.js (camiones, viaje)
-  planificar.js   Barcos -> Venta -> Cadetes, junta los avisos
+  domain/barcos/       analizarBarcos() -> { disponibilidad, senal[], calado, avisos }   no importa a venta ni cadetes
+                       colaBuques.js, calado.js, indicesMercado.js, lineup.js, datos.js
+  domain/venta/        decidirVenta({ barcos, mercado, ... }) -> { decision, canal, indicesPuerto, mejorVenta,
+                       silobolsa, hastaDondeRinde, curva, avisos }; criterios.js (índices a cumplir)
+  domain/maquinaria/   cadetes.js: avisoCadetes({ venta, ... }) -> { destino, camiones | embolsadoras, pedirEl, aviso }
+  domain/shared/       util.js (fechas, normal)
+  application/ports/   BarcosPort (calendario, mercado), NivelRioPort (nivel)
+  application/usecases/decidirVenta.js   planificarVenta() puro + crearDecidirVenta({ barcos, nivelRio, respaldoBarcos })
+  infrastructure/barcos/   nabsaAdapter, bcrAdapter, barcosManualAdapter (CSV), barcosSimuladosAdapter (respaldo)
+  infrastructure/rio/      nivelRioManualAdapter
+  config/container.js      conecta el caso de uso con los adaptadores
 ```
 
 ### Barcos: la señal (contrato entre Barcos y Venta)
@@ -85,7 +93,7 @@ Fecha de pedido = inicio − 3 días. Si ya llegó, el aviso es "Pedí HOY". Si 
 | Barcos independiente: predicción, señal por día, avisos propios | **Hecho** |
 | Venta: vender (puerto o acopio) o silobolsa, curva por fecha, 4 umbrales de hasta dónde rinde | **Hecho** |
 | Cadetes según la decisión de venta | **Hecho** |
-| Orquestador `planificar`, demo (`npm run demo`) y tests separados por módulo (29) | **Hecho** |
+| Caso de uso `decidirVenta` con puertos y adaptadores (respaldo simulado), demo (`npm run demo`) y 31 tests en `tests/domain`, `tests/infrastructure` y `tests/application` | **Hecho** |
 | Fuentes reales: parser de line-up NABSA (probado con la circular 210) y de tablas BCR (buques a la carga, camiones) | **Hecho** |
 | Índices a cumplir para vender a puerto (demanda ÷ oferta, espera, saturación, demanda de barcos, Paraná) con semáforo y bloqueo. Ver [INDICES_PUERTO.md](INDICES_PUERTO.md) | **Hecho** |
 | Todo sin commitear en `feature/prediccion-barcos` | Pendiente de aprobación |
@@ -101,7 +109,7 @@ Fecha de pedido = inicio − 3 días. Si ya llegó, el aviso es "Pedí HOY". Si 
 | 5 | Descarga automática diaria (PDF NABSA, Excel BCR, INA) y guardado de la serie histórica | Barcos |
 | 5b | Calibrar los umbrales de los índices con la serie BCR desde 2022 | Venta |
 | 6 | Calibrar la sensibilidad del precio a la demanda (pizarra histórica) y la demora de ETA (line-ups archivados) | Barcos |
-| 7 | Recálculo diario y aviso cuando cambie la decisión o se mueva la ventana | Orquestador |
+| 7 | Recálculo diario y aviso cuando cambie la decisión o se mueva la ventana | Caso de uso |
 | 8 | UI: panel de barcos, gráfico de la curva vender contra silobolsa con la ventana marcada y tarjeta de cadetes | App |
 
 ## 5. Supuestos a validar
@@ -110,11 +118,11 @@ Todos son editables y hay que decirlo en la demo.
 
 | Supuesto | Valor | Archivo |
 |---|---|---|
-| Barcos por semana y estacionalidad por puerto | Ver tablas | `barcos/datos.js` |
-| Sensibilidad del precio a la demanda de barcos | ±3% | `barcos/datos.js` |
-| Flete | 0,094 US$/t/km (CATAC) | `venta/datos.js` |
-| Costo de espera en puerto / de guardar en campo | 1,2 / 0,15 US$/t/día | `venta/datos.js` |
-| Descuento y tarifa del acopio | 8 y 6 US$/t | `venta/datos.js` |
-| Silobolsa: bolsa + embolsado + extracción, merma, tasa | 6,5 US$/t; 0,5% y 1% por mes; 3 meses | `venta/datos.js` |
-| Precio hoy y futuro | Soja 300/310, maíz 180/186, trigo 210/216 | `venta/datos.js` |
-| Camión, embolsadora, cola en terminal | 30 t, 150 t/h, 4 h | `comun/logistica.js` |
+| Barcos por semana y estacionalidad por puerto | Ver tablas | `domain/barcos/datos.js` |
+| Sensibilidad del precio a la demanda de barcos | ±3% | `domain/barcos/datos.js` |
+| Flete | 0,094 US$/t/km (CATAC) | `domain/venta/supuestos.js` |
+| Costo de espera en puerto / de guardar en campo | 1,2 / 0,15 US$/t/día | `domain/venta/supuestos.js` |
+| Descuento y tarifa del acopio | 8 y 6 US$/t | `domain/venta/supuestos.js` |
+| Silobolsa: bolsa + embolsado + extracción, merma, tasa | 6,5 US$/t; 0,5% y 1% por mes; 3 meses | `domain/venta/supuestos.js` |
+| Precio hoy y futuro | Soja 300/310, maíz 180/186, trigo 210/216 | `domain/venta/supuestos.js` |
+| Camión, embolsadora, cola en terminal | 30 t, 150 t/h, 4 h | `domain/maquinaria/logistica.js` |

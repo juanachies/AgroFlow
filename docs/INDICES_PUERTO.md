@@ -43,7 +43,7 @@ El módulo **Venta** solo recomienda vender **a puerto** si el puerto cumple est
 - **I4:** con un costo de espera de 1,2 US$/t/día, 3 días se comen unos 3,6 US$/t, que es del mismo orden que la ventaja del disponible sobre el acopio.
 - **I5:** el INA registró 1,54 m en Rosario el 1/4/2026 como "aguas bajas/medias bajas". Con bajante, los buques salen del Up-River con hasta un 25% menos de carga y completan en Bahía Blanca o Necochea.
 
-Todos los umbrales son editables (`umbrales` en `planificar` / `decidirVenta`) y son **iniciales**. Se calibran con la serie histórica: el Excel diario de la BCR existe desde 2022. El método es cruzar cada índice con el spread entre el disponible de Rosario y el FAS teórico, y con la espera real.
+Todos los umbrales son editables (`umbrales` en la entrada de `decidirVenta`) y son **iniciales**. Se calibran con la serie histórica: el Excel diario de la BCR existe desde 2022. El método es cruzar cada índice con el spread entre el disponible de Rosario y el FAS teórico, y con la espera real.
 
 ## 3. Ejemplo con datos de esta semana (11 al 13/11/2026)
 
@@ -63,7 +63,7 @@ El line-up real de NABSA (circular 210, 10/11/2026) dio con el parser 273 filas:
 
 ```bash
 npm run demo                 # soja, line-up simulado, datos de mercado de la semana
-node src/demo.js maiz 2026-11-14 ruta/al/texto_nabsa.txt   # con el line-up real de NABSA
+node src/interfaces/cli/demoVenta.js maiz 2026-11-14 ruta/al/texto_nabsa.txt   # con el line-up real de NABSA
 ```
 
 ## 4. Limitaciones

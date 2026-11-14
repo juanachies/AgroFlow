@@ -6,15 +6,18 @@ Implementa **Barcos** (independiente) → **Venta** (vender o silobolsa, hasta d
 
 | Archivo | Qué hace |
 |---|---|
-| `src/barcos/prediccion.js` | Disponibilidad de barcos, índice de demanda, factor de precio, calado, espera, riesgo de perder barco, señal por día y avisos de barcos |
-| `src/barcos/lineup.js` | Line-up manual en CSV y simulador reproducible |
-| `src/barcos/datos.js` | Puertos, estacionalidad y parámetros de barcos |
-| `src/barcos/index.js` | `analizarBarcos()`: punto de entrada del módulo |
-| `src/venta/decision.js` | `decidirVenta()`: curva por fecha, vender o silobolsa, hasta dónde rinde y avisos |
-| `src/venta/datos.js` | Supuestos de flete, acopio, silobolsa y precios |
-| `src/cadetes/index.js` | `avisoCadetes()`: camiones o embolsadora según la decisión |
-| `src/comun/` | Fechas, normal y logística de camiones |
-| `src/planificar.js` | Encadena Barcos → Venta → Cadetes |
+| `src/domain/barcos/colaBuques.js`, `calado.js` | Disponibilidad de barcos, índice de demanda, factor de precio, calado, espera, riesgo de perder barco, señal por día y avisos de barcos |
+| `src/domain/barcos/indicesMercado.js` | Índices del puerto con datos publicados |
+| `src/domain/barcos/lineup.js` | Formato y validación de un barco del line-up |
+| `src/infrastructure/barcos/` | Adaptadores de `BarcosPort`: NABSA, BCR, CSV manual y simulado |
+| `src/domain/barcos/datos.js` | Puertos, estacionalidad y parámetros de barcos |
+| `src/domain/barcos/index.js` | `analizarBarcos()`: punto de entrada del módulo |
+| `src/domain/venta/decisionVenta.js`, `criterios.js` | `decidirVenta()`: curva por fecha, índices a cumplir para vender a puerto, vender o silobolsa, hasta dónde rinde y avisos |
+| `src/domain/venta/supuestos.js` | Supuestos de flete, acopio, silobolsa y precios |
+| `src/domain/maquinaria/cadetes.js` | `avisoCadetes()`: camiones o embolsadora según la decisión |
+| `src/domain/shared/util.js`, `src/domain/maquinaria/logistica.js` | Fechas, normal y logística de camiones |
+| `src/application/usecases/decidirVenta.js` | Caso de uso: encadena Barcos → Venta → Cadetes con los puertos `BarcosPort` y `NivelRioPort` |
+| `src/config/container.js` | Conecta el caso de uso con los adaptadores |
 
 ## Entradas
 
@@ -75,28 +78,27 @@ Implementa **Barcos** (independiente) → **Venta** (vender o silobolsa, hasta d
 ## Uso
 
 ```js
-import { analizarBarcos, parsearLineupCSV } from './src/barcos/index.js';
-import { planificar } from './src/planificar.js';
+import { crearContenedor } from './src/config/container.js';
 
-// Barcos solo
-const barcos = analizarBarcos({ lineup: parsearLineupCSV(csv), puerto: 'gran-rosario', cultivo: 'soja', hoy: '2027-04-22', nivelParanaM: 1.8 });
-barcos.senal;   // por día: probHayBarco, esperaDias, indiceDemanda, factorPrecio
-
-// Flujo completo
-const r = planificar({
-  lineup: parsearLineupCSV(csv), puerto: 'gran-rosario', cultivo: 'soja', hoy: '2027-04-22',
-  fechaGranoListo: '2027-04-25', diasCosecha: 6, toneladas: 1500,
-  distanciaPuertoKm: 320, distanciaAcopioKm: 60, nivelParanaM: 1.8,
+// barcos: 'simulado' | 'manual' (CSV) | 'nabsa' (texto del PDF); mercado: datos BCR de camiones y buques
+const { decidirVenta } = crearContenedor({ barcos: 'nabsa', rutaLineup: 'nabsa.txt', mercado, nivelParanaM: 1.8 });
+const r = await decidirVenta({
+  puerto: 'gran-rosario', cultivo: 'soja', hoy: '2026-11-14',
+  fechaGranoListo: '2026-11-14', diasCosecha: 6, toneladas: 1500,
+  distanciaPuertoKm: 320, distanciaAcopioKm: 60,
 });
-r.venta.decision;          // 'vender' | 'silobolsa'
+r.barcos.senal;            // por día: probHayBarco, esperaDias, indiceDemanda, factorPrecio
+r.venta.indicesPuerto;     // semáforo y checks de los índices para vender a puerto
+r.venta.decision;          // 'vender' | 'silobolsa'  (r.venta.canal: 'puerto' | 'acopio')
 r.venta.hastaDondeRinde;   // ventanaVenta, esperaMaxDias, precioPuertoMinimoUSDt, precioFuturoEquilibrioUSDt
 r.cadetes;                 // camiones o embolsadoras, inicio, fin, pedirEl
+r.fuentes;                 // de dónde salió cada dato (o si se usó el respaldo simulado)
 ```
 
 ```bash
 npm test
 npm run demo
-node src/demo.js data/lineup-ejemplo.csv 2027-04-22
+node src/interfaces/cli/demoVenta.js soja 2026-11-14 data/lineup-ejemplo.csv
 ```
 
-Todos los parámetros y precios son supuestos editables en `src/barcos/datos.js`, `src/venta/datos.js` y `src/comun/logistica.js`.
+Todos los parámetros y precios son supuestos editables en `src/domain/barcos/datos.js`, `src/domain/venta/supuestos.js` y `src/domain/shared/ y src/domain/maquinaria/logistica.jslogistica.js`.
