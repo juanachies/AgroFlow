@@ -14,6 +14,7 @@
 
 import { readFileSync } from 'node:fs';
 import { iso, sumarDias, diasEntre } from '../../domain/shared/util.js';
+import { calendarioDelPuerto } from '../../domain/barcos/calendario.js';
 
 // Puertos NABSA -> puerto del modelo. Up-River (Gran Rosario) agrupa todas las terminales del río.
 const PUERTOS_NABSA = [
@@ -128,6 +129,8 @@ export function nabsaALineup(nabsa) {
       // Para los que ya están cargando la fecha es la de fin (ETF): se toma la del line-up como llegada.
       eta: f.estado === 'cargando' ? nabsa.fecha : f.fecha,
       estado: f.estado,
+      terminal: f.puertoNabsa,
+      ...(f.estado === 'cargando' && f.referencia === 'ETF' ? { cierreCarga: f.fecha } : {}),
     }));
 }
 
@@ -149,9 +152,8 @@ export function crearBarcosNabsaAdapter({ texto = null, rutaTexto = null, mercad
   const nabsa = parsearLineupNABSA(texto ?? readFileSync(rutaTexto, 'utf8'));
   const lineup = nabsaALineup(nabsa);
   return {
-    async calendario(puerto, _desde, hasta) {
-      // Los anunciados con ETA vencida siguen viniendo (atrasados): se conservan.
-      return lineup.filter((b) => b.puerto === puerto && (b.estado !== 'anunciado' || b.eta <= hasta));
+    async calendario(terminal, desde, hasta) {
+      return calendarioDelPuerto(lineup, terminal, desde, hasta);
     },
     async mercado(puerto, fecha) {
       const programadas = mercado?.programadas ?? toneladasProgramadas(nabsa, puerto, fecha, sumarDias(fecha, diasProgramadas - 1));

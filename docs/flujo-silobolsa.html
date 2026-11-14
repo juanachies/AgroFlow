@@ -1,0 +1,184 @@
+<title>Flujo del silobolsa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+  /* Layout: lectura de izquierda a derecha, una columna por etapa; el estado se codifica en el borde y el relleno de cada caja. */
+  :root {
+    --bg: #f4f6f8;
+    --fg: #17202c;
+    --muted: #556275;
+    --line: #6f7c90;
+    --rule: #d5dbe3;
+    --ok-fill: #daf0e3;
+    --ok-stroke: #25794b;
+    --falta-fill: #fde8cc;
+    --falta-stroke: #b84f08;
+    --ext-fill: #e5e9ef;
+    --ext-stroke: #75829a;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-head: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #11151c;
+      --fg: #e5e9f0;
+      --muted: #9aa7ba;
+      --line: #7d8aa0;
+      --rule: #2a3340;
+      --ok-fill: #153427;
+      --ok-stroke: #55c18a;
+      --falta-fill: #432610;
+      --falta-stroke: #f2994d;
+      --ext-fill: #212935;
+      --ext-stroke: #7d8aa0;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #11151c;
+    --fg: #e5e9f0;
+    --muted: #9aa7ba;
+    --line: #7d8aa0;
+    --rule: #2a3340;
+    --ok-fill: #153427;
+    --ok-stroke: #55c18a;
+    --falta-fill: #432610;
+    --falta-stroke: #f2994d;
+    --ext-fill: #212935;
+    --ext-stroke: #7d8aa0;
+    color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+  main { max-width: 1340px; margin: 0 auto; padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  h1 { font-family: var(--font-head); font-size: 28px; line-height: 1.15; margin: 0 0 6px; text-wrap: balance; }
+  h2 { font-family: var(--font-head); font-size: 18px; margin: 36px 0 10px; }
+  .lead { color: var(--muted); max-width: 70ch; margin: 0 0 18px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 14px; padding: 0; list-style: none; font-size: 13px; }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .chip { width: 22px; height: 14px; border-radius: 3px; border: 1.5px solid; flex: none; }
+  .chip.ok { background: var(--ok-fill); border-color: var(--ok-stroke); }
+  .chip.falta { background: var(--falta-fill); border-color: var(--falta-stroke); border-style: dashed; }
+  .chip.ext { background: var(--ext-fill); border-color: var(--ext-stroke); }
+  figure { margin: 0; }
+  .scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; padding: 8px; }
+  svg { display: block; min-width: 1120px; width: 100%; height: auto; color: var(--line); }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 8px; max-width: 80ch; }
+  .head { font: 600 11px var(--font-body); letter-spacing: 0.08em; fill: var(--muted); text-transform: uppercase; }
+  .box rect { stroke-width: 1.5; }
+  .box.ok rect { fill: var(--ok-fill); stroke: var(--ok-stroke); }
+  .box.falta rect { fill: var(--falta-fill); stroke: var(--falta-stroke); stroke-dasharray: 6 4; }
+  .box.ext rect { fill: var(--ext-fill); stroke: var(--ext-stroke); }
+  .t { font: 600 12.5px var(--font-body); fill: var(--fg); text-anchor: middle; }
+  .s { font: 400 10.5px var(--font-body); fill: var(--muted); text-anchor: middle; }
+  .ln { fill: none; stroke: var(--line); stroke-width: 1.5; }
+  .ln.f { stroke: var(--falta-stroke); stroke-dasharray: 5 4; }
+  .l { font: 500 10.5px var(--font-body); fill: var(--muted); }
+  .arr { fill: var(--line); }
+  .arrf { fill: var(--falta-stroke); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  .tabla { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+  th { font: 600 11px var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-family: var(--font-head); font-weight: 500; white-space: nowrap; }
+  .estado { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1.5px solid; white-space: nowrap; }
+  .estado.ok { background: var(--ok-fill); border-color: var(--ok-stroke); }
+  .estado.falta { background: var(--falta-fill); border-color: var(--falta-stroke); }
+  td { min-width: 0; }
+  td.pide { min-width: 280px; }
+</style>
+
+<main>
+  <h1>Flujo del silobolsa</h1>
+  <p class="lead">Desde la orden de cosecha hasta el embarque en puerto: qué ya está construido y testeado, qué entra desde otros módulos y qué todavía falta.</p>
+
+  <ul class="legend">
+    <li><span class="chip ok"></span>Hecho y testeado (65 tests en verde)</li>
+    <li><span class="chip ext"></span>Lo provee otro módulo, el IoT o el trabajo de campo</li>
+    <li><span class="chip falta"></span>Falta</li>
+  </ul>
+
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 1300 600" role="img" aria-label="Flujo de seis etapas de izquierda a derecha: entradas, cosecha y pedidos, silobolsa e IoT, riesgo, decisión de venta y salida. Faltan el registro de silobolsas, la extracción y la venta en acopio cuando no hay barco.">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="arr" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="arrf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="arrf" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+
+        <text class="head" x="20" y="24">Entradas</text>
+        <text class="head" x="240" y="24">Cosecha y pedidos</text>
+        <text class="head" x="460" y="24">Silobolsa e IoT</text>
+        <text class="head" x="680" y="24">Riesgo</text>
+        <text class="head" x="900" y="24">Decisión de venta</text>
+        <text class="head" x="1120" y="24">Salida</text>
+
+        <g>
+          <polyline class="ln" points="180,68 238,68" marker-end="url(#arr)"/>
+          <polyline class="ln" points="320,96 320,138" marker-end="url(#arr)"/>
+          <text class="l" x="328" y="122">mejor destino</text>
+          <polyline class="ln" points="180,168 238,168" marker-end="url(#arr)"/>
+          <text class="l" x="196" y="162">tarifas</text>
+          <polyline class="ln" points="320,196 320,238" marker-end="url(#arr)"/>
+          <text class="l" x="328" y="222">pedidos</text>
+          <polyline class="ln f" points="400,268 458,268" marker-end="url(#arrf)"/>
+          <text class="l" x="410" y="262">kg reales</text>
+          <polyline class="ln" points="620,268 650,268 650,310 678,310" marker-end="url(#arr)"/>
+          <text class="l" x="624" y="262">registro</text>
+          <polyline class="ln" points="620,368 650,368 650,326 678,326" marker-end="url(#arr)"/>
+          <text class="l" x="624" y="386">lecturas</text>
+          <polyline class="ln" points="840,318 870,318 870,400 898,400" marker-end="url(#arr)"/>
+          <text class="l" x="842" y="312">riesgo</text>
+          <polyline class="ln" points="620,448 898,448" marker-end="url(#arr)"/>
+          <text class="l" x="745" y="442" text-anchor="middle">precios</text>
+          <polyline class="ln" points="620,528 870,528 870,484 898,484" marker-end="url(#arr)"/>
+          <text class="l" x="745" y="522" text-anchor="middle">calendario</text>
+          <polyline class="ln" points="1060,420 1090,420 1090,368 1118,368" marker-end="url(#arr)"/>
+          <text class="l" x="1062" y="437">embarcar</text>
+          <polyline class="ln f" points="1060,396 1080,396 1080,268 1118,268" marker-end="url(#arrf)"/>
+          <text class="l" x="1086" y="320">sin barco</text>
+          <polyline class="ln f" points="1200,396 1200,428" marker-end="url(#arrf)"/>
+          <text class="l" x="1208" y="417">al cargar</text>
+          <polyline class="ln f" points="1200,486 1200,518" marker-end="url(#arrf)"/>
+          <text class="l" x="1208" y="507">camiones</text>
+        </g>
+
+        <g class="box ok"><rect x="20" y="40" width="160" height="56" rx="6"/><text class="t" x="100" y="64">Datos del campo</text><text class="s" x="100" y="82">ha, qq/ha, cultivo, días</text></g>
+        <g class="box ok"><rect x="20" y="140" width="160" height="56" rx="6"/><text class="t" x="100" y="164">Tarifas y CATAC</text><text class="s" x="100" y="182">TarifasPort + adaptador</text></g>
+
+        <g class="box ok"><rect x="240" y="40" width="160" height="56" rx="6"/><text class="t" x="320" y="64">Comparar destinos</text><text class="s" x="320" y="82">máquinas, camiones, bolsas</text></g>
+        <g class="box ok"><rect x="240" y="140" width="160" height="56" rx="6"/><text class="t" x="320" y="164">Plan de pedido</text><text class="s" x="320" y="182">qué pedir y fecha límite</text></g>
+        <g class="box ext"><rect x="240" y="240" width="160" height="56" rx="6"/><text class="t" x="320" y="264">Cosecha y embolsado</text><text class="s" x="320" y="282">trabajo de campo</text></g>
+
+        <g class="box falta"><rect x="460" y="240" width="160" height="56" rx="6"/><text class="t" x="540" y="264">Registro de silobolsas</text><text class="s" x="540" y="282">id, cultivo, kg, fecha</text></g>
+        <g class="box ext"><rect x="460" y="340" width="160" height="56" rx="6"/><text class="t" x="540" y="364">Lecturas del IoT</text><text class="s" x="540" y="382">humedad, temp., CO₂</text></g>
+        <g class="box ext"><rect x="460" y="420" width="160" height="56" rx="6"/><text class="t" x="540" y="444">Precios</text><text class="s" x="540" y="462">spot y futuros</text></g>
+        <g class="box ext"><rect x="460" y="500" width="160" height="56" rx="6"/><text class="t" x="540" y="524">Barcos</text><text class="s" x="540" y="542">arribo, cierre, capacidad</text></g>
+
+        <g class="box ok"><rect x="680" y="290" width="160" height="56" rx="6"/><text class="t" x="760" y="314">evaluarRiesgo</text><text class="s" x="760" y="332">nivel y días al límite</text></g>
+
+        <g class="box ok"><rect x="900" y="380" width="160" height="120" rx="6"/><text class="t" x="980" y="430">decidirVenta</text><text class="s" x="980" y="450">elige barco, fecha de</text><text class="s" x="980" y="465">carga y camiones</text></g>
+
+        <g class="box falta"><rect x="1120" y="240" width="160" height="56" rx="6"/><text class="t" x="1200" y="264">Vender en acopio</text><text class="s" x="1200" y="282">si no hay barco a tiempo</text></g>
+        <g class="box ok"><rect x="1120" y="340" width="160" height="56" rx="6"/><text class="t" x="1200" y="364">Pedir fletes</text><text class="s" x="1200" y="382">fecha de carga y camiones</text></g>
+        <g class="box falta"><rect x="1120" y="430" width="160" height="56" rx="6"/><text class="t" x="1200" y="454">Extraer el silobolsa</text><text class="s" x="1200" y="472">costo y días de extractora</text></g>
+        <g class="box ext"><rect x="1120" y="520" width="160" height="56" rx="6"/><text class="t" x="1200" y="544">Camiones y embarque</text><text class="s" x="1200" y="562">lo hace el transportista</text></g>
+      </svg>
+    </div>
+    <figcaption>Cada flecha es un dato que pasa de una etapa a la siguiente. Las flechas naranjas punteadas son las conexiones que todavía no existen. Las tarifas alimentan la cosecha, el riesgo y la venta.</figcaption>
+  </figure>
+
+  <h2>Qué pide cada paso antes de correr</h2>
+  <div class="tabla">
+    <table>
+      <thead><tr><th>Paso</th><th>Requiere</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>planificarCosecha</td><td class="pide">ha, qq/ha, cultivo, días disponibles, urgencia, fecha de inicio, servicios (transporte, almacenaje) y destinos con tipo y km. Tarifas vigentes.</td><td><span class="estado ok">Hecho</span> con adaptador de tarifas</td></tr>
+        <tr><td>evaluarSilobolsa</td><td class="pide">Silobolsa (id, cultivo, kg, fecha de creación), serie de lecturas del IoT (humedad, temperatura, CO₂) y umbrales por cultivo.</td><td><span class="estado ok">Hecho</span> sin adaptadores de IoT ni de registro</td></tr>
+        <tr><td>decidirVenta</td><td class="pide">Riesgo del silobolsa, precio spot y futuros, calendario de barcos (arribo, cierre de carga, capacidad), destino (terminal y km), tasa anual y fecha de hoy.</td><td><span class="estado ok">Hecho</span> sin adaptadores de precios ni de barcos</td></tr>
+        <tr><td>Extracción y fletes finales</td><td class="pide">Costo y días de extractora sumados al neto de cada barco, pedido de la extractora con anticipo y alternativa de acopio cuando no hay barco.</td><td><span class="estado falta">Falta</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>

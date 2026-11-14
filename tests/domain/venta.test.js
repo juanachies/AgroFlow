@@ -1,7 +1,7 @@
 // Tests del módulo Venta. Usa una señal de barcos armada a mano para aislarlo de Barcos.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decidirVenta } from '../../src/domain/venta/index.js';
+import { decidirVentaCosecha } from '../../src/domain/venta/index.js';
 import { analizarBarcos } from '../../src/domain/barcos/index.js';
 import { sumarDias } from '../../src/domain/shared/util.js';
 
@@ -19,7 +19,7 @@ function barcosFalsos({ dias = 30, espera = () => 0, factor = () => 1 } = {}) {
 const base = { cultivo: 'soja', toneladas: 1000, fechaGranoListo: HOY, distanciaPuertoKm: 100 };
 
 test('puerto fluido y cerca: conviene vender al puerto', () => {
-  const r = decidirVenta({ ...base, barcos: barcosFalsos() });
+  const r = decidirVentaCosecha({ ...base, barcos: barcosFalsos() });
   assert.equal(r.decision, 'vender');
   assert.equal(r.canal, 'puerto');
   assert.equal(r.mejorVenta.despacho, HOY);
@@ -27,7 +27,7 @@ test('puerto fluido y cerca: conviene vender al puerto', () => {
 });
 
 test('futuro alto: conviene silobolsa y explica qué tendría que pasar para vender', () => {
-  const r = decidirVenta({ ...base, barcos: barcosFalsos(), precios: { futuroUSDt: 360 } });
+  const r = decidirVentaCosecha({ ...base, barcos: barcosFalsos(), precios: { futuroUSDt: 360 } });
   assert.equal(r.decision, 'silobolsa');
   assert.equal(r.canal, null);
   assert.ok(r.hastaDondeRinde.precioPuertoMinimoUSDt > 300);
@@ -37,7 +37,7 @@ test('futuro alto: conviene silobolsa y explica qué tendría que pasar para ven
 
 test('cola en puerto los primeros días: posterga el despacho y avisa', () => {
   const espera = (d) => (d < 5 ? 6 : 0);
-  const r = decidirVenta({ ...base, barcos: barcosFalsos({ espera }) });
+  const r = decidirVentaCosecha({ ...base, barcos: barcosFalsos({ espera }) });
   assert.equal(r.decision, 'vender');
   assert.ok(r.mejorVenta.despacho > HOY);
   assert.ok(r.avisos.some((a) => a.tipo === 'cola'));
@@ -46,7 +46,7 @@ test('cola en puerto los primeros días: posterga el despacho y avisa', () => {
 test('hasta dónde rinde: la ventana de venta se cierra cuando la demanda de barcos cae', () => {
   // Precio cae 5% a partir del día 4 (menos barcos): vender deja de rendir frente a la silobolsa.
   const factor = (d) => (d < 4 ? 1.03 : 0.95);
-  const r = decidirVenta({ ...base, barcos: barcosFalsos({ factor }), precios: { puertoHoyUSDt: 300, futuroUSDt: 312 } });
+  const r = decidirVentaCosecha({ ...base, barcos: barcosFalsos({ factor }), precios: { puertoHoyUSDt: 300, futuroUSDt: 312 } });
   const v = r.hastaDondeRinde.ventanaVenta;
   assert.ok(v);
   assert.equal(v.desde, HOY);
@@ -56,26 +56,26 @@ test('hasta dónde rinde: la ventana de venta se cierra cuando la demanda de bar
 });
 
 test('espera máxima tolerable y precio futuro de equilibrio son coherentes', () => {
-  const r = decidirVenta({ ...base, barcos: barcosFalsos() });
+  const r = decidirVentaCosecha({ ...base, barcos: barcosFalsos() });
   const h = r.hastaDondeRinde;
   assert.ok(h.esperaMaxDias > 0);
   // Con una espera mayor a la máxima, la silobolsa gana.
-  const conEspera = decidirVenta({ ...base, barcos: barcosFalsos({ espera: () => h.esperaMaxDias + 2 }) });
+  const conEspera = decidirVentaCosecha({ ...base, barcos: barcosFalsos({ espera: () => h.esperaMaxDias + 2 }) });
   assert.equal(conEspera.decision, 'silobolsa');
   // Con un futuro mayor al de equilibrio, la silobolsa gana.
-  const conFuturo = decidirVenta({ ...base, barcos: barcosFalsos(), precios: { futuroUSDt: h.precioFuturoEquilibrioUSDt + 1 } });
+  const conFuturo = decidirVentaCosecha({ ...base, barcos: barcosFalsos(), precios: { futuroUSDt: h.precioFuturoEquilibrioUSDt + 1 } });
   assert.equal(conFuturo.decision, 'silobolsa');
 });
 
 test('acopio cercano le gana a un puerto lejano', () => {
-  const r = decidirVenta({ ...base, distanciaPuertoKm: 450, distanciaAcopioKm: 20, barcos: barcosFalsos() });
+  const r = decidirVentaCosecha({ ...base, distanciaPuertoKm: 450, distanciaAcopioKm: 20, barcos: barcosFalsos() });
   assert.equal(r.canal, 'acopio');
 });
 
 test('integra con la salida real de analizarBarcos', () => {
   const barcos = analizarBarcos({ puerto: 'gran-rosario', cultivo: 'soja', hoy: HOY });
-  const r = decidirVenta({ ...base, barcos });
+  const r = decidirVentaCosecha({ ...base, barcos });
   assert.ok(['vender', 'silobolsa'].includes(r.decision));
   assert.ok(r.curva.length > 0);
-  assert.throws(() => decidirVenta({ ...base, barcos: {} }), /analizarBarcos/);
+  assert.throws(() => decidirVentaCosecha({ ...base, barcos: {} }), /analizarBarcos/);
 });

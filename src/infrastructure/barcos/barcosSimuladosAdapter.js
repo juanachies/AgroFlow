@@ -3,6 +3,7 @@
 
 import { BARCOS_SEMANA_BASE, ESTACIONALIDAD, PARAMS_DEFAULT } from '../../domain/barcos/datos.js';
 import { sumarDias, mesDe, rng } from '../../domain/shared/util.js';
+import { calendarioDelPuerto, puertoDeTerminal } from '../../domain/barcos/calendario.js';
 
 // Barcos ya en puerto (5 días atrás) y anunciados hasta el horizonte del line-up.
 export function simularLineup({ puerto = 'gran-rosario', cultivos = ['soja', 'maiz', 'trigo'], hoy, horizonteDias = PARAMS_DEFAULT.horizonteLineupDias, semilla = 42 } = {}) {
@@ -42,8 +43,9 @@ export function simularLineup({ puerto = 'gran-rosario', cultivos = ['soja', 'ma
 
 export function crearBarcosSimuladosAdapter({ semilla = 42, mercado = null } = {}) {
   return {
-    async calendario(puerto, desde) {
-      return simularLineup({ puerto, hoy: desde, semilla });
+    async calendario(terminal, desde, hasta) {
+      const puerto = puertoDeTerminal(terminal);
+      return calendarioDelPuerto(simularLineup({ puerto, hoy: desde, semilla }), puerto, desde, hasta);
     },
     async mercado() {
       return mercado ?? {};

@@ -1,14 +1,11 @@
 {
   "name": "marcianos",
-  "version": "0.1.0",
-  "description": "Asistente de decisión para logística de cosecha y post-cosecha (Hackatón Donweb Day, desafío 02)",
-  "type": "module",
   "private": true,
-  "engines": {
-    "node": ">=22"
-  },
+  "type": "module",
+  "engines": { "node": ">=22" },
   "scripts": {
-    "test": "node --test",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "actualizar-tarifas": "node src/infrastructure/tarifas/actualizarTarifas.js",
     "demo": "node src/interfaces/cli/demoVenta.js"
   }
 }

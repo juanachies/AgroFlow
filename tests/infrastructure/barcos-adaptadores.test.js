@@ -110,5 +110,27 @@ test('adaptadores como BarcosPort: calendario filtra por puerto y fechas; mercad
   assert.deepEqual(await manual.mercado(), { camiones: { camiones: { soja: 100 } } });
 
   const sim = crearBarcosSimuladosAdapter({ semilla: 3 });
-  assert.deepEqual(await sim.calendario('gran-rosario', HOY), simularLineup({ puerto: 'gran-rosario', hoy: HOY, semilla: 3 }));
+  const hasta = '2027-05-30';
+  const calSim = await sim.calendario('Puerto Gran Rosario', HOY, hasta); // acepta nombre de terminal
+  const crudos = simularLineup({ puerto: 'gran-rosario', hoy: HOY, semilla: 3 });
+  assert.ok(calSim.length > 0 && calSim.length <= crudos.length);
+  assert.ok(calSim.every((b) => crudos.some((c) => c.buque === b.id)));
+});
+
+test('contrato unificado de BarcosPort: campos de venta de silobolsa y de pronóstico', async () => {
+  const nabsa = crearBarcosNabsaAdapter({ texto: NABSA });
+  const cal = await nabsa.calendario('San Lorenzo', '2026-11-10', '2026-12-31');
+  for (const b of cal) {
+    for (const campo of ['id', 'terminal', 'arribo', 'cierreCarga', 'toneladasMax', 'puerto', 'cultivo', 'eta', 'estado']) assert.ok(b[campo] != null, `${campo} en ${b.id}`);
+    assert.ok(b.cierreCarga >= b.arribo);
+  }
+  // Un barco cargando usa su ETF como cierre de carga.
+  const kn = cal.find((b) => b.id.includes('KN PHOENIX'));
+  assert.equal(kn.estado, 'cargando');
+  assert.equal(kn.cierreCarga, '2026-11-11');
+  // Un anunciado suma la demora media del puerto al arribo.
+  const milos = cal.find((b) => b.id.includes('MILOS'));
+  assert.equal(milos.eta, '2026-11-22');
+  assert.equal(milos.arribo, '2026-11-24');
+  await assert.rejects(nabsa.calendario('Montevideo', '2026-11-10', '2026-12-31'), /terminal desconocida/);
 });
