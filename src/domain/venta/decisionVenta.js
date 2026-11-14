@@ -122,8 +122,8 @@ function evaluarBarco(barco, contexto) {
 function evaluarAcopio(acopio, contexto) {
   const { hoy, tarifas, precio } = contexto;
   const supuesto = SUPUESTOS_VENTA.acopio;
-  const identidad = { tipo: 'acopio', acopio: acopio.nombre ?? 'acopio' };
-  const fechaCarga = primeraCarga(hoy, tarifas);
+  const identidad = { tipo: 'acopio', acopio: acopio.nombre ?? 'acopio', ...(contexto.urgente ? { urgente: true } : {}) };
+  const fechaCarga = contexto.urgente ? hoy : primeraCarga(hoy, tarifas);
   const fechaEntrega = sumarDias(fechaCarga, diasDeViaje(acopio.distanciaKm, tarifas));
   const precioUsdPorT = acopio.precioUsdPorT
     ?? precioPara(fechaEntrega, precio, hoy) - (acopio.descuentoUsdPorT ?? supuesto.descuentoPrecioUSDt);
@@ -147,11 +147,37 @@ function validarAcopios(acopios) {
   }
 }
 
+// Ninguna salida respeta el anticipo de reserva. Plan B: cargar en el acopio más conveniente apenas
+// haya camiones y extractora (hoy), sin el anticipo habitual; hay que confirmarlo con el proveedor.
+function sinOpcionEnPlazo({ acopios, contexto, riesgo, fechaLimite, evaluados }) {
+  const urgentes = acopios
+    .map((acopio) => evaluarAcopio(acopio, { ...contexto, urgente: true }))
+    .filter((evaluado) => evaluado.factible)
+    .sort((a, b) => b.netoUsd - a.netoUsd);
+  if (urgentes.length > 0) {
+    return {
+      decision: 'vender_acopio_urgente',
+      motivo: 'ninguna opción respeta el anticipo de reserva',
+      riesgo: riesgo.nivel,
+      fechaLimite,
+      elegido: urgentes[0],
+      evaluados,
+      urgentes,
+      recomendacion: `Cargar hoy en ${urgentes[0].acopio} sin el anticipo habitual: confirmar camiones y extractora con el proveedor.`,
+    };
+  }
+  const recomendacion = acopios.length === 0
+    ? 'Sin barco ni acopio cargado a tiempo: sumar un acopio cercano a los datos del destino.'
+    : 'Ni siquiera cargando hoy se llega a tiempo: extraer lo antes posible y vender donde se consiga lugar.';
+  return { decision: 'sin_barco_factible', riesgo: riesgo.nivel, fechaLimite, evaluados, recomendacion };
+}
+
 /**
  * Elige dónde y cuándo sacar el grano del silobolsa: un barco o un acopio.
  * Cada opción descuenta merma proyectada, extracción, flete, costo del acopio y costo financiero.
  * Con riesgo alto toma la opción que se pueda cargar primero; si no, la de mayor neto.
- * Si ninguna cumple la fecha límite de seguridad, devuelve `sin_barco_factible`.
+ * Si ninguna cumple la fecha límite con el anticipo de reserva, prueba cargar un acopio hoy
+ * (`vender_acopio_urgente`); si tampoco, devuelve `sin_barco_factible` con una `recomendacion`.
  */
 export function decidirVenta(
   { silobolsa, riesgo, precio, barcos, acopios = [], destino, hoy, tasaAnual },
@@ -179,7 +205,7 @@ export function decidirVenta(
   ];
   const factibles = evaluados.filter((evaluado) => evaluado.factible);
   if (factibles.length === 0) {
-    return { decision: 'sin_barco_factible', riesgo: riesgo.nivel, fechaLimite, evaluados };
+    return sinOpcionEnPlazo({ acopios, contexto, riesgo, fechaLimite, evaluados });
   }
   const urgente = riesgo.nivel === 'alto';
   const porNeto = (a, b) => b.netoUsd - a.netoUsd;

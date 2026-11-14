@@ -9,3 +9,5 @@ export { default as OpenStreetMapAdapter } from './rutas/openStreetMapAdapter.js
 export { default as OpenMeteoElevationAdapter } from './terreno/openMeteoElevationAdapter.js';
 export { default as OpenTopographyAdapter } from './terreno/openTopographyAdapter.js';
 export { default as CopernicusStacAdapter } from './satellite/copernicusStacAdapter.js';
+export { crearSilobolsasMemoriaAdapter } from './silobolsas/silobolsasMemoriaAdapter.js';
+export { crearLecturasMemoriaAdapter } from './iot/lecturasMemoriaAdapter.js';

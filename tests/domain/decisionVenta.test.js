@@ -182,8 +182,9 @@ test('sin barco a tiempo y con acopios cargados: vende en el acopio de mayor net
 });
 
 test('si tampoco llega al acopio antes del límite, sigue sin_barco_factible e informa los acopios evaluados', () => {
-  const riesgo = { nivel: 'alto', diasHastaCritico: 3 };
-  const decision = decidirVenta({ ...base, riesgo, acopios: [{ nombre: 'Coop', distanciaKm: 25 }] }, tarifas);
+  const riesgo = { nivel: 'alto', diasHastaCritico: 0 };
+  const grande = { ...silobolsaSoja, kg: 3000000 };
+  const decision = decidirVenta({ ...base, silobolsa: grande, riesgo, acopios: [{ nombre: 'Coop', distanciaKm: 25 }] }, tarifas);
   assert.equal(decision.decision, 'sin_barco_factible');
   const acopio = decision.evaluados.find((e) => e.tipo === 'acopio');
   assert.equal(acopio.factible, false);
@@ -194,4 +195,19 @@ test('con barco a tiempo el acopio sin precio propio compite con el descuento su
   const decision = decidirVenta({ ...base, acopios: [{ nombre: 'Coop', distanciaKm: 25 }] }, tarifas);
   const tipos = decision.evaluados.filter((e) => e.factible).map((e) => e.tipo);
   assert.ok(tipos.includes('puerto') && tipos.includes('acopio'));
+});
+
+test('plan B: sin opción con anticipo, carga hoy en el acopio (vender_acopio_urgente)', () => {
+  const riesgo = { nivel: 'medio', diasHastaCritico: 5 };
+  const decision = decidirVenta({ ...base, riesgo, acopios: [{ nombre: 'Coop', distanciaKm: 25, precioUsdPorT: 290 }] }, tarifas);
+  assert.equal(decision.decision, 'vender_acopio_urgente');
+  assert.equal(decision.elegido.fechaCarga, base.hoy);
+  assert.equal(decision.elegido.urgente, true);
+  assert.match(decision.recomendacion, /Coop/);
+});
+
+test('plan B: sin acopios, sin_barco_factible recomienda sumar un acopio', () => {
+  const decision = decidirVenta({ ...base, riesgo: { nivel: 'medio', diasHastaCritico: 5 } }, tarifas);
+  assert.equal(decision.decision, 'sin_barco_factible');
+  assert.match(decision.recomendacion, /acopio/);
 });

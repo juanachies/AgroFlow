@@ -92,3 +92,10 @@ test('el caso de uso usa el puerto de tarifas que se le inyecta', async () => {
   await contenedor.planificarCosecha(base);
   assert.ok(consultas >= 1);
 });
+
+test('con fechaSiembra y sin fechaInicioCosecha, cosecha en la fecha óptima de la ventana', async () => {
+  const { fechaInicioCosecha, ...sinFecha } = soloPuerto;
+  const plan = await planificarCosecha({ ...sinFecha, fechaSiembra: '2026-12-01' });
+  assert.equal(pedido(plan, 'cosechadora').usar_desde, '2027-03-31');
+  await assert.rejects(planificarCosecha(sinFecha), /fechaInicioCosecha/);
+});

@@ -1,4 +1,5 @@
 import { serviciosPedidos } from '../../domain/destino/servicios.js';
+import { resolverFechaInicio } from '../../domain/destino/servicios.js';
 import { armarPedidos, costosPorServicio } from '../../domain/maquinaria/pedidos.js';
 
 /**
@@ -10,7 +11,8 @@ import { armarPedidos, costosPorServicio } from '../../domain/maquinaria/pedidos
  * }} dependencias
  */
 export function crearPlanificarCosecha({ tarifas, compararDestinos }) {
-  return async function planificarCosecha(entrada) {
+  return async function planificarCosecha(original) {
+    const entrada = resolverFechaInicio(original);
     const { evaluados, mejor, criterio } = await compararDestinos(entrada);
     const vigentes = await tarifas.vigentes();
     const pedidos = armarPedidos(mejor.resultado, entrada.fechaInicioCosecha, vigentes);

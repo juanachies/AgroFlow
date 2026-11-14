@@ -1,3 +1,5 @@
+import { calcularVentanaCosecha } from '../cosecha/ventanaCosecha.js';
+
 export const SERVICIOS = ['cosecha', 'transporte', 'almacenaje'];
 const SERVICIO_DEL_DESTINO = { puerto: 'transporte', acopio: 'transporte', silobolsa: 'almacenaje' };
 const CAMPOS_REQUERIDOS = ['ha', 'qqHa', 'cultivo', 'diasDisponibles', 'urgencia', 'fechaInicioCosecha'];
@@ -10,7 +12,15 @@ function serviciosConDestino(entrada) {
   return serviciosPedidos(entrada).filter((servicio) => servicio !== 'cosecha');
 }
 
-export function datosFaltantes(entrada) {
+// Sin fecha de inicio explícita, se cosecha en la fecha óptima de la ventana según la siembra.
+export function resolverFechaInicio(entrada) {
+  if (entrada.fechaInicioCosecha || !entrada.fechaSiembra) return entrada;
+  const { optimo } = calcularVentanaCosecha({ fechaSiembra: entrada.fechaSiembra, cultivo: entrada.cultivo });
+  return { ...entrada, fechaInicioCosecha: optimo };
+}
+
+export function datosFaltantes(original) {
+  const entrada = resolverFechaInicio(original);
   const faltan = CAMPOS_REQUERIDOS.filter((campo) => entrada[campo] == null || entrada[campo] === '');
   const destinos = entrada.destinos ?? [];
   const necesarios = serviciosConDestino(entrada);

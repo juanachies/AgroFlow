@@ -1,5 +1,5 @@
 import { elegirDestino, evaluarDestino } from '../../domain/destino/comparadorDestinos.js';
-import { validarEntrada } from '../../domain/destino/servicios.js';
+import { resolverFechaInicio, validarEntrada } from '../../domain/destino/servicios.js';
 import { ajustarDestinoPuerto } from '../../domain/destino/barcosDelPuerto.js';
 import { analizarBarcos, puertoDeTerminal } from '../../domain/barcos/index.js';
 import { diasViaje } from '../../domain/maquinaria/logistica.js';
@@ -38,8 +38,9 @@ async function conBarcos(entrada, { barcos, nivelRio }) {
  *           nivelRio?: import('../ports/NivelRioPort.js').NivelRioPort }} puertos
  */
 export function crearCompararDestinos({ tarifas, barcos = null, nivelRio = null }) {
-  return async function compararDestinos(entrada) {
-    validarEntrada(entrada);
+  return async function compararDestinos(original) {
+    validarEntrada(original);
+    const entrada = resolverFechaInicio(original);
     const [vigentes, destinos] = await Promise.all([tarifas.vigentes(), conBarcos(entrada, { barcos, nivelRio })]);
     const candidatos = destinos.length > 0 ? destinos : [null];
     const evaluados = candidatos.map((destino) => evaluarDestino(entrada, destino, vigentes));
