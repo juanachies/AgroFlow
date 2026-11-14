@@ -76,13 +76,23 @@ npm run demo:venta
 
 `demo:venta` muestra la venta durante la cosecha con los índices del puerto y datos de mercado publicados la semana del 11/11/2026.
 
+### Frontend web
+
+La aplicación de planificación está implementada en React/JSX con Vite. Iniciá el servidor local con:
+
+```bash
+npm run dev
+```
+
+En la interfaz podés registrar lotes y sus puntos de referencia, importar límites GeoJSON y cargar snapshots climáticos generados por `npm run update:weather`. Los datos de lotes y snapshots se guardan en IndexedDB del navegador. La app no tiene backend ni consulta APIs con credenciales desde el cliente; los indicadores y capas que todavía no existen se identifican como no disponibles.
+
+El mapa base usa OpenFreeMap/OpenStreetMap y ofrece imágenes de Esri como alternativa, con atribución visible. Para generar una compilación de producción ejecutá `npm run build` (salida en `dist/`).
+
 ```bash
 npm run actualizar-tarifas
 ```
 
-`actualizar-tarifas` trae el dólar oficial y la tabla de flete de CATAC; si una fuente falla, conserva los valores anteriores.
-
-Para guardar un pronóstico diario, configurar `LOT_LATITUDE` y `LOT_LONGITUDE` en el entorno o en `~/.env` y ejecutar `npm run update:weather`. Las keys van en `~/.env`, nunca dentro del proyecto. El servidor web y la URL pública están *(pendientes)*.
+`actualizar-tarifas` trae el dólar oficial y la tabla de flete de CATAC; si una fuente falla, conserva los valores anteriores. La API/backend y la URL pública siguen pendientes.
 
 ## Módulos
 

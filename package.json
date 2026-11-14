@@ -10,8 +10,17 @@
     "test": "node --test \"tests/**/*.test.js\"",
     "demo:flujo": "node src/interfaces/cli/demoFlujo.js",
     "actualizar-tarifas": "node src/infrastructure/tarifas/actualizarTarifas.js",
-    "demo": "node src/interfaces/cli/demoPlan.js",
+    "demo": "node src/interfaces/cli/demoVenta.js",
     "update:weather": "node src/interfaces/cli/refreshWeather.js",
-    "demo:venta": "node src/interfaces/cli/demoVenta.js"
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "maplibre-gl": "^6.18.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.8"
   }
 }
