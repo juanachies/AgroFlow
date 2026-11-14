@@ -11,7 +11,7 @@ const HORIZONTE_BARCOS_DIAS = 120;
  *   tarifas: import('../ports/TarifasPort.js').TarifasPort }} puertos
  */
 export function crearDecidirVenta({ evaluarSilobolsa, precios, barcos, tarifas }) {
-  return async function decidirVenta({ silobolsaId, hoy, destino, tasaAnual }) {
+  return async function decidirVenta({ silobolsaId, hoy, destino, tasaAnual, acopios = destino?.acopios ?? [] }) {
     const { silobolsa, riesgo } = await evaluarSilobolsa(silobolsaId);
     const [precio, calendario, vigentes] = await Promise.all([
       precios.precios(silobolsa.cultivo),
@@ -20,7 +20,7 @@ export function crearDecidirVenta({ evaluarSilobolsa, precios, barcos, tarifas }
     ]);
     // Solo barcos que cargan el cultivo de la bolsa (los que no informan cultivo sirven para todos).
     const delCultivo = calendario.filter((barco) => !barco.cultivo || barco.cultivo === silobolsa.cultivo);
-    const decision = decidir({ silobolsa, riesgo, precio, barcos: delCultivo, destino, hoy, tasaAnual }, vigentes);
+    const decision = decidir({ silobolsa, riesgo, precio, barcos: delCultivo, destino, hoy, tasaAnual, acopios }, vigentes);
     return { silobolsaId, ...decision };
   };
 }

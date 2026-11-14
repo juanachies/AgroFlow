@@ -86,3 +86,34 @@ test('rechaza kg, distancia o tasa inválidos', () => {
   assert.throws(() => decidirVenta({ ...base, destino: { ...destino, distanciaKm: 0 } }, tarifas), /distanciaKm/);
   assert.throws(() => decidirVenta({ ...base, tasaAnual: -1 }, tarifas), /tasaAnual/);
 });
+
+test('sin barco a tiempo y con acopios cargados: vende en el acopio de mayor neto que llegue antes del límite', () => {
+  const riesgo = { nivel: 'alto', diasHastaCritico: 9 };
+  const acopios = [
+    { nombre: 'Coop lejos', distanciaKm: 120 },
+    { nombre: 'Coop cerca', distanciaKm: 25 },
+    { nombre: 'Acopio con precio', distanciaKm: 30, precioUsdPorT: 250, tarifaUsdPorT: 4 },
+  ];
+  const decision = decidirVenta({ ...base, riesgo, acopios }, tarifas);
+  assert.equal(decision.decision, 'vender_acopio');
+  assert.equal(decision.motivo, 'no hay barco a tiempo');
+  assert.equal(decision.elegido.acopio, 'Coop cerca');
+  assert.equal(decision.acopiosEvaluados.length, 3);
+  assert.ok(decision.elegido.fechaCarga <= decision.fechaLimite);
+  assert.ok(decision.elegido.precioUsdPorT < 320); // precio esperado menos el descuento del acopio
+  assert.equal(decision.elegido.camiones.tipo, 'camion-bitren');
+});
+
+test('si tampoco llega al acopio antes del límite, sigue sin_barco_factible e informa los acopios', () => {
+  const riesgo = { nivel: 'alto', diasHastaCritico: 3 };
+  const decision = decidirVenta({ ...base, riesgo, acopios: [{ nombre: 'Coop', distanciaKm: 25 }] }, tarifas);
+  assert.equal(decision.decision, 'sin_barco_factible');
+  assert.equal(decision.acopiosEvaluados[0].factible, false);
+  assert.match(decision.acopiosEvaluados[0].motivo, /riesgo alto/);
+});
+
+test('con barco a tiempo no mira el acopio', () => {
+  const decision = decidirVenta({ ...base, acopios: [{ nombre: 'Coop', distanciaKm: 25 }] }, tarifas);
+  assert.equal(decision.decision, 'embarcar');
+  assert.equal(decision.acopiosEvaluados, undefined);
+});

@@ -57,3 +57,11 @@ test('con el calendario real unificado, solo considera barcos del cultivo de la 
   const resultado = await decidirVenta(entrada);
   assert.deepEqual(resultado.evaluados.map((e) => e.barcoId), ['soja-dic']);
 });
+
+test('los acopios del destino llegan a la decisión cuando no hay barco a tiempo', async () => {
+  const { decidirVenta } = contenedorCon(lecturasHumedadSube);
+  const resultado = await decidirVenta({ ...entrada, destino: { ...entrada.destino, acopios: [{ nombre: 'Coop', distanciaKm: 25 }] } });
+  assert.ok(['vender_acopio', 'sin_barco_factible'].includes(resultado.decision));
+  assert.equal(resultado.acopiosEvaluados.length, 1);
+  assert.equal(resultado.acopiosEvaluados[0].acopio, 'Coop');
+});
