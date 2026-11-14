@@ -10,6 +10,57 @@ import { crearBarcosSimuladosAdapter } from '../infrastructure/barcos/barcosSimu
 import { crearBarcosManualAdapter } from '../infrastructure/barcos/barcosManualAdapter.js';
 import { crearBarcosNabsaAdapter } from '../infrastructure/barcos/nabsaAdapter.js';
 import { crearNivelRioManualAdapter } from '../infrastructure/rio/nivelRioManualAdapter.js';
+import { env } from './env.js';
+import { FileCache } from '../infrastructure/cache/fileCache.js';
+import { NasaGpmImergAdapter } from '../infrastructure/clima/nasaGpmImergAdapter.js';
+import { NasaPowerAdapter } from '../infrastructure/clima/nasaPowerAdapter.js';
+import { NasaSmapAdapter } from '../infrastructure/clima/nasaSmapAdapter.js';
+import { OpenMeteoAdapter } from '../infrastructure/clima/openMeteoAdapter.js';
+import { SmnAdapter } from '../infrastructure/clima/smnAdapter.js';
+import { Era5LandAdapter } from '../infrastructure/clima/era5LandAdapter.js';
+import { DatosGobArAdapter } from '../infrastructure/rinde/datosGobArAdapter.js';
+import { OpenStreetMapAdapter } from '../infrastructure/rutas/openStreetMapAdapter.js';
+import { OpenMeteoElevationAdapter } from '../infrastructure/terreno/openMeteoElevationAdapter.js';
+import { OpenTopographyAdapter } from '../infrastructure/terreno/openTopographyAdapter.js';
+import { CopernicusStacAdapter } from '../infrastructure/satellite/copernicusStacAdapter.js';
+import { consultarCondicionesCosecha } from '../application/usecases/consultarCondicionesCosecha.js';
+
+const cache = new FileCache(env.cacheDirectory);
+const openMeteo = new OpenMeteoAdapter({ baseUrl: env.openMeteoBaseUrl, cache });
+const smn = env.smnApiBaseUrl
+  ? new SmnAdapter({
+    baseUrl: env.smnApiBaseUrl,
+    username: env.smnApiUsername,
+    password: env.smnApiPassword,
+    cache,
+  })
+  : null;
+const serviciosFuentes = {
+  openMeteo,
+  clima: openMeteo,
+  nasaPower: new NasaPowerAdapter({ baseUrl: env.powerBaseUrl, cache }),
+  smap: new NasaSmapAdapter({ earthdataToken: env.nasaEarthdataToken }),
+  era5Land: new Era5LandAdapter({
+    apiToken: env.copernicusCdsApiToken,
+    termsAccepted: env.era5TermsAccepted,
+  }),
+  imerg: new NasaGpmImergAdapter({
+    username: env.nasaEarthdataUsername,
+    password: env.nasaEarthdataPassword,
+    productBaseUrl: env.gpmProductBaseUrl,
+    cache,
+  }),
+  smn,
+  rinde: new DatosGobArAdapter({ cache }),
+  rutas: new OpenStreetMapAdapter({ userAgent: env.osmUserAgent, cache }),
+  elevacion: new OpenMeteoElevationAdapter({ cache }),
+  dem: new OpenTopographyAdapter({ apiKey: env.openTopographyApiKey }),
+  sentinel: new CopernicusStacAdapter({
+    username: env.cdseUsername,
+    password: env.cdsePassword,
+    totp: env.cdseTotp,
+  }),
+};
 
 // `barcos` puede ser un adaptador ya armado (BarcosPort) o un modo: 'simulado' | 'manual' | 'nabsa'.
 function adaptadorDeBarcos(barcos, { rutaLineup, mercado, simulado }) {
@@ -29,10 +80,11 @@ function adaptadorDeBarcos(barcos, { rutaLineup, mercado, simulado }) {
  * @param {string} [opciones.rutaLineup]   CSV (manual) o texto extraído del PDF (nabsa)
  * @param {object} [opciones.mercado]      datos BCR de camiones / buques a la carga
  * @param {number|null} [opciones.nivelParanaM]
+ * @param {object} [opciones.fuentes]      adaptadores de clima, suelo, rinde, rutas y satélite
  */
 export function crearContenedor({
   tarifas = crearTarifasJsonAdapter(), silobolsas, lecturasIot, precios, barcos,
-  rutaLineup = null, mercado = null, nivelParanaM = null,
+  rutaLineup = null, mercado = null, nivelParanaM = null, fuentes = serviciosFuentes,
 } = {}) {
   const barcosSimulado = crearBarcosSimuladosAdapter({ mercado });
   const adaptadorBarcos = adaptadorDeBarcos(barcos, { rutaLineup, mercado, simulado: barcosSimulado });
@@ -58,5 +110,24 @@ export function crearContenedor({
   if (contenedor.evaluarSilobolsa && precios && barcos) {
     contenedor.decidirVenta = crearDecidirVenta({ evaluarSilobolsa: contenedor.evaluarSilobolsa, precios, barcos: adaptadorBarcos, tarifas });
   }
-  return contenedor;
+  return {
+    ...contenedor,
+    env,
+    cache,
+    services: fuentes,
+    usecases: {
+      compararDestinos: contenedor.compararDestinos,
+      planificarCosecha: contenedor.planificarCosecha,
+      decidirVentaCosecha: contenedor.decidirVentaCosecha,
+      ...(contenedor.evaluarSilobolsa ? { evaluarSilobolsa: contenedor.evaluarSilobolsa } : {}),
+      ...(contenedor.decidirVenta ? { decidirVenta: contenedor.decidirVenta } : {}),
+      consultarCondicionesCosecha: (params = {}) => consultarCondicionesCosecha({
+        ...params,
+        adapters: { ...fuentes, ...(params.adapters ?? {}) },
+      }),
+    },
+  };
 }
+
+export const container = crearContenedor();
+export default container;

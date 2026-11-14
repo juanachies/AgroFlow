@@ -125,7 +125,7 @@ Son valores razonables para la demo, no una norma. Se calibran por zona con prod
 
 | Dato | Cómo lo cubrimos |
 | --- | --- |
-| Arribos de barcos y cola en el puerto | Calendario manual o simulado (buque, terminal, fecha estimada, toneladas). Las agencias marítimas publican line-ups diarios del Gran Rosario: verificar si se pueden usar. |
+| Arribos de barcos y cola en el puerto | Adaptadores NABSA/BCR, con calendario manual o simulado como alternativas; las publicaciones no tienen una API estable. |
 | Ubicación de acopios y cooperativas | Lista curada de la zona de demo |
 | Capacidad de descarga y de carga de cada terminal | Supuesto editable |
 | Tarifas 2026 (silobolsa, embolsado, silo, alquiler de maquinaria, cosecha por servicio) | Supuesto editable con valores de referencia; decirlo en la demo |
@@ -171,7 +171,7 @@ Vienen de notas de prensa que citan a la BCR o al INTA. Verificar en el informe 
 | Gasoil de un camión en ralentí | 3 L/h | Dato de fabricante o medido |
 | CO₂ por litro de gasoil | 2,68 kg | Factor estándar |
 | Velocidad en ruta / en tierra | 60 / 25 km/h | OSRM |
-| Distancia | Línea recta × 1,3 | Distancia por ruta de OSRM |
+| Distancia en el prototipo | Línea recta × 1,3 | Distancia vial de OSRM; no sustituir una ruta faltante por línea recta |
 | Desvío del viaje real | −10% a +25% del previsto | GPS de camiones |
 | Camiones por día en la demo | 2.600, listos entre las 6 y las 22 h | — |
 

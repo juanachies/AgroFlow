@@ -88,9 +88,11 @@ marcianos/
 │   │       ├── explicarRecomendacion.js  # módulo 6
 │   │       └── simularEscenario.js       # "¿y si llueve 10 días más?"
 │   ├── infrastructure/           # adaptadores de salida
-│   │   ├── clima/                nasaPowerAdapter.js, climaSimuladoAdapter.js
-│   │   ├── rinde/                datosGobArAdapter.js, rindeCsvAdapter.js
-│   │   ├── rutas/                osrmAdapter.js, nominatimAdapter.js, lineaRectaAdapter.js (respaldo: recta × 1,3)
+│   │   ├── clima/                Open-Meteo, NASA POWER/IMERG/SMAP, SMN, ERA5-Land
+│   │   ├── terreno/              Open-Meteo Elevation, OpenTopography
+│   │   ├── satellite/            Copernicus STAC (Sentinel-1/2)
+│   │   ├── rinde/                datosGobArAdapter.js
+│   │   ├── rutas/                openStreetMapAdapter.js (Nominatim + OSRM)
 │   │   ├── barcos/               barcosSimuladosAdapter.js, barcosManualAdapter.js, nabsaAdapter.js, bcrAdapter.js
 │   │   ├── rio/                  nivelRioManualAdapter.js
 │   │   ├── acopios/              acopiosCsvAdapter.js
@@ -132,7 +134,7 @@ marcianos/
 | --- | --- |
 | `nasa_power.py` (descarga con caché) | `infrastructure/clima/nasaPowerAdapter.js` + `infrastructure/cache/fileCache.js` |
 | Regla de corte en `modelo.py` (20 mm en 48 h, secado 18 h, ×1,5 con suelo saturado) | `domain/clima/corteCaminos.js` |
-| `distancia_km` y `tiempo_viaje_h` en `modelo.py` | `infrastructure/rutas/lineaRectaAdapter.js` (respaldo de OSRM) |
+| `distancia_km` y `tiempo_viaje_h` en `modelo.py` | `infrastructure/rutas/openStreetMapAdapter.js` (OSRM calcula la ruta vial) |
 | `datos/localidades.csv`, `datos/terminales.csv` | `data/` |
 | Simulador de colas y turnos | Tabla de cola esperada por fecha en `data/`, leída por el módulo de barcos y la modalidad B de camiones |
 | Escenario real de mayo 2025 | `data/cache/` precargado para que la demo no dependa de la red |

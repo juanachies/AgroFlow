@@ -1,1 +1,2 @@
-export { default as evaluarRiesgoSilobolsa, evaluarRiesgoSilobolsa as riesgoSilobolsa } from './riesgoSilobolsa.js';
+export { evaluarRiesgo } from './riesgoSilobolsa.js';
+export { dimensionarSilobolsa } from './dimensionadoSilobolsa.js';
