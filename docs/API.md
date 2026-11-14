@@ -13,7 +13,7 @@ npm start
 | `CORS_ORIGIN` | `*` | Origen permitido para el front (por ejemplo `https://agroflow.vercel.app`) |
 | `AGROFLOW_MERCADO_DEMO` | activado | Carga reservas simuladas del resto del mercado, con pico en Gran Rosario a mediados de abril de 2027. `0` lo desactiva |
 
-**Front en la misma URL:** si existe `src/interfaces/web/index.html`, el servidor sirve el front y la API desde la misma dirección, sin configurar CORS. Si el front se despliega aparte, apuntarlo a la URL de la API y configurar `CORS_ORIGIN`.
+**Front en la misma URL:** si existe `dist/` (el front de `src/interfaces/web` compilado con `npm run build`), el servidor sirve el front y la API desde la misma dirección, sin configurar CORS. Si el front se despliega aparte, apuntarlo a la URL de la API y configurar `CORS_ORIGIN`.
 
 **Estado en memoria:** las simulaciones, ofertas y reservas viven en memoria y se pierden al reiniciar el servidor.
 
@@ -29,6 +29,14 @@ npm start
 | `GET /api/ofertas?desde&hasta&recurso` | Proveedores del marketplace |
 | `POST /api/ofertas` | Alta de un proveedor |
 | `GET /api/saturacion?puerto&cultivo&hoy[&camionesPublicadosDia]` | Pronóstico de saturación por día (60 días) |
+| `POST /api/explicar` | Explicación del plan en lenguaje de productor (IA o plantilla) |
+| `POST /api/escenario` | "¿Y si…?": vuelve a simular con un cambio y explica la diferencia |
+| `GET /api/escenarios` | Tipos de escenario disponibles |
+| `POST /api/venta-cosecha` | Venta durante la cosecha según barcos e índices del puerto |
+| `GET /api/silobolsas` / `POST /api/silobolsas` | Silobolsas registrados / registrar uno |
+| `POST /api/silobolsas/:id/lecturas` | Cargar lecturas del IoT |
+| `GET /api/silobolsas/:id/riesgo` | Riesgo de la bolsa según las lecturas |
+| `POST /api/silobolsas/:id/venta` | Barco y fletes, plan B urgente o acopio |
 
 Las fechas van siempre en formato `AAAA-MM-DD`.
 
@@ -56,6 +64,8 @@ Entrada (`GET /api/ejemplo` devuelve una completa):
 - `urgencia`: `baja`, `media` o `alta`.
 - `servicios`: `transporte` (para puerto o acopio) y `almacenaje` (para silobolsa). `cosecha` va siempre.
 - En lugar de `fechaInicioCosecha` se puede mandar `fechaSiembra`: el sistema usa la fecha óptima de la ventana de cosecha.
+- `distanciaKm` es opcional si el destino trae `lat` y `lon` (o si es un puerto con `terminal`). El servidor la calcula por ruta (OSRM) y, si OSRM falla, usa línea recta × 1,3. `distancias` en la respuesta dice de dónde salió cada una.
+- Con el lote ubicado (`lote.lat`, `lote.lon`) y la ventana dentro de los próximos ~16 días, el servidor descuenta los días de lluvia del pronóstico de Open-Meteo (5 mm o más) de `diasDisponibles`. Se puede apagar con `usarClima: false`. `clima` en la respuesta lo detalla.
 - Opcionales:
   - `margenDiasDespacho`: cuántos días puede correrse el despacho (10 por defecto).
   - `camionesPublicadosDia`: dato de camiones del día, si se tiene.
@@ -137,6 +147,63 @@ Por ejemplo: `/api/saturacion?puerto=gran-rosario&cultivo=soja&hoy=2027-03-20`.
 - `puerto` acepta la clave (`gran-rosario`, `bahia-blanca`, `quequen`) o un nombre (`Puerto Gran Rosario`, `San Lorenzo`).
 - Devuelve los 60 días con estado, el calado y los avisos de barcos.
 
+### `POST /api/explicar`
+
+```json
+{ "simulacionId": "b4030e71-…", "pregunta": "¿Por qué no al acopio?" }
+```
+
+`pregunta` es opcional. La respuesta trae `texto`, `fuente` y `resumen`, más `modelo` cuando la fuente es OpenAI:
+
+- `fuente: "openai"`: hay `OPENAI_API_KEY` en el servidor.
+- `fuente: "plantilla"`: no hay key, o la IA falló. En ese caso viene también `aviso`.
+
+La IA solo recibe el `resumen`, que tiene los números del motor, así que no puede inventar cálculos.
+
+### `POST /api/escenario`
+
+```json
+{ "simulacionId": "b4030e71-…", "escenario": { "tipo": "lluvia", "valor": 5 }, "pregunta": "¿Qué hago?" }
+```
+
+| `tipo` | `valor` | Qué cambia |
+| --- | --- | --- |
+| `lluvia` | días | Resta días hábiles de cosecha |
+| `demora` | días (puede ser negativo) | Corre el inicio de la cosecha |
+| `precioPuerto` | US$/t (puede ser negativo) | Precio de los destinos puerto |
+| `flete` | % | Encarece o abarata el flete de los destinos con distancia |
+| `saturacion` | % | Más camiones llegando al puerto |
+
+Devuelve:
+- `escenario` (con `descripcion`);
+- `resultado`: la simulación completa;
+- `explicacion`: incluye `comparacion.cambios`, la lista de lo que cambió;
+- un `simulacionId` nuevo: el escenario también se puede confirmar con `POST /api/reservas`.
+
+### Silobolsas
+
+1. `POST /api/silobolsas` con `{ "id": "SB-01", "cultivo": "soja", "kg": 200000, "fechaCreacion": "2026-04-20" }`. El `id` es opcional; si falta, se genera.
+2. `POST /api/silobolsas/SB-01/lecturas` con `{ "lecturas": [{ "timestamp": "2026-11-14T00:00:00Z", "humedad": 14.2, "temperatura": 24, "co2": 3 }] }`. El gateway del IoT puede llamar a este endpoint directamente.
+3. `GET /api/silobolsas/SB-01/riesgo` devuelve el nivel de riesgo y los días hasta el nivel medio y el crítico.
+4. `POST /api/silobolsas/SB-01/venta` con `{ "hoy": "2026-11-14", "destino": { "terminal": "Puerto Gran Rosario", "distanciaKm": 300, "acopios": [{ "nombre": "Coop", "distanciaKm": 25 }] }, "tasaAnual": 0.08 }`. Devuelve la decisión:
+   - `embarcar`, con barco, fecha de carga, camiones y extractora;
+   - venta urgente o en acopio;
+   - `sin_barco_factible`.
+
+### `POST /api/venta-cosecha`
+
+```json
+{ "puerto": "gran-rosario", "cultivo": "soja", "hoy": "2027-03-20", "fechaGranoListo": "2027-04-10",
+  "toneladas": 1200, "distanciaPuertoKm": 230, "distanciaAcopioKm": 35 }
+```
+
+Devuelve:
+- `venta.decision`: `vender` o `silobolsa`, con canal;
+- `venta.indicesPuerto`;
+- `venta.hastaDondeRinde`;
+- `cadetes`: qué pedir;
+- `avisos`.
+
 ## Errores
 
 Todos los errores devuelven `{ "error": "mensaje" }`.
@@ -144,9 +211,9 @@ Todos los errores devuelven `{ "error": "mensaje" }`.
 | Estado | Cuándo |
 | --- | --- |
 | 400 | Datos faltantes o inválidos. El mensaje lista qué falta, por ejemplo `faltan datos: ha, qqHa` |
-| 404 | Ruta o simulación inexistente |
+| 404 | Ruta, simulación o silobolsa inexistente, o silobolsa sin lecturas |
 | 405 | Método no permitido en una ruta que existe |
 | 413 | Cuerpo de más de 1 MB |
 | 415 | El cuerpo no es `application/json` |
-| 501 | El marketplace configurado no admite altas |
+| 501 | Función no configurada en el servidor (altas del marketplace, silobolsas) |
 | 500 | Error interno |

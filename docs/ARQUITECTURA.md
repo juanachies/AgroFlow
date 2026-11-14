@@ -113,7 +113,7 @@ marcianos/
 │   │   ├── http/                 # API para el front (docs/API.md), sin dependencias
 │   │   │   ├── server.js         npm start: arma el contenedor y escucha en PORT
 │   │   │   ├── app.js            rutas /api/* (simular, reservas, ofertas, saturacion, salud, ejemplo)
-│   │   │   ├── estatico.js       sirve src/interfaces/web si existe
+│   │   │   ├── estatico.js       sirve el front compilado (dist/) si existe
 │   │   │   └── validacion.js     JSON, errores y parámetros
 │   │   └── web/                  index.html, app.js, styles.css
 │   └── config/

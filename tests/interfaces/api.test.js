@@ -8,7 +8,7 @@ let servidor;
 let base;
 
 before(async () => {
-  servidor = crearServidor({ contenedor: armarContenedor(), origenCors: 'https://front.example', conFront: false });
+  servidor = crearServidor({ contenedor: armarContenedor({ explicador: null }), origenCors: 'https://front.example', conFront: false });
   await new Promise((ok) => servidor.listen(0, '127.0.0.1', ok));
   base = `http://127.0.0.1:${servidor.address().port}`;
 });
@@ -88,4 +88,51 @@ test('errores: validación, JSON inválido, rutas y métodos', async () => {
   assert.equal((await fetch(`${base}/api/simular`)).status, 405);
   assert.equal((await json('/api/reservas', {})).status, 400);
   assert.equal((await fetch(`${base}/no-existe.html`)).status, 404);
+});
+
+test('IA: explicar una simulación y simular un escenario', async () => {
+  const sim = await (await json('/api/simular', ENTRADA_EJEMPLO)).json();
+  const exp = await json('/api/explicar', { simulacionId: sim.simulacionId });
+  assert.equal(exp.status, 200);
+  const e = await exp.json();
+  assert.equal(e.fuente, 'plantilla');
+  assert.match(e.texto, /Puerto Gran Rosario/);
+  const tipos = (await (await fetch(`${base}/api/escenarios`)).json()).escenarios.map((x) => x.tipo);
+  assert.ok(tipos.includes('lluvia') && tipos.includes('saturacion'));
+  const esc = await json('/api/escenario', { simulacionId: sim.simulacionId, escenario: { tipo: 'lluvia', valor: 5 } });
+  assert.equal(esc.status, 200);
+  const r = await esc.json();
+  assert.ok(r.simulacionId && r.simulacionId !== sim.simulacionId); // el escenario también se puede confirmar
+  assert.match(r.explicacion.texto, /^Si llueve 5 días más/);
+  assert.equal((await json('/api/escenario', { simulacionId: sim.simulacionId, escenario: { tipo: 'x', valor: 1 } })).status, 400);
+  assert.equal((await json('/api/explicar', { simulacionId: 'no-existe' })).status, 404);
+});
+
+test('silobolsas: registrar, cargar lecturas, ver riesgo y decidir la venta', async () => {
+  const alta = await json('/api/silobolsas', { id: 'SB-API', cultivo: 'soja', kg: 200000, fechaCreacion: '2026-04-20' });
+  assert.equal(alta.status, 201);
+  const lecturas = [10, 11, 12, 13, 14].map((d, i) => ({ timestamp: `2026-11-${d}T00:00:00Z`, humedad: 14 + i * 0.25, temperatura: 24, co2: 3 }));
+  assert.equal((await json('/api/silobolsas/SB-API/lecturas', { lecturas })).status, 201);
+  const riesgo = await (await fetch(`${base}/api/silobolsas/SB-API/riesgo`)).json();
+  assert.equal(riesgo.silobolsa.id, 'SB-API');
+  assert.ok(['bajo', 'medio', 'alto'].includes(riesgo.riesgo.nivel));
+  const venta = await json('/api/silobolsas/SB-API/venta', { hoy: '2026-11-14', destino: { terminal: 'Puerto Gran Rosario', distanciaKm: 300, acopios: [{ nombre: 'Coop', distanciaKm: 25 }] } });
+  assert.equal(venta.status, 200);
+  assert.ok((await venta.json()).decision);
+  const lista = await (await fetch(`${base}/api/silobolsas`)).json();
+  assert.ok(lista.silobolsas.some((s) => s.id === 'SB-API'));
+  // Errores
+  assert.equal((await fetch(`${base}/api/silobolsas/NO/riesgo`)).status, 404);
+  assert.equal((await json('/api/silobolsas', { cultivo: 'arroz', kg: 1, fechaCreacion: '2026-04-20' })).status, 400);
+  assert.equal((await json('/api/silobolsas/SB-API/lecturas', { lecturas: [{ timestamp: 'ayer' }] })).status, 400);
+  assert.equal((await json('/api/silobolsas/SB-API/venta', { hoy: '2026-11-14', destino: {} })).status, 400);
+  assert.equal((await fetch(`${base}/api/silobolsas/SB-API/venta`)).status, 405);
+});
+
+test('venta en cosecha según barcos', async () => {
+  const r = await json('/api/venta-cosecha', { puerto: 'gran-rosario', cultivo: 'soja', hoy: '2027-03-20', fechaGranoListo: '2027-04-10', toneladas: 1200, distanciaPuertoKm: 230, distanciaAcopioKm: 35 });
+  assert.equal(r.status, 200);
+  const v = await r.json();
+  assert.ok(['vender', 'silobolsa'].includes(v.venta.decision));
+  assert.ok(v.cadetes);
 });

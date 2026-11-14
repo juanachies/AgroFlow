@@ -19,11 +19,13 @@ import {
 } from './lib/storage.js';
 
 const MapView = lazy(() => import('./components/MapView.jsx'));
+const PlanDespacho = lazy(() => import('./components/PlanDespacho.jsx'));
 
 const PAGES = [
   { id: 'summary', label: 'Resumen', icon: '⌂' },
   { id: 'lots', label: 'Lotes y mapa', icon: '▦' },
   { id: 'planning', label: 'Planificación', icon: '↗' },
+  { id: 'despacho', label: 'Plan y despacho', icon: '⇄' },
   { id: 'technical', label: 'Análisis técnico', icon: '◌' },
 ];
 
@@ -568,6 +570,7 @@ export default function App() {
               {page === 'summary' && <SummaryPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onNavigate={navigate} onSelectLot={setSelectedLotId} onCreate={() => setShowCreateDialog(true)} />}
               {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onBoundary={saveBoundary} onSnapshot={saveSnapshot} onDelete={removeLot} onCreate={() => setShowCreateDialog(true)} />}
               {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSnapshot={saveSnapshot} />}
+              {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
             </Suspense>
           </div>

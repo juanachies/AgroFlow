@@ -6,3 +6,4 @@ export { crearDecidirVenta } from './decidirVenta.js';
 export { crearDecidirVentaCosecha } from './decidirVentaCosecha.js';
 export { crearSimularPlan, crearConfirmarReservas } from './simularPlan.js';
 export { crearConsultarSaturacion } from './consultarSaturacion.js';
+export { crearExplicarRecomendacion, crearSimularEscenario, ESCENARIOS } from './explicar.js';
