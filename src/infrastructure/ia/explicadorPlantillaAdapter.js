@@ -10,7 +10,14 @@ function explicarPlan(r) {
   const partes = [];
   const alternativas = r.destino.alternativas.filter((a) => a.destino !== r.destino.recomendado && a.margenUsd != null);
   const mejorAlternativa = alternativas.sort((a, b) => b.margenUsd - a.margenUsd)[0];
-  partes.push(`Conviene mandar las ${r.toneladas?.toLocaleString('es-AR') ?? ''} t a ${r.destino.recomendado} (${r.destino.criterio})${r.destino.margenUsd != null ? `, con un margen de ${usd(r.destino.margenUsd)}` : ''}${mejorAlternativa ? `; la siguiente opción, ${mejorAlternativa.destino}, deja ${usd(r.destino.margenUsd - mejorAlternativa.margenUsd)} menos` : ''}.`);
+  const criterio = r.destino.criterio.split(';')[0];
+  const masEnElPapel = mejorAlternativa && r.destino.margenUsd != null && mejorAlternativa.margenUsd > r.destino.margenUsd;
+  partes.push(`Conviene mandar las ${r.toneladas?.toLocaleString('es-AR') ?? ''} t a ${r.destino.recomendado} (${criterio})${r.destino.margenUsd != null ? `, con un margen de ${usd(r.destino.margenUsd)}` : ''}.`);
+  if (masEnElPapel) {
+    partes.push(`${mejorAlternativa.destino} daría ${usd(mejorAlternativa.margenUsd - r.destino.margenUsd)} más en el papel, pero se descarta porque el puerto no cumple los índices de barcos (demanda contra camiones, espera o saturación): ir ahí es arriesgarse a la cola y a un precio castigado.`);
+  } else if (mejorAlternativa) {
+    partes.push(`La siguiente opción, ${mejorAlternativa.destino}, deja ${usd(r.destino.margenUsd - mejorAlternativa.margenUsd)} menos.`);
+  }
   if (r.puerto?.diasSaturados) {
     partes.push(`El puerto se satura ${r.puerto.diasSaturados} días entre el ${r.puerto.primerDiaSaturado} y el ${r.puerto.ultimoDiaSaturado}.`);
   }

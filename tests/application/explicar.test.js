@@ -98,7 +98,8 @@ test('clima: descuenta días de lluvia del pronóstico; rutas: OSRM o línea rec
   );
   const clima = { obtenerPronostico: async ({ startDate }) => ({ daily: { time: [startDate, '2027-04-11', '2027-04-12'], precipitation_sum: [15, 0, 8] } }) };
   const rutas = { distanciaKm: async () => ({ distanceKm: 251.4, source: 'OpenStreetMap OSRM' }) };
-  const sinKm = { ...ENTRADA_EJEMPLO, destinos: ENTRADA_EJEMPLO.destinos.map(({ distanciaKm, ...d }) => d) };
+  // hoy a 9 días de la cosecha: dentro del horizonte del pronóstico.
+  const sinKm = { ...ENTRADA_EJEMPLO, hoy: '2027-04-01', destinos: ENTRADA_EJEMPLO.destinos.map(({ distanciaKm, ...d }) => d) };
   const r = await armar({ fuentesExternas: true, fuentes: { openMeteo: clima, rutas } }).simularPlan(sinKm);
   assert.equal(r.clima.diasConLluvia, 2);
   assert.equal(r.entrada.diasDisponibles, ENTRADA_EJEMPLO.diasDisponibles - 2);
@@ -122,4 +123,24 @@ test('plantilla: plurales y plazo de pedido vencido', async () => {
   assert.match(e.texto, /\d+ cosechadoras/);
   assert.match(e.texto, /\d+ camiones/);
   assert.match(e.texto, /ya pasó el anticipo recomendado/);
+});
+
+test('plantilla: si el puerto da más en el papel pero se descarta por índices, lo dice', async () => {
+  const { crearExplicadorPlantillaAdapter } = await import('../../src/infrastructure/ia/explicadorPlantillaAdapter.js');
+  const resumen = {
+    toneladas: 4200,
+    destino: { recomendado: 'Cooperativa', tipo: 'acopio', criterio: 'mayor margen neto; puerto descartado por índices de barcos: Puerto', margenUsd: 1000, alternativas: [{ destino: 'Puerto', margenUsd: 1500 }, { destino: 'Cooperativa', margenUsd: 1000 }] },
+    puerto: null, despacho: null, pedido: [], marketplace: { coberturaPct: 100, costoUsd: 1, proveedores: 1, faltantes: [] }, clima: null, hoy: null,
+  };
+  const { texto } = await crearExplicadorPlantillaAdapter().explicar({ resumen });
+  assert.match(texto, /Puerto daría US\$ 500 más en el papel, pero se descarta/);
+  assert.doesNotMatch(texto, /-\d/);
+});
+
+test('clima: si la cosecha está a más de 16 días no consulta el pronóstico y lo explica', async () => {
+  let consultas = 0;
+  const clima = { obtenerPronostico: async () => { consultas++; return { daily: { time: [], precipitation_sum: [] } }; } };
+  const r = await armar({ fuentesExternas: true, fuentes: { openMeteo: clima } }).simularPlan({ ...ENTRADA_EJEMPLO, hoy: '2027-01-10' });
+  assert.equal(consultas, 0);
+  assert.match(r.clima.motivo, /más de 16 días/);
 });

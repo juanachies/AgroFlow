@@ -54,6 +54,10 @@ async function ajustarPorClima(entrada, { clima, fuentesExternas }) {
   const lote = entrada.lote;
   if (!clima || !fuentesExternas || !lote || entrada.usarClima === false) return { entrada, clima: null };
   const desde = entrada.fechaInicioCosecha;
+  const hoy = entrada.hoy ?? null;
+  if (hoy && diasEntre(hoy, desde) > 15) {
+    return { entrada, clima: { disponible: false, motivo: 'la cosecha está a más de 16 días: el pronóstico todavía no la cubre; se descuenta la lluvia cuando entre en el horizonte' } };
+  }
   try {
     const p = await clima.obtenerPronostico({
       latitude: Number(lote.lat), longitude: Number(lote.lon), startDate: desde,
@@ -101,9 +105,14 @@ export function crearSimularPlan({ planificarCosecha, marketplace, barcos = null
     let puerto = null;
     if (barcos && destinoPuerto) {
       puerto = puertoDeTerminal(destinoPuerto.terminal ?? destinoPuerto.nombre ?? 'gran-rosario');
-      saturacion = await consultarSaturacion({ puerto, cultivo: entrada.cultivo, hoy, nivelParanaM: entrada.nivelParanaM ?? null, camionesPublicadosDia: entrada.camionesPublicadosDia ?? null, params: entrada.paramsSaturacion });
-
+      // El pronóstico cubre 60 días: si la cosecha está lejos, arranca 20 días antes del despacho
+      // (más allá del line-up publicado es estacional + reservas del marketplace).
       const camion = pedidos.find((p) => p.recurso === 'camión');
+      const inicioDespacho = camion?.usar_desde ?? entrada.fechaInicioCosecha;
+      const desdeSaturacion = diasEntre(hoy, inicioDespacho) > 30 ? sumarDias(inicioDespacho, -20) : hoy;
+      saturacion = await consultarSaturacion({ puerto, cultivo: entrada.cultivo, hoy: desdeSaturacion, nivelParanaM: entrada.nivelParanaM ?? null, camionesPublicadosDia: entrada.camionesPublicadosDia ?? null, params: entrada.paramsSaturacion });
+      saturacion.desde = desdeSaturacion;
+
       if (rec.tipo === 'puerto' && camion) {
         const duracion = diasEntre(camion.usar_desde, camion.usar_hasta) + 1;
         ventana = mejorVentanaDeEntrega({ pronostico: saturacion, desde: camion.usar_desde, duracion, margenDias: entrada.margenDiasDespacho ?? 10, noAntesDe: camion.usar_desde });
