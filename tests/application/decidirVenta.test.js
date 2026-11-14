@@ -34,6 +34,14 @@ test('humedad en suba: no hay barco a tiempo y avisa la fecha límite', async ()
   assert.equal(resultado.fechaLimite, '2026-11-19');
 });
 
+test('los acopios que se pasan al caso de uso compiten con los barcos', async () => {
+  const { decidirVenta } = contenedorCon(lecturasSanas);
+  const acopios = [{ nombre: 'Cooperativa local', distanciaKm: 40, precioUsdPorT: 305, costoAdicionalUsdPorT: 6 }];
+  const resultado = await decidirVenta({ ...entrada, acopios });
+  assert.equal(resultado.decision, 'vender_acopio');
+  assert.equal(resultado.evaluados.filter((e) => e.tipo === 'acopio').length, 1);
+});
+
 test('evaluarSilobolsa devuelve el silobolsa con su riesgo', async () => {
   const { evaluarSilobolsa } = contenedorCon(lecturasHumedadSube);
   const { silobolsa, riesgo } = await evaluarSilobolsa('SB-001');
@@ -62,6 +70,7 @@ test('los acopios del destino llegan a la decisión cuando no hay barco a tiempo
   const { decidirVenta } = contenedorCon(lecturasHumedadSube);
   const resultado = await decidirVenta({ ...entrada, destino: { ...entrada.destino, acopios: [{ nombre: 'Coop', distanciaKm: 25 }] } });
   assert.ok(['vender_acopio', 'sin_barco_factible'].includes(resultado.decision));
-  assert.equal(resultado.acopiosEvaluados.length, 1);
-  assert.equal(resultado.acopiosEvaluados[0].acopio, 'Coop');
+  const acopios = resultado.evaluados.filter((e) => e.tipo === 'acopio');
+  assert.equal(acopios.length, 1);
+  assert.equal(acopios[0].acopio, 'Coop');
 });

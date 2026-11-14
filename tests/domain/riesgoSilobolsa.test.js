@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { evaluarRiesgo } from '../../src/domain/silobolsa/riesgoSilobolsa.js';
 import { tarifas } from '../helpers/tarifas.js';
-import { lecturasCriticas, lecturasHumedadSube, lecturasSanas } from '../helpers/silobolsa.js';
+import { lecturasCriticas, lecturasHumedadSube, lecturasLineales, lecturasSanas } from '../helpers/silobolsa.js';
 
 test('grano sano y estable: riesgo bajo y sin fecha crítica', () => {
   const riesgo = evaluarRiesgo({ cultivo: 'soja', lecturas: lecturasSanas }, tarifas);
@@ -31,6 +31,25 @@ test('toma como actual la lectura más reciente aunque lleguen desordenadas', ()
   const riesgo = evaluarRiesgo({ cultivo: 'soja', lecturas: desordenadas }, tarifas);
   assert.equal(riesgo.variables.humedad.valor, 15);
   assert.equal(riesgo.variables.humedad.pendientePorDia, 0.2);
+});
+
+test('proyecta los días hasta superar el umbral medio además del alto', () => {
+  const lecturas = lecturasLineales({
+    inicio: '2026-11-09T00:00:00Z',
+    dias: 5,
+    humedad: [12, 13],
+    temperatura: [22, 22],
+    co2: [2, 2],
+  });
+  const riesgo = evaluarRiesgo({ cultivo: 'soja', lecturas }, tarifas);
+  assert.equal(riesgo.nivel, 'bajo');
+  assert.equal(riesgo.diasHastaMedio, 5);
+  assert.equal(riesgo.diasHastaCritico, 15);
+});
+
+test('un silobolsa ya en riesgo medio tiene plazo 0 hasta el nivel medio', () => {
+  const riesgo = evaluarRiesgo({ cultivo: 'soja', lecturas: lecturasHumedadSube }, tarifas);
+  assert.equal(riesgo.diasHastaMedio, 0);
 });
 
 test('con una sola lectura evalúa el nivel pero no proyecta', () => {

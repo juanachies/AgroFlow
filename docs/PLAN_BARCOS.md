@@ -136,7 +136,7 @@ Del [mapa del proyecto](flujo-proyecto.html), el equipo de barcos toma lo relaci
 | 1 | Barcos del puerto (entrada de Elegir destino) | Con un `BarcosPort`, `compararDestinos` ajusta cada destino puerto: precio × factor de demanda, espera como costo adicional e índices a cumplir. Si no cumple, se descarta | `domain/destino/barcosDelPuerto.js`, `usecases/compararDestinos.js` |
 | 2 | Calendario de barcos (entrada de Decidir venta) | `BarcosPort` unificado (`id, terminal, arribo, cierreCarga, toneladasMax` + `puerto, cultivo, eta, estado`). NABSA, CSV y simulado lo cumplen. La venta de silobolsa filtra por cultivo | `domain/barcos/calendario.js`, `ports/BarcosPort.js` |
 | 3 | Precios spot y futuros | Curva con base que converge, usada en la venta de silobolsa y en la venta en cosecha. Adaptadores de `PreciosPort` manual (pizarra en pesos + A3) y simulado | `domain/venta/precios.js`, `infrastructure/precios/` |
-| 4 | Vender en acopio si no hay barco a tiempo | `decision: 'vender_acopio'` con el acopio de mayor neto que llegue antes de la fecha límite | `domain/venta/decisionVenta.js` |
+| 4 | Vender en acopio si no hay barco a tiempo | `decision: 'vender_acopio'` con el acopio elegido entre las opciones evaluadas (compite con los barcos) | `domain/venta/decisionVenta.js` |
 | — | Extracción, embarque, reparto de la capacidad del barco | No se toca: lo hace el puerto | — |
 
 La venta en cosecha según barcos se renombró a `decidirVentaCosecha` (`domain/venta/ventaCosecha.js`, `usecases/decidirVentaCosecha.js`) para no chocar con la venta de silobolsa (`decidirVenta`).
