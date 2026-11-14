@@ -138,7 +138,7 @@ function dimensionarCosecha(params, d = datos) {
   exigirPositivo('qqHa', qqHa);
   exigirPositivo('diasDisponibles', diasDisponibles);
   const conFlete = DESTINOS_CON_FLETE.includes(destino);
-  if (!conFlete && destino !== 'silobolsa') {
+  if (destino != null && !conFlete && destino !== 'silobolsa') {
     throw new RangeError(`destino inválido: ${destino}. Opciones: ${[...DESTINOS_CON_FLETE, 'silobolsa'].join(', ')}`);
   }
 
@@ -150,11 +150,12 @@ function dimensionarCosecha(params, d = datos) {
   const camiones = conFlete
     ? dimensionarCamiones({ tons, tPorDia: elegida.t_por_dia, diasReales: elegida.dias, km: distanciaKm, urgencia }, d)
     : null;
-  const silobolsa = conFlete
-    ? null
-    : dimensionarSilobolsa({ toneladas: tons, cultivo, dias: elegida.dias, urgencia }, d);
+  const silobolsa =
+    destino === 'silobolsa'
+      ? dimensionarSilobolsa({ toneladas: tons, cultivo, dias: elegida.dias, urgencia }, d)
+      : null;
 
-  const costoDestino = camiones ? camiones.elegido.costo_usd : silobolsa.costo_embolsado_usd;
+  const costoDestino = (camiones?.elegido.costo_usd ?? 0) + (silobolsa?.costo_embolsado_usd ?? 0);
   return {
     toneladas: tons,
     dias_efectivos: dias,

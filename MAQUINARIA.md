@@ -20,11 +20,13 @@ Devuelve toneladas, cosechadoras, tractores con tolva, camiones (o silobolsa si 
 
 `planDePedido(entrada)` junta los datos del campo y de los destinos candidatos y devuelve qué pedir, cuánto, cuándo y a qué costo.
 
-Datos requeridos: `ha`, `qqHa`, `cultivo`, `diasDisponibles`, `urgencia`, `fechaInicioCosecha` (AAAA-MM-DD) y `destinos`. Cada destino lleva `tipo` (puerto, acopio o silobolsa) y `distanciaKm` (no hace falta para silobolsa). Opcionales por destino: `nombre`, `precioUsdPorT` y `costoAdicionalUsdPorT` (acopio). `datosFaltantes(entrada)` lista lo que falta; sin eso `planDePedido` falla con `faltan datos: ...`.
+Qué se contrata (`servicios`): la **cosecha** (cosechadoras y tractores con tolva) va siempre. El **transporte** (camiones a puerto o acopio) y el **almacenaje** (silobolsa, embolsadora) solo si se piden en `servicios`. Por defecto el plan es solo de cosecha y no hacen falta destinos.
+
+Datos requeridos: `ha`, `qqHa`, `cultivo`, `diasDisponibles`, `urgencia` y `fechaInicioCosecha` (AAAA-MM-DD). Si se pide transporte o almacenaje, también `destinos`. Cada destino lleva `tipo` (puerto y acopio son de transporte, silobolsa es de almacenaje) y `distanciaKm` (no hace falta para silobolsa). Opcionales por destino: `nombre`, `precioUsdPorT` y `costoAdicionalUsdPorT` (acopio). Un destino cuyo servicio no se pidió se rechaza. `datosFaltantes(entrada)` lista lo que falta; sin eso `planDePedido` falla con `faltan datos: ...`.
 
 Salida:
 - **Destino recomendado:** el de mayor margen neto si todos los destinos traen precio; si no, el de menor costo logístico.
-- **Pedidos:** una línea por recurso (cosechadora, tractor con tolva, camión, o embolsadora y silobolsas) con cantidad, tipo, fecha límite para pedir, período de uso y costo.
+- **Pedidos:** una línea por recurso (cosechadora, tractor con tolva, camión, o embolsadora y silobolsas), cada una con su servicio, cantidad, tipo, fecha límite para pedir, período de uso y costo. Además, `costos_por_servicio` suma el costo de cosecha, transporte y almacenaje por separado.
 - **Alternativas:** costo y margen de cada destino evaluado.
 
 Ejemplo, 2.000 ha de soja a 35 qq/ha (7.000 t), 20 días, inicio 10/04/2027, urgencia media:

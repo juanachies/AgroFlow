@@ -10,6 +10,7 @@ const entrada = {
   diasDisponibles: 20,
   urgencia: 'media',
   fechaInicioCosecha: '2027-04-10',
+  servicios: ['transporte', 'almacenaje'],
   destinos: [
     { nombre: 'Silobolsa en el campo', tipo: 'silobolsa' },
     { nombre: 'Cooperativa local', tipo: 'acopio', distanciaKm: 40, costoAdicionalUsdPorT: 6 },
@@ -18,19 +19,24 @@ const entrada = {
 };
 
 const pedido = (plan, recurso) => plan.recomendado.pedidos.find((p) => p.recurso === recurso);
+const soloPuerto = { ...entrada, servicios: ['transporte'], destinos: [entrada.destinos[2]] };
+const soloSilobolsa = { ...entrada, servicios: ['almacenaje'], destinos: [entrada.destinos[0]] };
 
 test('detecta los datos que faltan', () => {
   assert.deepEqual(datosFaltantes({}), [
-    'ha', 'qqHa', 'cultivo', 'diasDisponibles', 'urgencia', 'fechaInicioCosecha', 'destinos',
+    'ha', 'qqHa', 'cultivo', 'diasDisponibles', 'urgencia', 'fechaInicioCosecha',
   ]);
   const faltan = datosFaltantes({ ...entrada, destinos: [{ tipo: 'puerto' }, {}] });
-  assert.deepEqual(faltan, ['destinos[0].distanciaKm', 'destinos[1].tipo', 'destinos[1].distanciaKm']);
+  assert.deepEqual(faltan, ['destinos[0].distanciaKm', 'destinos[1].tipo']);
   assert.deepEqual(datosFaltantes(entrada), []);
+  assert.deepEqual(datosFaltantes({ ...entrada, destinos: undefined }), [
+    'destinos (hace falta para transporte y almacenaje)',
+  ]);
 });
 
 test('sin datos completos no hay plan', () => {
   assert.throws(() => planDePedido({ ha: 100 }), /faltan datos: qqHa/);
-  assert.throws(() => planDePedido({ ...entrada, destinos: [] }), /al menos uno/);
+  assert.throws(() => planDePedido({ ...entrada, destinos: [] }), /hace falta para transporte y almacenaje/);
 });
 
 test('sin precios recomienda el destino de menor costo', () => {
@@ -58,7 +64,7 @@ test('con precios recomienda el mayor margen aunque no sea el más barato', () =
 });
 
 test('los pedidos coinciden con el dimensionado de la cosecha', () => {
-  const plan = planDePedido({ ...entrada, destinos: [entrada.destinos[2]] });
+  const plan = planDePedido(soloPuerto);
   const r = dimensionarCosecha({ ...entrada, destino: 'puerto', distanciaKm: 300 });
   assert.equal(pedido(plan, 'cosechadora').cantidad, r.cosechadoras.cantidad);
   assert.equal(pedido(plan, 'cosechadora').tipo, r.cosechadoras.id);
@@ -68,14 +74,14 @@ test('los pedidos coinciden con el dimensionado de la cosecha', () => {
 });
 
 test('un destino silobolsa pide bolsas y embolsadora, no camiones', () => {
-  const plan = planDePedido({ ...entrada, destinos: [entrada.destinos[0]] });
+  const plan = planDePedido(soloSilobolsa);
   assert.equal(pedido(plan, 'camión'), undefined);
   assert.equal(pedido(plan, 'silobolsa').cantidad, Math.ceil(7000 / 190));
   assert.ok(pedido(plan, 'embolsadora').cantidad >= 1);
 });
 
 test('las fechas de pedido respetan el anticipo y la duración de la cosecha', () => {
-  const plan = planDePedido({ ...entrada, destinos: [entrada.destinos[2]] });
+  const plan = planDePedido(soloPuerto);
   const cosechadora = pedido(plan, 'cosechadora');
   const camion = pedido(plan, 'camión');
   assert.equal(cosechadora.pedir_antes_del, '2027-03-26');
@@ -91,8 +97,41 @@ test('una fecha inválida falla de forma explícita', () => {
 });
 
 test('más hectáreas o menos días nunca piden menos maquinaria', () => {
-  const base = planDePedido({ ...entrada, destinos: [entrada.destinos[2]] });
-  const apretado = planDePedido({ ...entrada, diasDisponibles: 8, destinos: [entrada.destinos[2]] });
+  const base = planDePedido(soloPuerto);
+  const apretado = planDePedido({ ...soloPuerto, diasDisponibles: 8 });
   const capacidad = (p) => pedido(p, 'cosechadora').cantidad;
   assert.ok(capacidad(apretado) >= capacidad(base));
+});
+
+test('por defecto solo se contrata la cosecha y no hacen falta destinos', () => {
+  const { servicios, destinos, ...base } = entrada;
+  const plan = planDePedido(base);
+  assert.deepEqual(plan.servicios, ['cosecha']);
+  assert.deepEqual(plan.recomendado.pedidos.map((p) => p.recurso), ['cosechadora', 'tractor con tolva']);
+  assert.deepEqual(Object.keys(plan.recomendado.costos_por_servicio), ['cosecha']);
+  assert.equal(plan.recomendado.destino, null);
+});
+
+test('cada pedido lleva su servicio y los costos por servicio suman los pedidos', () => {
+  const plan = planDePedido(soloPuerto);
+  const servicios = new Set(plan.recomendado.pedidos.map((p) => p.servicio));
+  assert.deepEqual([...servicios].sort(), ['cosecha', 'transporte']);
+  const suma = Object.values(plan.recomendado.costos_por_servicio).reduce((a, b) => a + b, 0);
+  const total = plan.recomendado.pedidos.reduce((a, p) => a + p.costo_usd, 0);
+  assert.ok(Math.abs(suma - total) < 1e-6);
+  assert.equal(pedido(plan, 'camión').servicio, 'transporte');
+});
+
+test('almacenaje pide embolsadora y bolsas bajo ese servicio', () => {
+  const plan = planDePedido(soloSilobolsa);
+  assert.equal(pedido(plan, 'silobolsa').servicio, 'almacenaje');
+  assert.ok(plan.recomendado.costo_extraccion_usd > 0);
+});
+
+test('un destino sin el servicio pedido se rechaza', () => {
+  assert.throws(
+    () => planDePedido({ ...soloPuerto, servicios: ['almacenaje'] }),
+    /requiere pedir el servicio "transporte"/,
+  );
+  assert.throws(() => planDePedido({ ...soloPuerto, servicios: ['volar'] }), /servicio inválido: volar/);
 });
