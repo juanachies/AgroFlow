@@ -1,8 +1,8 @@
-# marcianos · Logística de cosecha y poscosecha
+# AgroFlow · Cosecha y despacho sin colas
 
-Asistente de decisión para el productor: **cuándo se va a poder cosechar, qué maquinaria y camiones pedir, adónde mandar el grano y cuándo venderlo**, optimizando el margen neto.
+**Planificá la cosecha y el despacho para no quedar en la cola del pico.** Un simulador que le dice al productor cuándo cosechar, adónde mandar el grano y cuándo vender, conectado a un marketplace de cadetes (contratistas, transportistas y embolsadoras) que ejecuta el plan. Cada reserva del marketplace suma un dato propio: cuántos camiones van a ir a qué puerto y qué día, antes de que salgan.
 
-Desafío 02 del Hackatón Nasa Space Apps. El plan completo está en [PROYECTO.md](PROYECTO.md); este README lo resume.
+Desafío 02 del Hackatón Nasa Space Apps. Posicionamiento y diferencial en [docs/FRENTE.md](docs/FRENTE.md); plan técnico original en [PROYECTO.md](PROYECTO.md).
 
 **URL pública:** *(pendiente)*
 
@@ -10,152 +10,33 @@ Desafío 02 del Hackatón Nasa Space Apps. El plan completo está en [PROYECTO.m
 
 ## Problema
 
-Un productor siembra un cultivo y necesita decidir, con la información disponible en cada momento:
+En el pico de cosecha miles de camiones llegan al mismo puerto los mismos días: en mayo de 2026 descargaron más de 850.000 camiones en el Gran Rosario. El productor decide cuándo cosechar, qué contratar y adónde mandar el grano sin ver esa cola. Paga la espera, el flete caro de la temporada alta, la merma y, a veces, malvende para no quedarse sin cupo.
 
-1. Cuándo se va a poder cosechar.
-2. Cuándo y cuántos camiones pedir, y de qué tipo.
-3. Adónde va el grano: puerto directo, silobolsa o silo profesional.
-4. Si ya está embolsado, cuándo conviene sacarlo y venderlo antes de que se deteriore.
+## Solución
 
-El objetivo es el **margen neto** y la **toma de decisiones**. Cubre los ejes A (silobolsas), B (tiempos muertos) y D (combustible y flete) del desafío.
-
-## Qué carga el usuario
-
-- Cultivo: soja, maíz o trigo.
-- Ubicación del campo (punto en el mapa o coordenadas): define distancias, clima y rinde.
-- Hectáreas. El rinde lo estima el sistema.
-- Fecha de siembra y fecha límite para terminar la cosecha.
-- Maquinaria propia, si la hay: cosechadoras, tractores, tolvas, camiones, embolsadora. Lo que falte se contrata.
-- Precios editables: máquinas y servicios, silobolsa, silo o acopio, flete, grano.
-- Llegada de barcos al puerto: manual al inicio.
-- Humedad del grano, medida o estimada.
-
-Internamente se calcula en toneladas y USD. El rinde se muestra en qq/ha (1 qq = 100 kg); ARS como conversión opcional.
-
-## Módulos
-
-### 1. Ventana de cosecha
-
-- **Rinde esperado:** promedio de los últimos 5 años por departamento ([datos.gob.ar](https://datos.gob.ar/dataset?tags=agricultura)), corregido por la lluvia del año.
-- **Madurez:** ciclo en días, editable por cultivo y variedad.
-- **Salida:** inicio, óptimo y fin. Meses si falta mucho, semanas a ~2 meses, días a ~1 mes.
-- **Reglas de INTA Manfredi:** base de recibo 13,5% de humedad; cosechar con 15% reduce a la mitad las pérdidas por desgrane; ~70% de las pérdidas ocurren en la plataforma; demorar 33 días subió la pérdida de 56 a 264 kg/ha en un ensayo.
-
-### 2. Maquinaria, tiempo y flete
-
-Los **cadetes** son toda la maquinaria de cosecha, transporte y armado de silobolsas: cosechadoras, tractores, tolvas, camiones y embolsadoras.
-
-```
-toneladas     = hectáreas × rinde
-días          = fecha límite − inicio de cosecha − días de lluvia esperados
-cosechadoras  = ceil(hectáreas ÷ (ha/día por cosechadora × días))
-```
-
-Camiones, dos modalidades; gana la más barata:
-
-- **A. Dedicados al campo** (contrato por día): camiones × días × tarifa diaria. Conviene en distancias cortas.
-- **B. Por viaje** (por viaje o por t/km): ciclo = 2 × distancia ÷ velocidad + carga + descarga + cola. Conviene en distancias largas.
-
-Flete = toneladas × distancia por ruta × tarifa por t/km (referencia CATAC). La distancia sale de OpenStreetMap, no en línea recta.
-
-### 3. Decisión de destino
-
-```
-margen(opción) = t × precio(fecha) − flete − almacenaje − secado
-                 − merma esperada − costo financiero − costo de demora o cola
-```
-
-Se evalúa para cada destino y varias fechas de venta; gana el máximo.
-
-| Destino | A favor | En contra |
+| Parte | Qué hace | Para quién |
 | --- | --- | --- |
-| Silobolsa en el campo | Sin flete inicial | Bolsa, embolsado, extracción y riesgo de merma; el flete se paga al vender |
-| Acopio, cooperativa o concesionaria | Flexibilidad | Tarifa de acopio, secado y merma por manipuleo |
-| Puerto directo | Cobra ya | Flete más largo y posible cola; depende de los barcos (módulo 5) |
+| **1. Simulador** | Con el lote (cultivo, ubicación, hectáreas, fechas): ventana de cosecha, destino por margen neto (puerto, acopio o silobolsa), cuándo vender y qué maquinaria y camiones hacen falta | Productor |
+| **2. Marketplace de cadetes** | El plan se convierte en un pedido concreto (cosechadoras, tolvas, camiones, embolsadoras, con fechas). Se asigna a proveedores de la zona con disponibilidad y se reserva | Productor, contratistas y transportistas |
+| **3. Pronóstico de saturación del puerto** | Día por día, la demanda de los barcos (fuente oficial) contra los camiones que van a llegar (reservas del marketplace). Si el despacho cae en días saturados, corre los camiones a la ventana fluida más cercana o recomienda acopio o silobolsa | Productor; a futuro, acopios y exportadores |
 
-Guardar conviene solo si el spread de precio supera el costo de guardar.
+El turno de descarga en terminal lo siguen dando los sistemas existentes (Circular, Muvin): el marketplace se integra con ellos, no los reemplaza.
 
-### 4. Monitoreo de silobolsa
+## Por qué es distinto
 
-Plazo seguro según humedad al embolsar (INTA):
-
-| Humedad al embolsar | Riesgo bajo | Riesgo medio | Riesgo alto |
-| --- | --- | --- | --- |
-| Hasta 14% | 6 meses | 12 meses | 18 meses |
-| 14 a 16% | 2 meses | 6 meses | 12 meses |
-| Más de 16% | 1 mes | 2 meses | 3 meses |
-
-Sobre 20 °C el riesgo sube; también influyen la hermeticidad y las roturas. Salida: aviso de **"conviene sacar y vender ya"** cuando el costo esperado del deterioro supera la ganancia de esperar.
-
-### 5. Barcos en el puerto
-
-Estima cuándo habrá barcos para cargar y lo contrasta con la fecha en que el grano llega al puerto. Si llega antes, hay cola y costo de espera, o conviene guardar. Al inicio el calendario de arribos es manual o simulado; el nivel del Paraná (SWOT) puede afectar el calado y el flete fluvial.
-
-**Implementado** (`src/domain/barcos`, `src/domain/venta`, caso de uso `decidirVenta`):
-
-- **Barcos** es independiente: pronostica por día la probabilidad de barco, la espera, la demanda contra lo normal del mes y el calado. Usa el line-up real de **NABSA** o el de la **BCR**, una carga manual o una simulación (adaptadores de `BarcosPort`).
-- **Venta** solo recomienda vender **a puerto** si se cumplen los índices calculados con datos publicados: demanda de los barcos contra oferta de camiones, espera, saturación de descarga, demanda de barcos y nivel del Paraná. Si no, elige acopio o silobolsa. También informa **hasta dónde rinde vender**: ventana de venta, espera máxima, precio disponible mínimo y precio futuro de equilibrio.
-- **Cadetes** recibe la decisión y calcula los camiones o la embolsadora, con la fecha de pedido.
-
-Detalle en [docs/PLAN_BARCOS.md](docs/PLAN_BARCOS.md) y [docs/INDICES_PUERTO.md](docs/INDICES_PUERTO.md).
-
-### Decisión de venta en el último mes
-
-```
-vender_ahora    = t × precio_hoy − flete_hoy
-esperar_a(t_i)  = t × (1 − merma_i) × E[precio_i] − flete_i − costo_guardar_i − interés_i
-decisión        = argmax entre vender_ahora y cada esperar_a(t_i)
-```
-
-Considera precio disponible contra futuro, barcos y cola, costos de esperar y restricciones (cupo del acopio, camiones, lluvia). La salida incluye el **spread mínimo de equilibrio**: cuánto tiene que subir el precio para que guardar convenga.
-
-### 6. IA
-
-- **No calcula:** los números salen de código determinista y auditable.
-- Explica la recomendación en lenguaje de productor, justifica el trade-off y responde escenarios como "¿y si llueve 10 días más?".
-- Usa OpenAI con reintentos y manejo de límites, porque la key es compartida.
-
-## Flujo: de la siembra a la venta
-
-```mermaid
-flowchart TD
-    A[1. Siembra<br/>cultivo, ubicación, ha, fecha] --> B[Estimación gruesa<br/>rinde, toneladas, mes de cosecha]
-    B --> C[2. Crecimiento<br/>reestimación mensual con clima real]
-    C --> D[3. Un mes antes<br/>día de cosecha, humedad,<br/>maquinaria y camiones a reservar]
-    D --> E[4. Cosecha<br/>avance, humedad real, lluvias]
-    E --> F{Decisión de destino<br/>margen neto}
-    F -->|Puerto directo| G[Flete largo<br/>cola y barcos]
-    F -->|Acopio o cooperativa| H[Flete corto<br/>tarifa de acopio]
-    F -->|Silobolsa en campo| I[5. Monitoreo<br/>humedad, temperatura, tiempo]
-    I --> J{¿Riesgo supera<br/>ganancia de esperar?}
-    J -->|Sí| K[Sacar y vender]
-    J -->|No| L[Esperar mejor precio]
-    L --> I
-    G --> M[6. Venta<br/>precio, flete, barco]
-    H --> M
-    K --> M
-```
-
-| Etapa | Qué se estima | Datos |
-| --- | --- | --- |
-| 1. Siembra | Rinde (rango amplio), toneladas, mes de cosecha, maquinaria preliminar | Rinde histórico, clima histórico (NASA POWER), ciclo del cultivo |
-| 2. Crecimiento | Se acotan la fecha y el rinde según cómo viene el año | Lluvia acumulada, temperatura |
-| 3. Un mes antes | Día de cosecha, humedad esperada, cosechadoras y camiones a reservar | Pronóstico de lluvia, ha/día por máquina, distancia por ruta, tarifas |
-| 4. Cosecha | Avance diario, pérdida por demora, destino de cada tanda | Humedad medida, lluvias, precio, flete, acopios, barcos |
-| 5. Silobolsa | Riesgo de deterioro y fecha límite de venta | Humedad al embolsar, temperatura y humedad ambiente, meses guardado |
-| 6. Venta | Mejor fecha y destino, margen neto final | Precio hoy y a futuro, flete, barcos, costo de guardar y financiero |
+Existen piezas sueltas: turnos y cupos de camiones (Circular, Muvin), alertas de silobolsa (Wiagro, Silcheck, SiloReal), momento de venta (Hedgit) y line-ups para traders (Kpler, Argus). Ninguna une esas señales en **una decisión de margen neto para el productor** ni **dimensiona y contrata** la maquinaria del plan. Y nadie tiene el dato de los camiones **reservados** antes de salir. Detalle y fuentes en [docs/FRENTE.md](docs/FRENTE.md).
 
 ## Datos
 
 | Tipo | Datos | Cómo entra |
 | --- | --- | --- |
-| Automático y abierto | Clima (NASA POWER), lluvia (GPM IMERG), nivel del Paraná (SWOT), rinde histórico (datos.gob.ar), rutas (OpenStreetMap) | API o precarga |
-| Manual del usuario | Cultivo, ubicación, ha, fechas, maquinaria propia, humedad medida | Formulario |
-| Supuesto editable | Precios de maquinaria, flete, silobolsa, acopio, grano, ha/día por máquina, capacidad del camión | Valores de referencia precargados |
-| Publicado (sin API) | Line-up de barcos (NABSA), buques a la carga y camiones a puerto (BCR), altura del Paraná (INA) | PDF / Excel diario, parser propio |
-| Sin fuente abierta | Ubicación de acopios | Manual o simulado |
+| **Propio** | Ofertas de proveedores y reservas confirmadas en el marketplace (camiones por puerto y día) | Marketplace |
+| Oficial y abierto | Barcos anunciados por puerto y producto (MAGyP, line-up NABSA agregado), altura del Paraná (INA), clima (NASA POWER, Open-Meteo, IMERG, SMN), rinde histórico (datos.gob.ar), rutas (OpenStreetMap) | API, tabla pública o precarga |
+| Publicado (complemento) | Line-up por buque (NABSA), buques a la carga y camiones a puerto (BCR), pizarra (CAC Rosario), futuros (A3) | PDF / Excel diario, parser propio |
+| Manual del usuario | Cultivo, ubicación, hectáreas, fechas, maquinaria propia, humedad medida | Formulario |
+| Supuesto editable | Precios de maquinaria, flete, silobolsa, acopio; ha/día por máquina; participación de mercado del marketplace | Valores de referencia |
 
-Precios y tarifas son supuestos editables con valores de referencia. Estado real de cada fuente (qué funciona, qué pide cuenta, qué no respondió) en [docs/DATOS.md](docs/DATOS.md).
+Estado de cada fuente en [docs/DATOS.md](docs/DATOS.md) y [docs/FUENTES.md](docs/FUENTES.md).
 
 ## Cómo correrlo
 
@@ -177,7 +58,23 @@ npm test
 npm run demo
 ```
 
-`demo` corre la decisión de venta (barcos, índices del puerto y cadetes) con datos de mercado publicados la semana del 11/11/2026. Para usar el line-up real de NABSA: `node src/interfaces/cli/demoVenta.js maiz 2026-11-14 <texto del PDF>.txt`.
+`demo` recorre el producto completo con un lote de soja cerca de Pergamino en el pico de abril: destino por margen neto, saturación del puerto día por día, corrimiento del despacho para evitar la cola, asignación del pedido a proveedores del marketplace (ficticios) y confirmación de reservas.
+
+Para levantar la API (el front la consume; documentación en [docs/API.md](docs/API.md)):
+
+```bash
+npm start
+```
+
+Queda en `http://localhost:3000` (`GET /api/salud`). Si el front está en `src/interfaces/web`, se sirve desde la misma URL.
+
+Otros comandos:
+
+```bash
+npm run demo:venta
+```
+
+`demo:venta` muestra la venta durante la cosecha con los índices del puerto y datos de mercado publicados la semana del 11/11/2026.
 
 ### Frontend web
 
@@ -197,40 +94,56 @@ npm run actualizar-tarifas
 
 `actualizar-tarifas` trae el dólar oficial y la tabla de flete de CATAC; si una fuente falla, conserva los valores anteriores. La API/backend y la URL pública siguen pendientes.
 
-Las keys (OpenAI) van en `~/.env`, nunca dentro del proyecto.
+## Módulos
 
-Para guardar un pronóstico diario, configurar `LOT_LATITUDE` y `LOT_LONGITUDE` en el entorno o en `~/.env` y ejecutar `npm run update:weather`. Los conectores disponibles, credenciales y límites están documentados en [docs/FUENTES.md](docs/FUENTES.md).
+| Módulo | Qué decide | Código | Documento |
+| --- | --- | --- | --- |
+| Ventana de cosecha | Cuándo se puede cosechar (ciclo, clima, días aptos) | `domain/cosecha`, `domain/clima`, `consultarCondicionesCosecha`, `recomendador_cosecha.py` | [FUENTES.md](docs/FUENTES.md) |
+| Maquinaria y plan de pedido | Cuántas cosechadoras, tolvas, camiones y embolsadoras, y cuándo pedirlas | `domain/maquinaria`, `planificarCosecha` | [MAQUINARIA.md](docs/MAQUINARIA.md) |
+| Destino por margen neto | Puerto, acopio o silobolsa | `domain/destino`, `compararDestinos` | [PROYECTO.md](PROYECTO.md) |
+| **Marketplace de cadetes** | A qué proveedores se asigna el plan; reservas | `domain/marketplace`, `simularPlan`, `confirmarReservas` | [MARKETPLACE.md](docs/MARKETPLACE.md) |
+| **Saturación del puerto** | Qué días se satura el puerto y cuándo despachar | `domain/saturacion`, `domain/barcos` | [MARKETPLACE.md](docs/MARKETPLACE.md), [INDICES_PUERTO.md](docs/INDICES_PUERTO.md) |
+| Venta | Vender ya o guardar (spot y futuros), y canal | `domain/venta`, `decidirVentaCosecha` | [VENTA.md](docs/VENTA.md), [PLAN_BARCOS.md](docs/PLAN_BARCOS.md) |
+| Silobolsa | Riesgo por IoT (CO₂, humedad, temperatura) y "sacar y vender" | `domain/silobolsa`, `evaluarSilobolsa`, `decidirVenta` | [VENTA.md](docs/VENTA.md) |
+| IA | Explica la recomendación y responde escenarios; no calcula | *(pendiente)* | [PROYECTO.md](PROYECTO.md) |
+
+Todos los cálculos son código determinista y auditable. Internamente se calcula en toneladas y USD.
 
 ## Arquitectura
 
-Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias externas; lo externo entra por puertos (`src/application/ports`) y adaptadores (`src/infrastructure`). Detalle en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md); maquinaria, costos y plan de pedido en [docs/MAQUINARIA.md](docs/MAQUINARIA.md).
+Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias externas; lo externo entra por puertos (`src/application/ports`) y adaptadores (`src/infrastructure`). El marketplace es un puerto más (`MarketplacePort`), con un adaptador en memoria para la demo. Detalle en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
 
 ## Orden de entrega
 
-- [ ] Formulario del lote y tabla comparativa de destinos con margen neto, desplegado con URL pública
-- [ ] Ventana de cosecha con clima real (NASA POWER, IMERG)
-- [ ] Camiones y flete
-- [ ] Monitoreo y riesgo de silobolsa
+- [x] Simulador: destino por margen neto, plan de pedido, venta y saturación del puerto
+- [x] Marketplace de cadetes: asignación y reservas (en memoria)
+- [x] API HTTP para el front (`npm start`)
+- [ ] Formulario del lote y vista del plan, desplegado con URL pública
+- [ ] Persistencia del marketplace (base de datos) y alta de proveedores
 - [ ] Explicación con IA y escenarios
-- [ ] README mínimo y guion de demo de 2 minutos
+- [ ] Guion de demo de 2 minutos
 
 ## Pendientes
 
+- Validar con productores y transportistas la participación de mercado mínima para que el pronóstico propio sea útil (hoy 5%, supuesto).
+- Integración con Circular o Muvin para el turno de descarga.
 - Fuente de ubicaciones de acopios, cooperativas y concesionarias.
-- Calibrar los umbrales de los índices del puerto con la serie histórica de la BCR (desde 2022).
-- Capacidad ha/día por cosechadora y capacidad de la embolsadora.
 - Tarifas vigentes: CATAC, FACMA, embolsado, silo profesional, alquiler de maquinaria.
-- Ciclo en días por cultivo.
+- Calibrar los umbrales de saturación con la serie histórica de camiones de MAGyP y la BCR.
 
 ## Documentación
 
 | Documento | Contenido |
 | --- | --- |
-| [PROYECTO.md](PROYECTO.md) | Plan completo: problema, módulos, fórmulas, flujo, datos, reglas del evento |
+| [docs/FRENTE.md](docs/FRENTE.md) | Posicionamiento, problema, diferencial frente a lo que existe, barreras y guion de pitch |
+| [docs/MARKETPLACE.md](docs/MARKETPLACE.md) | Marketplace de cadetes, reservas y pronóstico de saturación del puerto |
+| [docs/API.md](docs/API.md) | API HTTP para el front: endpoints, entradas, respuestas y errores |
+| [PROYECTO.md](PROYECTO.md) | Plan técnico original: módulos, fórmulas, flujo, datos, reglas del evento |
 | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Arquitectura hexagonal y árbol de carpetas |
 | [docs/DATOS.md](docs/DATOS.md) | Estado de cada dato, supuestos y cifras de referencia |
 | [docs/FUENTES.md](docs/FUENTES.md) | Conectores, configuración y límites de las fuentes externas |
 | [docs/MAQUINARIA.md](docs/MAQUINARIA.md) | Catálogo de maquinaria, dimensionado y plan de pedido |
-| [docs/PLAN_BARCOS.md](docs/PLAN_BARCOS.md) | Barcos como módulo aparte, decisión de venta y cadetes: flujo, contratos y estado |
-| [docs/MODULO_5_BARCOS.md](docs/MODULO_5_BARCOS.md) | Método de Barcos, Venta y Cadetes, y avisos |
-| [docs/INDICES_PUERTO.md](docs/INDICES_PUERTO.md) | Índices a cumplir para vender a puerto y fuentes de datos de barcos |
+| [docs/VENTA.md](docs/VENTA.md) | Venta de silobolsa, precios por curva y venta en acopio |
+| [docs/PLAN_BARCOS.md](docs/PLAN_BARCOS.md) | Módulo de barcos (insumo de la saturación) y venta en cosecha |
+| [docs/INDICES_PUERTO.md](docs/INDICES_PUERTO.md) | Índices del puerto y fuentes de datos de barcos |
+| [docs/MODULO_5_BARCOS.md](docs/MODULO_5_BARCOS.md) | Método del módulo de barcos y avisos |

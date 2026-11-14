@@ -9,3 +9,10 @@ export function exigirClave(nombre, valor, objeto) {
     throw new RangeError(`${nombre} inválido: ${valor}. Opciones: ${Object.keys(objeto).join(', ')}`);
   }
 }
+
+export class DatoNoDisponible extends Error {
+  constructor(mensaje) {
+    super(mensaje);
+    this.name = 'DatoNoDisponible';
+  }
+}

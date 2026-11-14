@@ -66,20 +66,26 @@ marcianos/
 │   │   ├── flete/                costoFlete.js
 │   │   ├── destino/              margen.js, comparadorDestinos.js
 │   │   ├── silobolsa/            riesgoSilobolsa.js (tabla INTA por humedad y temperatura)
-│   │   ├── barcos/               colaBuques.js, calado.js, indicesMercado.js, lineup.js
+│   │   ├── barcos/               colaBuques.js, calado.js, indicesMercado.js, lineup.js, calendario.js
+│   │   ├── marketplace/          ofertas.js, asignacion.js (asignar el plan de pedido, reservas)
+│   │   ├── saturacion/           saturacionPuerto.js (barcos + camiones reservados, ventana de entrega)
 │   │   └── venta/                decisionVenta.js (puerto / acopio / silobolsa, hasta dónde rinde), criterios.js (índices a cumplir para vender a puerto)
 │   ├── application/
 │   │   ├── ports/                # contratos (JSDoc): qué necesita la app del mundo
 │   │   │   ├── ClimaPort.js          lluviaHoraria(), temperatura(), humedadSuelo()
 │   │   │   ├── RindePort.js          rindeHistorico(departamento, cultivo)
 │   │   │   ├── RutasPort.js          distanciaKm(origen, destino), geocodificar(texto)
-│   │   │   ├── BarcosPort.js         calendario(terminal, desde, hasta)
+│   │   │   ├── BarcosPort.js         calendario(terminal, desde, hasta), mercado(puerto, fecha)
+│   │   │   ├── MarketplacePort.js    ofertas(filtro), reservas(filtro), reservar(reservas)
+│   │   │   ├── PreciosPort.js        precios(cultivo)
 │   │   │   ├── NivelRioPort.js       nivel(fecha)
 │   │   │   ├── AcopiosPort.js        cercanos(punto, radioKm)
 │   │   │   ├── TarifasPort.js        vigentes()
 │   │   │   ├── ExplicadorPort.js     explicar(resultado, pregunta)
 │   │   │   └── CachePort.js
 │   │   └── usecases/
+│   │       ├── simularPlan.js            # producto central: plan + saturación + marketplace; confirmarReservas
+│   │       ├── decidirVentaCosecha.js    # venta en cosecha según barcos
 │   │       ├── planificarCosecha.js      # módulos 1 y 2
 │   │       ├── consultarCondicionesCosecha.js # meteorología y consolidación de fallos opcionales
 │   │       ├── compararDestinos.js       # módulo 3, usa barcos (módulo 5)
@@ -93,7 +99,9 @@ marcianos/
 │   │   ├── satellite/            Copernicus STAC (Sentinel-1/2)
 │   │   ├── rinde/                datosGobArAdapter.js
 │   │   ├── rutas/                openStreetMapAdapter.js (Nominatim + OSRM)
-│   │   ├── barcos/               barcosSimuladosAdapter.js, barcosManualAdapter.js, nabsaAdapter.js, bcrAdapter.js
+│   │   ├── barcos/               barcosSimuladosAdapter.js, barcosManualAdapter.js, nabsaAdapter.js, bcrAdapter.js, magypAdapter.js (oficial)
+│   │   ├── marketplace/          marketplaceMemoriaAdapter.js (en memoria + reservas simuladas del mercado)
+│   │   ├── precios/              preciosManualAdapter.js, preciosSimuladosAdapter.js
 │   │   ├── rio/                  nivelRioManualAdapter.js
 │   │   ├── acopios/              acopiosCsvAdapter.js
 │   │   ├── tarifas/              tarifasJsonAdapter.js
@@ -102,10 +110,11 @@ marcianos/
 │   │   └── http.js               timeout, reintentos y normalización de observaciones
 │   ├── interfaces/               # adaptadores de entrada
 │   │   ├── cli/                  refreshWeather.js (snapshot meteorológico diario)
-│   │   ├── http/
-│   │   │   ├── server.js
-│   │   │   ├── routes/           plan.js, destinos.js, silobolsa.js, venta.js, explicar.js
-│   │   │   └── validacion.js
+│   │   ├── http/                 # API para el front (docs/API.md), sin dependencias
+│   │   │   ├── server.js         npm start: arma el contenedor y escucha en PORT
+│   │   │   ├── app.js            rutas /api/* (simular, reservas, ofertas, saturacion, salud, ejemplo)
+│   │   │   ├── estatico.js       sirve src/interfaces/web si existe
+│   │   │   └── validacion.js     JSON, errores y parámetros
 │   │   └── web/                  index.html, app.js, styles.css
 │   └── config/
 │       ├── container.js          # arma los casos de uso con sus adaptadores
@@ -124,7 +133,8 @@ marcianos/
 | 2. Maquinaria, tiempo y flete | `maquinaria/`, `flete/`, `clima/` | `planificarCosecha` | Rutas, Tarifas, Clima |
 | 3. Decisión de destino | `destino/`, `flete/` | `compararDestinos` | Rutas, Acopios, Tarifas, Barcos |
 | 4. Monitoreo de silobolsa | `silobolsa/` | `evaluarSilobolsa` | Clima |
-| 5. Barcos en el puerto | `barcos/` | `compararDestinos`, `decidirVenta` | Barcos, NivelRio |
+| 5. Barcos en el puerto (insumo de la saturación) | `barcos/` | `compararDestinos`, `decidirVenta`, `simularPlan` | Barcos, NivelRio |
+| 7. Marketplace de cadetes y saturación del puerto | `marketplace/`, `saturacion/` | `simularPlan`, `confirmarReservas` | Marketplace, Barcos, Tarifas |
 | Decisión de venta del último mes | `venta/` | `decidirVenta` | Tarifas, Barcos |
 | 6. IA | — | `explicarRecomendacion`, `simularEscenario` | Explicador |
 

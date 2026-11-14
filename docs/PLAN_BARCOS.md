@@ -1,5 +1,7 @@
 # Plan: Barcos como módulo aparte para decidir vender o silobolsa
 
+> **Frente actual:** Barcos es un **insumo interno del pronóstico de saturación del puerto** ([MARKETPLACE.md](MARKETPLACE.md)) y de la venta en cosecha. No se comunica como "predicción de barcos" ([FRENTE.md](FRENTE.md)). La fuente preferida para la demanda de los barcos es la tabla oficial de MAGyP (`infrastructure/barcos/magypAdapter.js`).
+
 **Barcos** es un módulo independiente: solo predice barcos y entrega una señal. **Venta** usa esa señal para decidir si vender (a puerto o acopio) o mandar a silobolsa, y calcula **hasta dónde rinde** vender. **Cadetes** recibe la decisión y dice qué maquinaria pedir, cuánta, cuándo y adónde.
 
 ## 1. Flujo
@@ -136,7 +138,7 @@ Del [mapa del proyecto](flujo-proyecto.html), el equipo de barcos toma lo relaci
 | 1 | Barcos del puerto (entrada de Elegir destino) | Con un `BarcosPort`, `compararDestinos` ajusta cada destino puerto: precio × factor de demanda, espera como costo adicional e índices a cumplir. Si no cumple, se descarta | `domain/destino/barcosDelPuerto.js`, `usecases/compararDestinos.js` |
 | 2 | Calendario de barcos (entrada de Decidir venta) | `BarcosPort` unificado (`id, terminal, arribo, cierreCarga, toneladasMax` + `puerto, cultivo, eta, estado`). NABSA, CSV y simulado lo cumplen. La venta de silobolsa filtra por cultivo | `domain/barcos/calendario.js`, `ports/BarcosPort.js` |
 | 3 | Precios spot y futuros | Curva con base que converge, usada en la venta de silobolsa y en la venta en cosecha. Adaptadores de `PreciosPort` manual (pizarra en pesos + A3) y simulado | `domain/venta/precios.js`, `infrastructure/precios/` |
-| 4 | Vender en acopio si no hay barco a tiempo | `decision: 'vender_acopio'` con el acopio de mayor neto que llegue antes de la fecha límite | `domain/venta/decisionVenta.js` |
+| 4 | Vender en acopio si no hay barco a tiempo | `decision: 'vender_acopio'` con el acopio elegido entre las opciones evaluadas (compite con los barcos) | `domain/venta/decisionVenta.js` |
 | — | Extracción, embarque, reparto de la capacidad del barco | No se toca: lo hace el puerto | — |
 
 La venta en cosecha según barcos se renombró a `decidirVentaCosecha` (`domain/venta/ventaCosecha.js`, `usecases/decidirVentaCosecha.js`) para no chocar con la venta de silobolsa (`decidirVenta`).

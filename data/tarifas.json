@@ -8,7 +8,8 @@
       "tractor_tolva": 10,
       "camion": 7,
       "embolsadora": 7,
-      "silobolsa": 10
+      "silobolsa": 10,
+      "extractora": 7
     }
   },
   "parametros_generales": {

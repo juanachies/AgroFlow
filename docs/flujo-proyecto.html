@@ -134,7 +134,7 @@
 
         <g class="box par"><rect x="20" y="36" width="160" height="70" rx="6"/><text class="t" x="100" y="66">Estimar la cosecha</text><text class="s" x="100" y="84">toneladas sí, fecha no</text></g>
         <g class="box par"><rect x="255" y="36" width="160" height="70" rx="6"/><text class="t" x="335" y="66">Cuándo cosechar</text><text class="s" x="335" y="84">otro módulo, a medias</text></g>
-        <g class="box ok"><rect x="490" y="36" width="160" height="70" rx="6"/><text class="t" x="570" y="66">Elegir destino</text><text class="s" x="570" y="84">silo, acopio o puerto</text></g>
+        <g class="box par"><rect x="490" y="36" width="160" height="70" rx="6"/><text class="t" x="570" y="66">Elegir destino</text><text class="s" x="570" y="84">compara, sin riesgo futuro</text></g>
         <g class="box ok"><rect x="725" y="36" width="160" height="70" rx="6"/><text class="t" x="805" y="66">Plan de pedido</text><text class="s" x="805" y="84">máquinas, camiones, bolsas</text></g>
 
         <g class="box ext"><rect x="960" y="39" width="160" height="64" rx="6"/><text class="t" x="1040" y="68">Entrega en puerto</text><text class="s" x="1040" y="86">camiones directo al barco</text></g>
@@ -193,8 +193,8 @@
         <g class="box ok"><rect x="255" y="344" width="160" height="70" rx="6"/><text class="t" x="335" y="374">Evaluar riesgo</text><text class="s" x="335" y="392">nivel y días al límite</text></g>
         <g class="box ok"><rect x="490" y="344" width="160" height="70" rx="6"/><text class="t" x="570" y="374">Decidir venta</text><text class="s" x="570" y="392">barco, fecha de carga</text></g>
         <g class="box ok"><rect x="725" y="347" width="160" height="64" rx="6"/><text class="t" x="805" y="376">Pedir fletes</text><text class="s" x="805" y="394">fecha de carga y camiones</text></g>
-        <g class="box falta"><rect x="725" y="431" width="160" height="64" rx="6"/><text class="t" x="805" y="460">Vender en acopio</text><text class="s" x="805" y="478">si no hay barco a tiempo</text></g>
-        <g class="box falta"><rect x="960" y="347" width="160" height="64" rx="6"/><text class="t" x="1040" y="376">Extraer el silobolsa</text><text class="s" x="1040" y="394">costo y días de extractora</text></g>
+        <g class="box ok"><rect x="725" y="431" width="160" height="64" rx="6"/><text class="t" x="805" y="460">Vender en acopio</text><text class="s" x="805" y="478">compite con los barcos</text></g>
+        <g class="box par"><rect x="960" y="347" width="160" height="64" rx="6"/><text class="t" x="1040" y="376">Extraer el silobolsa</text><text class="s" x="1040" y="394">costeado; falta el pedido</text></g>
         <g class="box ext"><rect x="960" y="431" width="160" height="64" rx="6"/><text class="t" x="1040" y="460">Camiones y embarque</text><text class="s" x="1040" y="478">lo hace el transportista</text></g>
 
         <polyline class="ln" points="180,379 253,379" marker-end="url(#arr)"/>
@@ -204,12 +204,12 @@
         <polyline class="ln" points="650,379 668,379"/>
         <polyline class="ln" points="668,379 668,463"/>
         <polyline class="ln" points="668,379 723,379" marker-end="url(#arr)"/>
-        <polyline class="ln f" points="668,463 723,463" marker-end="url(#arrf)"/>
+        <polyline class="ln" points="668,463 723,463" marker-end="url(#arr)"/>
         <text class="la" x="674" y="373">embarcar</text>
-        <text class="la" x="674" y="457">sin barco</text>
-        <polyline class="ln f" points="885,379 958,379" marker-end="url(#arrf)"/>
+        <text class="la" x="674" y="457">acopio</text>
+        <polyline class="ln" points="885,379 958,379" marker-end="url(#arr)"/>
         <text class="l" x="921" y="363">al</text><text class="l" x="921" y="374">cargar</text>
-        <polyline class="ln f" points="1040,411 1040,429" marker-end="url(#arrf)"/>
+        <polyline class="ln" points="1040,411 1040,429" marker-end="url(#arr)"/>
         <text class="la" x="1048" y="424">camiones</text>
 
         <text class="req" x="20" y="428">Requiere</text>
@@ -234,11 +234,11 @@
       <tbody>
         <tr><td>Diciembre</td><td class="det">Estimar la fecha de cosecha con fecha de siembra y ciclo del cultivo. Las toneladas ya salen de ha y qq/ha.</td><td><span class="estado par">Parcial</span></td></tr>
         <tr><td>2 meses antes</td><td class="det">Decidir cuándo cosechar según barcos, grano y clima. Lo entrega otro módulo, que está a medias; el contrato de barcos (BarcosPort) ya existe.</td><td><span class="estado par">Parcial, otro módulo</span></td></tr>
-        <tr><td>Elegir destino</td><td class="det">Acopios cercanos, distancias en km y barcos del puerto como entradas de compararDestinos. Hoy los km y el precio de cada destino se cargan a mano.</td><td><span class="estado falta">Falta</span></td></tr>
+        <tr><td>Elegir destino</td><td class="det">La comparación entre silo, acopio y puerto existe y está testeada, pero evalúa solo el momento de la cosecha: del silo cuenta el costo de extraer, no el flete posterior, la merma ni el riesgo. Faltan acopios cercanos, distancias en km y barcos del puerto como entradas; hoy los km y el precio de cada destino se cargan a mano.</td><td><span class="estado par">Parcial</span></td></tr>
         <tr><td>Pedir servicios</td><td class="det">El plan calcula qué pedir y cuándo; la confirmación con proveedores es externa. No incluye la extractora, que se necesita al sacar el grano.</td><td><span class="estado par">Parcial</span></td></tr>
         <tr><td>Almacenaje</td><td class="det">Registro de silobolsas con kg reales y fecha de cierre. Nada lo crea a partir del plan de cosecha.</td><td><span class="estado falta">Falta</span></td></tr>
         <tr><td>Monitoreo</td><td class="det">Adaptador del IoT y disparo automático de la decisión con cada lectura nueva. Los umbrales de temperatura y CO₂ son supuestos a validar con INTA.</td><td><span class="estado par">Parcial</span></td></tr>
-        <tr><td>Embarque</td><td class="det">Costo y días de extracción en el neto de cada barco, pedido de la extractora, venta en acopio cuando no hay barco, y reparto de la capacidad del barco entre varias bolsas.</td><td><span class="estado falta">Falta</span></td></tr>
+        <tr><td>Embarque</td><td class="det">La decisión ya suma extracción, flete a puerto y a acopio, merma proyectada y costo financiero, y el acopio compite con los barcos. Falta incluir el pedido de la extractora en el plan, repartir la capacidad del barco entre varias bolsas y sumar almacenaje y seguro.</td><td><span class="estado par">Parcial</span></td></tr>
         <tr><td>Transversal</td><td class="det">Adaptadores reales de precios, barcos y silobolsas, y la interfaz HTTP. Hoy solo existe el adaptador de tarifas; el resto corre con datos simulados en los tests.</td><td><span class="estado falta">Falta</span></td></tr>
       </tbody>
     </table>

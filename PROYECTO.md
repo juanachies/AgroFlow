@@ -1,5 +1,7 @@
 # Logística de cosecha y post-cosecha: asistente de decisión
 
+> **Frente actualizado (14-nov-2026):** el producto se presenta como *cosecha y despacho sin colas*: un simulador conectado a un **marketplace de cadetes** y a un **pronóstico de saturación del puerto** que usa las reservas propias. La predicción de barcos (módulo 5) pasa a ser un insumo interno de esa saturación. Ver [docs/FRENTE.md](docs/FRENTE.md) y [docs/MARKETPLACE.md](docs/MARKETPLACE.md). Este documento queda como plan técnico original.
+
 Desafío 02 del Hackatón Donweb Day. Este documento vive fuera de `~/proyecto` a propósito: ese directorio queda vacío hasta las 15:15 del evento.
 
 ## Problema
@@ -107,12 +109,20 @@ Tabla de plazo seguro de INTA por humedad al embolsar:
 - Salida: aviso de "conviene sacar y vender ya" cuando el costo esperado del deterioro supera la ganancia de esperar.
 - Fuentes de 2015 a 2016: usar como reglas de riesgo, no como norma vigente.
 
-### 5. Predicción de barcos en el puerto (fase posterior)
+### 5. Predicción de barcos en el puerto (insumo de la saturación del puerto)
+
+> Implementado como insumo del pronóstico de saturación del puerto ([docs/MARKETPLACE.md](docs/MARKETPLACE.md)): la demanda de los barcos sale de la tabla oficial de MAGyP o del line-up por buque, y se cruza con los camiones reservados en el marketplace.
 
 - Objetivo: estimar cuándo habrá barcos disponibles para cargar y contrastarlo con la fecha en que el grano puede llegar al puerto.
 - Si el grano llega antes de que haya barco, hay cola y costo de espera, o conviene guardarlo.
 - Entrada inicial: calendario de arribos manual o simulado. El método de predicción se define más adelante.
 - Afecta el costo de demora del destino "puerto directo" y la fecha óptima de venta. El nivel del Paraná (SWOT) puede incidir en el calado y el flete fluvial.
+
+### 7. Marketplace de cadetes y saturación del puerto (agregado al frente)
+
+- El plan de pedido (módulo 2) se asigna a contratistas, transportistas y embolsadoras de la zona con disponibilidad, y el productor confirma las reservas.
+- Las reservas de camiones dicen cuántos camiones van a qué puerto y qué día: con eso se pronostica la saturación del puerto y se corre el despacho a la ventana fluida más cercana.
+- Código: `src/domain/marketplace`, `src/domain/saturacion`, casos de uso `simularPlan` y `confirmarReservas`.
 
 ### Decisión de venta en el último mes: enviar a vender o esperar
 
