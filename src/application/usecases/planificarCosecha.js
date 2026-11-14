@@ -1,0 +1,35 @@
+import { serviciosPedidos } from '../../domain/destino/servicios.js';
+import { armarPedidos, costosPorServicio } from '../../domain/maquinaria/pedidos.js';
+
+/**
+ * Arma el plan de pedido: qué contratar (cosecha y, si se piden, transporte y almacenaje),
+ * cuánto, cuándo y a qué costo.
+ * @param {{
+ *   tarifas: import('../ports/TarifasPort.js').TarifasPort,
+ *   compararDestinos: ReturnType<typeof import('./compararDestinos.js').crearCompararDestinos>,
+ * }} dependencias
+ */
+export function crearPlanificarCosecha({ tarifas, compararDestinos }) {
+  return async function planificarCosecha(entrada) {
+    const { evaluados, mejor, criterio } = await compararDestinos(entrada);
+    const vigentes = await tarifas.vigentes();
+    const pedidos = armarPedidos(mejor.resultado, entrada.fechaInicioCosecha, vigentes);
+    return {
+      servicios: serviciosPedidos(entrada),
+      toneladas: mejor.resultado.toneladas,
+      urgencia: entrada.urgencia,
+      dias_efectivos: mejor.resultado.dias_efectivos,
+      recomendado: {
+        destino: mejor.destino,
+        tipo: mejor.tipo,
+        criterio,
+        costo_usd: mejor.costo_usd,
+        costo_extraccion_usd: mejor.costo_extraccion_usd,
+        margen_usd: mejor.margen_usd,
+        costos_por_servicio: costosPorServicio(pedidos),
+        pedidos,
+      },
+      alternativas: evaluados.map(({ destino, tipo, costo_usd, margen_usd }) => ({ destino, tipo, costo_usd, margen_usd })),
+    };
+  };
+}
