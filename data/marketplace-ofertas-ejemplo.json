@@ -1,0 +1,855 @@
+{
+  "_nota": "Proveedores FICTICIOS para la demo del marketplace de cadetes. Localidades reales de la zona núcleo con coordenadas aproximadas; nombres, unidades, precios y calificaciones inventados.",
+  "ofertas": [
+    {
+      "id": "of-001",
+      "proveedor": "Contratista Pergamino 1",
+      "recurso": "cosechadora",
+      "tipo": "cosechadora-chica",
+      "unidades": 3,
+      "base": {
+        "lat": -33.89,
+        "lon": -60.57,
+        "localidad": "Pergamino"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.97,
+      "calificacion": 3.8
+    },
+    {
+      "id": "of-002",
+      "proveedor": "Contratista Pergamino 1",
+      "recurso": "tractor con tolva",
+      "tipo": null,
+      "unidades": 2,
+      "base": {
+        "lat": -33.89,
+        "lon": -60.57,
+        "localidad": "Pergamino"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.98,
+      "calificacion": 4.6
+    },
+    {
+      "id": "of-003",
+      "proveedor": "Transporte Pergamino 1",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 13,
+      "base": {
+        "lat": -33.89,
+        "lon": -60.57,
+        "localidad": "Pergamino"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.09,
+      "calificacion": 4.5
+    },
+    {
+      "id": "of-004",
+      "proveedor": "Transporte Pergamino 2",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 8,
+      "base": {
+        "lat": -33.89,
+        "lon": -60.57,
+        "localidad": "Pergamino"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.99,
+      "calificacion": 4.6
+    },
+    {
+      "id": "of-005",
+      "proveedor": "Contratista Pergamino 1",
+      "recurso": "embolsadora",
+      "tipo": "embolsadora-grande",
+      "unidades": 1,
+      "base": {
+        "lat": -33.89,
+        "lon": -60.57,
+        "localidad": "Pergamino"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.09,
+      "calificacion": 4.2
+    },
+    {
+      "id": "of-006",
+      "proveedor": "Contratista Rojas 1",
+      "recurso": "cosechadora",
+      "tipo": "cosechadora-grande",
+      "unidades": 3,
+      "base": {
+        "lat": -34.2,
+        "lon": -60.73,
+        "localidad": "Rojas"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.92,
+      "calificacion": 4.3
+    },
+    {
+      "id": "of-007",
+      "proveedor": "Contratista Rojas 1",
+      "recurso": "tractor con tolva",
+      "tipo": null,
+      "unidades": 3,
+      "base": {
+        "lat": -34.2,
+        "lon": -60.73,
+        "localidad": "Rojas"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.07,
+      "calificacion": 4.4
+    },
+    {
+      "id": "of-008",
+      "proveedor": "Transporte Rojas 1",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 19,
+      "base": {
+        "lat": -34.2,
+        "lon": -60.73,
+        "localidad": "Rojas"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.99,
+      "calificacion": 4
+    },
+    {
+      "id": "of-009",
+      "proveedor": "Transporte Rojas 2",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 9,
+      "base": {
+        "lat": -34.2,
+        "lon": -60.73,
+        "localidad": "Rojas"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.93,
+      "calificacion": 3.9
+    },
+    {
+      "id": "of-010",
+      "proveedor": "Contratista Rojas 1",
+      "recurso": "embolsadora",
+      "tipo": "embolsadora-chica",
+      "unidades": 1,
+      "base": {
+        "lat": -34.2,
+        "lon": -60.73,
+        "localidad": "Rojas"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.16,
+      "calificacion": 4.3
+    },
+    {
+      "id": "of-011",
+      "proveedor": "Contratista Junín 1",
+      "recurso": "cosechadora",
+      "tipo": "cosechadora-grande",
+      "unidades": 3,
+      "base": {
+        "lat": -34.59,
+        "lon": -60.95,
+        "localidad": "Junín"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.9,
+      "calificacion": 3.9
+    },
+    {
+      "id": "of-012",
+      "proveedor": "Contratista Junín 1",
+      "recurso": "tractor con tolva",
+      "tipo": null,
+      "unidades": 2,
+      "base": {
+        "lat": -34.59,
+        "lon": -60.95,
+        "localidad": "Junín"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.01,
+      "calificacion": 3.8
+    },
+    {
+      "id": "of-013",
+      "proveedor": "Transporte Junín 1",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 4,
+      "base": {
+        "lat": -34.59,
+        "lon": -60.95,
+        "localidad": "Junín"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.99,
+      "calificacion": 4
+    },
+    {
+      "id": "of-014",
+      "proveedor": "Transporte Junín 2",
+      "recurso": "camión",
+      "tipo": "camion-semi",
+      "unidades": 19,
+      "base": {
+        "lat": -34.59,
+        "lon": -60.95,
+        "localidad": "Junín"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.03,
+      "calificacion": 3.7
+    },
+    {
+      "id": "of-015",
+      "proveedor": "Contratista Junín 1",
+      "recurso": "embolsadora",
+      "tipo": "embolsadora-chica",
+      "unidades": 1,
+      "base": {
+        "lat": -34.59,
+        "lon": -60.95,
+        "localidad": "Junín"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.99,
+      "calificacion": 4.1
+    },
+    {
+      "id": "of-016",
+      "proveedor": "Contratista Arrecifes 1",
+      "recurso": "cosechadora",
+      "tipo": "cosechadora-chica",
+      "unidades": 2,
+      "base": {
+        "lat": -34.06,
+        "lon": -60.1,
+        "localidad": "Arrecifes"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.06,
+      "calificacion": 3.8
+    },
+    {
+      "id": "of-017",
+      "proveedor": "Contratista Arrecifes 1",
+      "recurso": "tractor con tolva",
+      "tipo": null,
+      "unidades": 2,
+      "base": {
+        "lat": -34.06,
+        "lon": -60.1,
+        "localidad": "Arrecifes"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.14,
+      "calificacion": 4.5
+    },
+    {
+      "id": "of-018",
+      "proveedor": "Transporte Arrecifes 1",
+      "recurso": "camión",
+      "tipo": "camion-semi",
+      "unidades": 12,
+      "base": {
+        "lat": -34.06,
+        "lon": -60.1,
+        "localidad": "Arrecifes"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.03,
+      "calificacion": 4.5
+    },
+    {
+      "id": "of-019",
+      "proveedor": "Transporte Arrecifes 2",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 10,
+      "base": {
+        "lat": -34.06,
+        "lon": -60.1,
+        "localidad": "Arrecifes"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.09,
+      "calificacion": 3.9
+    },
+    {
+      "id": "of-020",
+      "proveedor": "Contratista Arrecifes 1",
+      "recurso": "embolsadora",
+      "tipo": "embolsadora-grande",
+      "unidades": 1,
+      "base": {
+        "lat": -34.06,
+        "lon": -60.1,
+        "localidad": "Arrecifes"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.98,
+      "calificacion": 4.1
+    },
+    {
+      "id": "of-021",
+      "proveedor": "Contratista Salto 1",
+      "recurso": "cosechadora",
+      "tipo": "cosechadora-grande",
+      "unidades": 3,
+      "base": {
+        "lat": -34.29,
+        "lon": -60.25,
+        "localidad": "Salto"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.91,
+      "calificacion": 4.7
+    },
+    {
+      "id": "of-022",
+      "proveedor": "Contratista Salto 1",
+      "recurso": "tractor con tolva",
+      "tipo": null,
+      "unidades": 2,
+      "base": {
+        "lat": -34.29,
+        "lon": -60.25,
+        "localidad": "Salto"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.93,
+      "calificacion": 3.6
+    },
+    {
+      "id": "of-023",
+      "proveedor": "Transporte Salto 1",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 7,
+      "base": {
+        "lat": -34.29,
+        "lon": -60.25,
+        "localidad": "Salto"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.07,
+      "calificacion": 3.7
+    },
+    {
+      "id": "of-024",
+      "proveedor": "Transporte Salto 2",
+      "recurso": "camión",
+      "tipo": "camion-semi",
+      "unidades": 14,
+      "base": {
+        "lat": -34.29,
+        "lon": -60.25,
+        "localidad": "Salto"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.92,
+      "calificacion": 4.9
+    },
+    {
+      "id": "of-025",
+      "proveedor": "Contratista Salto 1",
+      "recurso": "embolsadora",
+      "tipo": "embolsadora-grande",
+      "unidades": 2,
+      "base": {
+        "lat": -34.29,
+        "lon": -60.25,
+        "localidad": "Salto"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.15,
+      "calificacion": 4.9
+    },
+    {
+      "id": "of-026",
+      "proveedor": "Contratista Colón 1",
+      "recurso": "cosechadora",
+      "tipo": "cosechadora-grande",
+      "unidades": 1,
+      "base": {
+        "lat": -33.9,
+        "lon": -61.1,
+        "localidad": "Colón"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.88,
+      "calificacion": 3.9
+    },
+    {
+      "id": "of-027",
+      "proveedor": "Contratista Colón 1",
+      "recurso": "tractor con tolva",
+      "tipo": null,
+      "unidades": 1,
+      "base": {
+        "lat": -33.9,
+        "lon": -61.1,
+        "localidad": "Colón"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.07,
+      "calificacion": 3.8
+    },
+    {
+      "id": "of-028",
+      "proveedor": "Transporte Colón 1",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 12,
+      "base": {
+        "lat": -33.9,
+        "lon": -61.1,
+        "localidad": "Colón"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.09,
+      "calificacion": 3.9
+    },
+    {
+      "id": "of-029",
+      "proveedor": "Transporte Colón 2",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 7,
+      "base": {
+        "lat": -33.9,
+        "lon": -61.1,
+        "localidad": "Colón"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.99,
+      "calificacion": 4.8
+    },
+    {
+      "id": "of-030",
+      "proveedor": "Contratista Colón 1",
+      "recurso": "embolsadora",
+      "tipo": "embolsadora-chica",
+      "unidades": 1,
+      "base": {
+        "lat": -33.9,
+        "lon": -61.1,
+        "localidad": "Colón"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.88,
+      "calificacion": 4.9
+    },
+    {
+      "id": "of-031",
+      "proveedor": "Contratista Casilda 1",
+      "recurso": "cosechadora",
+      "tipo": "cosechadora-mediana",
+      "unidades": 3,
+      "base": {
+        "lat": -33.04,
+        "lon": -61.17,
+        "localidad": "Casilda"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.89,
+      "calificacion": 4.9
+    },
+    {
+      "id": "of-032",
+      "proveedor": "Contratista Casilda 1",
+      "recurso": "tractor con tolva",
+      "tipo": null,
+      "unidades": 3,
+      "base": {
+        "lat": -33.04,
+        "lon": -61.17,
+        "localidad": "Casilda"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.05,
+      "calificacion": 4.5
+    },
+    {
+      "id": "of-033",
+      "proveedor": "Transporte Casilda 1",
+      "recurso": "camión",
+      "tipo": "camion-chasis",
+      "unidades": 7,
+      "base": {
+        "lat": -33.04,
+        "lon": -61.17,
+        "localidad": "Casilda"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.94,
+      "calificacion": 4.3
+    },
+    {
+      "id": "of-034",
+      "proveedor": "Transporte Casilda 2",
+      "recurso": "camión",
+      "tipo": "camion-chasis",
+      "unidades": 17,
+      "base": {
+        "lat": -33.04,
+        "lon": -61.17,
+        "localidad": "Casilda"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.09,
+      "calificacion": 4.6
+    },
+    {
+      "id": "of-035",
+      "proveedor": "Contratista Casilda 1",
+      "recurso": "embolsadora",
+      "tipo": "embolsadora-chica",
+      "unidades": 1,
+      "base": {
+        "lat": -33.04,
+        "lon": -61.17,
+        "localidad": "Casilda"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.91,
+      "calificacion": 4.9
+    },
+    {
+      "id": "of-036",
+      "proveedor": "Contratista Cañada de Gómez 1",
+      "recurso": "cosechadora",
+      "tipo": "cosechadora-chica",
+      "unidades": 3,
+      "base": {
+        "lat": -32.82,
+        "lon": -61.39,
+        "localidad": "Cañada de Gómez"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.15,
+      "calificacion": 3.6
+    },
+    {
+      "id": "of-037",
+      "proveedor": "Contratista Cañada de Gómez 1",
+      "recurso": "tractor con tolva",
+      "tipo": null,
+      "unidades": 3,
+      "base": {
+        "lat": -32.82,
+        "lon": -61.39,
+        "localidad": "Cañada de Gómez"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.18,
+      "calificacion": 4.9
+    },
+    {
+      "id": "of-038",
+      "proveedor": "Transporte Cañada de Gómez 1",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 11,
+      "base": {
+        "lat": -32.82,
+        "lon": -61.39,
+        "localidad": "Cañada de Gómez"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.95,
+      "calificacion": 4.6
+    },
+    {
+      "id": "of-039",
+      "proveedor": "Transporte Cañada de Gómez 2",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 10,
+      "base": {
+        "lat": -32.82,
+        "lon": -61.39,
+        "localidad": "Cañada de Gómez"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.95,
+      "calificacion": 4.1
+    },
+    {
+      "id": "of-040",
+      "proveedor": "Contratista Cañada de Gómez 1",
+      "recurso": "embolsadora",
+      "tipo": "embolsadora-grande",
+      "unidades": 2,
+      "base": {
+        "lat": -32.82,
+        "lon": -61.39,
+        "localidad": "Cañada de Gómez"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.99,
+      "calificacion": 4.4
+    },
+    {
+      "id": "of-041",
+      "proveedor": "Contratista Venado Tuerto 1",
+      "recurso": "cosechadora",
+      "tipo": "cosechadora-grande",
+      "unidades": 2,
+      "base": {
+        "lat": -33.75,
+        "lon": -61.97,
+        "localidad": "Venado Tuerto"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.1,
+      "calificacion": 4.1
+    },
+    {
+      "id": "of-042",
+      "proveedor": "Contratista Venado Tuerto 1",
+      "recurso": "tractor con tolva",
+      "tipo": null,
+      "unidades": 1,
+      "base": {
+        "lat": -33.75,
+        "lon": -61.97,
+        "localidad": "Venado Tuerto"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.18,
+      "calificacion": 5
+    },
+    {
+      "id": "of-043",
+      "proveedor": "Transporte Venado Tuerto 1",
+      "recurso": "camión",
+      "tipo": "camion-semi",
+      "unidades": 18,
+      "base": {
+        "lat": -33.75,
+        "lon": -61.97,
+        "localidad": "Venado Tuerto"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.16,
+      "calificacion": 3.8
+    },
+    {
+      "id": "of-044",
+      "proveedor": "Transporte Venado Tuerto 2",
+      "recurso": "camión",
+      "tipo": "camion-semi",
+      "unidades": 6,
+      "base": {
+        "lat": -33.75,
+        "lon": -61.97,
+        "localidad": "Venado Tuerto"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.03,
+      "calificacion": 4.3
+    },
+    {
+      "id": "of-045",
+      "proveedor": "Contratista Venado Tuerto 1",
+      "recurso": "embolsadora",
+      "tipo": "embolsadora-grande",
+      "unidades": 2,
+      "base": {
+        "lat": -33.75,
+        "lon": -61.97,
+        "localidad": "Venado Tuerto"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.02,
+      "calificacion": 3.8
+    },
+    {
+      "id": "of-046",
+      "proveedor": "Contratista Marcos Juárez 1",
+      "recurso": "cosechadora",
+      "tipo": "cosechadora-mediana",
+      "unidades": 1,
+      "base": {
+        "lat": -32.7,
+        "lon": -62.1,
+        "localidad": "Marcos Juárez"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.08,
+      "calificacion": 4.3
+    },
+    {
+      "id": "of-047",
+      "proveedor": "Contratista Marcos Juárez 1",
+      "recurso": "tractor con tolva",
+      "tipo": null,
+      "unidades": 2,
+      "base": {
+        "lat": -32.7,
+        "lon": -62.1,
+        "localidad": "Marcos Juárez"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 1.11,
+      "calificacion": 4
+    },
+    {
+      "id": "of-048",
+      "proveedor": "Transporte Marcos Juárez 1",
+      "recurso": "camión",
+      "tipo": "camion-bitren",
+      "unidades": 4,
+      "base": {
+        "lat": -32.7,
+        "lon": -62.1,
+        "localidad": "Marcos Juárez"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.97,
+      "calificacion": 4.3
+    },
+    {
+      "id": "of-049",
+      "proveedor": "Transporte Marcos Juárez 2",
+      "recurso": "camión",
+      "tipo": "camion-chasis",
+      "unidades": 16,
+      "base": {
+        "lat": -32.7,
+        "lon": -62.1,
+        "localidad": "Marcos Juárez"
+      },
+      "radioKm": 150,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.97,
+      "calificacion": 3.9
+    },
+    {
+      "id": "of-050",
+      "proveedor": "Contratista Marcos Juárez 1",
+      "recurso": "embolsadora",
+      "tipo": "embolsadora-grande",
+      "unidades": 1,
+      "base": {
+        "lat": -32.7,
+        "lon": -62.1,
+        "localidad": "Marcos Juárez"
+      },
+      "radioKm": 80,
+      "disponibleDesde": "2026-11-01",
+      "disponibleHasta": "2027-07-31",
+      "precioRelativo": 0.9,
+      "calificacion": 4.7
+    }
+  ]
+}

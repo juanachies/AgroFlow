@@ -125,7 +125,7 @@ Son valores razonables para la demo, no una norma. Se calibran por zona con prod
 
 | Dato | Cómo lo cubrimos |
 | --- | --- |
-| Arribos de barcos y cola en el puerto | Adaptadores NABSA/BCR, con calendario manual o simulado como alternativas; las publicaciones no tienen una API estable. |
+| Arribos de barcos y cola en el puerto | Tabla oficial de MAGyP (toneladas anunciadas) y line-up por buque (NABSA/BCR), con calendario manual o simulado como alternativas; las publicaciones no tienen una API estable. La cola real se pronostica con las **reservas propias del marketplace**. |
 | Ubicación de acopios y cooperativas | Lista curada de la zona de demo |
 | Capacidad de descarga y de carga de cada terminal | Supuesto editable |
 | Tarifas 2026 (silobolsa, embolsado, silo, alquiler de maquinaria, cosecha por servicio) | Supuesto editable con valores de referencia; decirlo en la demo |
@@ -178,6 +178,9 @@ Vienen de notas de prensa que citan a la BCR o al INTA. Verificar en el informe 
 ## Barcos y puerto (módulo 5)
 
 Hay datos publicados todos los días hábiles, aunque sin API. Detalle de fuentes, formatos, índices y umbrales en [INDICES_PUERTO.md](INDICES_PUERTO.md).
+
+- **MAGyP, "Barcos anunciados" (oficial, preferida):** toneladas anunciadas por puerto, muelle y producto, con el line-up de NABSA agregado por el Estado. Adaptador: `src/infrastructure/barcos/magypAdapter.js`.
+- **Marketplace (propio):** reservas de camiones por puerto y día. Es la fuente principal del pronóstico de saturación ([MARKETPLACE.md](MARKETPLACE.md)).
 
 - **NABSA, line-up:** `https://www.nabsa.com.ar/assets/vessel_update.pdf`. Tiene puerto, terminal, buque, estado (ETA / ETB / ETF / AT REC / BERTHED), toneladas, producto y destino. Adaptador: `src/infrastructure/barcos/nabsaAdapter.js`, que recibe el texto extraído del PDF.
 - **BCR, "Buques a la carga" y "Posición de camiones":** Excel diario en la sección Información Comercial. El archivo de buques arranca en 2022. Adaptador: `src/infrastructure/barcos/bcrAdapter.js`.

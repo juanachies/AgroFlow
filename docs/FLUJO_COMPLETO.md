@@ -66,9 +66,9 @@ flowchart TD
 | 3 | Pedido de la extractora | `reserva.anticipo_dias` no tiene extractora; `armarPedidos` no la pide. | Falta un recurso en la lista de fletes y servicios a contratar. |
 | 4 | Varias bolsas por lote | `decidirVenta` evalúa una bolsa por vez; la capacidad de un barco no se descuenta entre bolsas. | Dos bolsas pueden elegir el mismo barco y superar `toneladasMax`. |
 | 5 | Re-evaluación automática | La decisión es una consulta puntual; nada la dispara con cada lectura nueva ni avisa cuando cambia. | Hay que llamarla a mano. |
-| 6 | Alternativa sin barco | `sin_barco_factible` solo informa; no compara contra vender en acopio, que `compararDestinos` ya sabe evaluar. | El camino "no" del diagrama termina en una decisión manual. |
+| 6 | ~~Alternativa sin barco~~ **Resuelto** | Con `acopios` en la entrada, `decidirVenta` devuelve `vender_acopio` con el acopio de mayor neto que llegue antes de la fecha límite. | — |
 | 7 | Costos de esperar incompletos | El neto descuenta costo financiero, pero no almacenaje ni seguro; la merma usa el riesgo de hoy hasta la carga. | Esperar parece más barato de lo que es. |
-| 8 | Adaptadores reales | Solo existe el de tarifas. Faltan IoT, precios, barcos y silobolsas (hoy hay simulados en los tests) y la interfaz HTTP. | El módulo no corre fuera de los tests. |
+| 8 | Adaptadores reales | Ya existen tarifas, precios (manual y simulado), barcos (MAGyP oficial, NABSA, CSV y simulado) y el marketplace (en memoria). Faltan IoT y silobolsas reales, y la interfaz HTTP. | La venta de silobolsa todavía corre con IoT y silobolsas simulados. |
 | 9 | Distancia y terminal separadas | `destino` lleva `terminal` y `distanciaKm` cargados a mano. | Sin `RutasPort`, un error de km cambia el flete. |
 | 10 | Umbrales supuestos | Temperatura, CO₂ y merma por mes no tienen fuente abierta. | Validar con INTA antes de usar en serio. |
 
