@@ -2,7 +2,7 @@
 
 Asistente de decisión para el productor: **cuándo se va a poder cosechar, qué maquinaria y camiones pedir, adónde mandar el grano y cuándo venderlo**, optimizando el margen neto.
 
-Desafío 02 del Hackatón Donweb Day. El plan completo está en [PROYECTO.md](PROYECTO.md); este README lo resume.
+Desafío 02 del Hackatón Nasa Space Apps. El plan completo está en [PROYECTO.md](PROYECTO.md); este README lo resume.
 
 **URL pública:** *(pendiente)*
 
