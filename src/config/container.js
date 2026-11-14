@@ -5,6 +5,8 @@ import { crearDecidirVenta } from '../application/usecases/decidirVenta.js';
 import { crearDecidirVentaCosecha } from '../application/usecases/decidirVentaCosecha.js';
 import { crearEvaluarSilobolsa } from '../application/usecases/evaluarSilobolsa.js';
 import { crearPlanificarCosecha } from '../application/usecases/planificarCosecha.js';
+import { crearSimularPlan, crearConfirmarReservas } from '../application/usecases/simularPlan.js';
+import { crearMarketplaceMemoriaAdapter } from '../infrastructure/marketplace/marketplaceMemoriaAdapter.js';
 import { crearTarifasJsonAdapter } from '../infrastructure/tarifas/tarifasJsonAdapter.js';
 import { crearBarcosSimuladosAdapter } from '../infrastructure/barcos/barcosSimuladosAdapter.js';
 import { crearBarcosManualAdapter } from '../infrastructure/barcos/barcosManualAdapter.js';
@@ -81,10 +83,12 @@ function adaptadorDeBarcos(barcos, { rutaLineup, mercado, simulado }) {
  * @param {object} [opciones.mercado]      datos BCR de camiones / buques a la carga
  * @param {number|null} [opciones.nivelParanaM]
  * @param {object} [opciones.fuentes]      adaptadores de clima, suelo, rinde, rutas y satélite
+ * @param {object} [opciones.marketplace]  MarketplacePort (por defecto, en memoria con ofertas de ejemplo)
  */
 export function crearContenedor({
   tarifas = crearTarifasJsonAdapter(), silobolsas, lecturasIot, precios, barcos,
   rutaLineup = null, mercado = null, nivelParanaM = null, fuentes = serviciosFuentes,
+  marketplace = crearMarketplaceMemoriaAdapter(),
 } = {}) {
   const barcosSimulado = crearBarcosSimuladosAdapter({ mercado });
   const adaptadorBarcos = adaptadorDeBarcos(barcos, { rutaLineup, mercado, simulado: barcosSimulado });
@@ -93,7 +97,11 @@ export function crearContenedor({
   // Elegir destino usa los barcos del puerto solo si se pasó un BarcosPort o un modo explícito.
   const compararDestinos = crearCompararDestinos({ tarifas, barcos: barcos ? adaptadorBarcos : null, nivelRio });
   const planificarCosecha = crearPlanificarCosecha({ tarifas, compararDestinos });
-  const contenedor = { tarifas, compararDestinos, planificarCosecha };
+  const contenedor = { tarifas, compararDestinos, planificarCosecha, marketplace };
+
+  // Producto central: simulador (plan + saturación del puerto) y marketplace de cadetes.
+  contenedor.simularPlan = crearSimularPlan({ planificarCosecha, marketplace, barcos: adaptadorBarcos, nivelRio });
+  contenedor.confirmarReservas = crearConfirmarReservas({ marketplace, tarifas });
 
   // Venta durante la cosecha según los barcos (puerto si cumple los índices, acopio o silobolsa).
   contenedor.decidirVentaCosecha = crearDecidirVentaCosecha({
@@ -116,6 +124,8 @@ export function crearContenedor({
     cache,
     services: fuentes,
     usecases: {
+      simularPlan: contenedor.simularPlan,
+      confirmarReservas: contenedor.confirmarReservas,
       compararDestinos: contenedor.compararDestinos,
       planificarCosecha: contenedor.planificarCosecha,
       decidirVentaCosecha: contenedor.decidirVentaCosecha,
