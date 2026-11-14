@@ -81,22 +81,27 @@ marcianos/
 │   │   │   └── CachePort.js
 │   │   └── usecases/
 │   │       ├── planificarCosecha.js      # módulos 1 y 2
+│   │       ├── consultarCondicionesCosecha.js # meteorología y consolidación de fallos opcionales
 │   │       ├── compararDestinos.js       # módulo 3, usa barcos (módulo 5)
 │   │       ├── evaluarSilobolsa.js       # módulo 4
 │   │       ├── decidirVenta.js           # decisión del último mes
 │   │       ├── explicarRecomendacion.js  # módulo 6
 │   │       └── simularEscenario.js       # "¿y si llueve 10 días más?"
 │   ├── infrastructure/           # adaptadores de salida
-│   │   ├── clima/                nasaPowerAdapter.js, climaSimuladoAdapter.js
-│   │   ├── rinde/                datosGobArAdapter.js, rindeCsvAdapter.js
-│   │   ├── rutas/                osrmAdapter.js, nominatimAdapter.js, lineaRectaAdapter.js (respaldo: recta × 1,3)
+│   │   ├── clima/                Open-Meteo, NASA POWER/IMERG/SMAP, SMN, ERA5-Land
+│   │   ├── terreno/              Open-Meteo Elevation, OpenTopography
+│   │   ├── satellite/            Copernicus STAC (Sentinel-1/2)
+│   │   ├── rinde/                datosGobArAdapter.js
+│   │   ├── rutas/                openStreetMapAdapter.js (Nominatim + OSRM)
 │   │   ├── barcos/               barcosSimuladosAdapter.js, barcosManualAdapter.js, nabsaAdapter.js, bcrAdapter.js
 │   │   ├── rio/                  nivelRioManualAdapter.js
 │   │   ├── acopios/              acopiosCsvAdapter.js
 │   │   ├── tarifas/              tarifasJsonAdapter.js
 │   │   ├── ia/                   openaiAdapter.js (reintentos y límites: la key es compartida), explicadorPlantillaAdapter.js (respaldo sin IA)
-│   │   └── cache/                fileCache.js
+│   │   ├── cache/                fileCache.js
+│   │   └── http.js               timeout, reintentos y normalización de observaciones
 │   ├── interfaces/               # adaptadores de entrada
+│   │   ├── cli/                  refreshWeather.js (snapshot meteorológico diario)
 │   │   ├── http/
 │   │   │   ├── server.js
 │   │   │   ├── routes/           plan.js, destinos.js, silobolsa.js, venta.js, explicar.js
@@ -107,7 +112,8 @@ marcianos/
 │       └── env.js                # lee ~/.env (las keys nunca van en el proyecto)
 └── tests/
     ├── domain/                   # node:test, sin red
-    └── application/              # casos de uso con adaptadores simulados
+    ├── application/              # casos de uso con adaptadores simulados
+    └── infrastructure/           # contratos externos probados con respuestas controladas
 ```
 
 ## De módulo del plan a carpeta
@@ -128,7 +134,7 @@ marcianos/
 | --- | --- |
 | `nasa_power.py` (descarga con caché) | `infrastructure/clima/nasaPowerAdapter.js` + `infrastructure/cache/fileCache.js` |
 | Regla de corte en `modelo.py` (20 mm en 48 h, secado 18 h, ×1,5 con suelo saturado) | `domain/clima/corteCaminos.js` |
-| `distancia_km` y `tiempo_viaje_h` en `modelo.py` | `infrastructure/rutas/lineaRectaAdapter.js` (respaldo de OSRM) |
+| `distancia_km` y `tiempo_viaje_h` en `modelo.py` | `infrastructure/rutas/openStreetMapAdapter.js` (OSRM calcula la ruta vial) |
 | `datos/localidades.csv`, `datos/terminales.csv` | `data/` |
 | Simulador de colas y turnos | Tabla de cola esperada por fecha en `data/`, leída por el módulo de barcos y la modalidad B de camiones |
 | Escenario real de mayo 2025 | `data/cache/` precargado para que la demo no dependa de la red |
@@ -140,6 +146,7 @@ marcianos/
 - **Unidades internas:** toneladas y USD. qq/ha y ARS solo en la vista.
 - **Errores:** los adaptadores traducen errores externos a errores del dominio (`DatoNoDisponible`); el caso de uso decide si usa el respaldo.
 - **Tests:** `node --test` sobre `tests/domain` primero; son los cálculos que el jurado va a cuestionar.
+- **Fuentes externas:** estado, autenticación, ejemplos de uso y limitaciones están en [`FUENTES.md`](./FUENTES.md). Los rasters que todavía requieren procesamiento no entran automáticamente al cálculo de transitabilidad.
 
 ## Cómo se creó la estructura
 

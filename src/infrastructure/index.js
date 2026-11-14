@@ -1,0 +1,11 @@
+export { default as OpenMeteoAdapter, OpenMeteoAdapter as OpenMeteoForecast } from './clima/openMeteoAdapter.js';
+export { default as NasaPowerAdapter, NasaPowerAdapter as NasaPower } from './clima/nasaPowerAdapter.js';
+export { default as NasaGpmImergAdapter } from './clima/nasaGpmImergAdapter.js';
+export { default as NasaSmapAdapter } from './clima/nasaSmapAdapter.js';
+export { default as SmnAdapter } from './clima/smnAdapter.js';
+export { default as Era5LandAdapter } from './clima/era5LandAdapter.js';
+export { default as DatosGobArAdapter } from './rinde/datosGobArAdapter.js';
+export { default as OpenStreetMapAdapter } from './rutas/openStreetMapAdapter.js';
+export { default as OpenMeteoElevationAdapter } from './terreno/openMeteoElevationAdapter.js';
+export { default as OpenTopographyAdapter } from './terreno/openTopographyAdapter.js';
+export { default as CopernicusStacAdapter } from './satellite/copernicusStacAdapter.js';

@@ -187,6 +187,8 @@ npm run actualizar-tarifas
 
 Las keys (OpenAI) van en `~/.env`, nunca dentro del proyecto.
 
+Para guardar un pronóstico diario, configurar `LOT_LATITUDE` y `LOT_LONGITUDE` en el entorno o en `~/.env` y ejecutar `npm run update:weather`. Los conectores disponibles, credenciales y límites están documentados en [docs/FUENTES.md](docs/FUENTES.md).
+
 ## Arquitectura
 
 Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias externas; lo externo entra por puertos (`src/application/ports`) y adaptadores (`src/infrastructure`). Detalle en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md); maquinaria, costos y plan de pedido en [docs/MAQUINARIA.md](docs/MAQUINARIA.md).
@@ -215,6 +217,7 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 | [PROYECTO.md](PROYECTO.md) | Plan completo: problema, módulos, fórmulas, flujo, datos, reglas del evento |
 | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Arquitectura hexagonal y árbol de carpetas |
 | [docs/DATOS.md](docs/DATOS.md) | Estado de cada dato, supuestos y cifras de referencia |
+| [docs/FUENTES.md](docs/FUENTES.md) | Conectores, configuración y límites de las fuentes externas |
 | [docs/MAQUINARIA.md](docs/MAQUINARIA.md) | Catálogo de maquinaria, dimensionado y plan de pedido |
 | [docs/PLAN_BARCOS.md](docs/PLAN_BARCOS.md) | Barcos como módulo aparte, decisión de venta y cadetes: flujo, contratos y estado |
 | [docs/MODULO_5_BARCOS.md](docs/MODULO_5_BARCOS.md) | Método de Barcos, Venta y Cadetes, y avisos |
