@@ -12,11 +12,11 @@ Implementa **Barcos** (independiente) → **Venta** (vender o silobolsa, hasta d
 | `src/infrastructure/barcos/` | Adaptadores de `BarcosPort`: NABSA, BCR, CSV manual y simulado |
 | `src/domain/barcos/datos.js` | Puertos, estacionalidad y parámetros de barcos |
 | `src/domain/barcos/index.js` | `analizarBarcos()`: punto de entrada del módulo |
-| `src/domain/venta/decisionVenta.js`, `criterios.js` | `decidirVenta()`: curva por fecha, índices a cumplir para vender a puerto, vender o silobolsa, hasta dónde rinde y avisos |
+| `src/domain/venta/ventaCosecha.js`, `criterios.js` | `decidirVentaCosecha()`: curva por fecha, índices a cumplir para vender a puerto, vender o silobolsa, hasta dónde rinde y avisos |
 | `src/domain/venta/supuestos.js` | Supuestos de flete, acopio, silobolsa y precios |
 | `src/domain/maquinaria/cadetes.js` | `avisoCadetes()`: camiones o embolsadora según la decisión |
 | `src/domain/shared/util.js`, `src/domain/maquinaria/logistica.js` | Fechas, normal y logística de camiones |
-| `src/application/usecases/decidirVenta.js` | Caso de uso: encadena Barcos → Venta → Cadetes con los puertos `BarcosPort` y `NivelRioPort` |
+| `src/application/usecases/decidirVentaCosecha.js` | Caso de uso: encadena Barcos → Venta → Cadetes con los puertos `BarcosPort` y `NivelRioPort` |
 | `src/config/container.js` | Conecta el caso de uso con los adaptadores |
 
 ## Entradas
@@ -81,8 +81,8 @@ Implementa **Barcos** (independiente) → **Venta** (vender o silobolsa, hasta d
 import { crearContenedor } from './src/config/container.js';
 
 // barcos: 'simulado' | 'manual' (CSV) | 'nabsa' (texto del PDF); mercado: datos BCR de camiones y buques
-const { decidirVenta } = crearContenedor({ barcos: 'nabsa', rutaLineup: 'nabsa.txt', mercado, nivelParanaM: 1.8 });
-const r = await decidirVenta({
+const { decidirVentaCosecha } = crearContenedor({ barcos: 'nabsa', rutaLineup: 'nabsa.txt', mercado, nivelParanaM: 1.8 });
+const r = await decidirVentaCosecha({
   puerto: 'gran-rosario', cultivo: 'soja', hoy: '2026-11-14',
   fechaGranoListo: '2026-11-14', diasCosecha: 6, toneladas: 1500,
   distanciaPuertoKm: 320, distanciaAcopioKm: 60,

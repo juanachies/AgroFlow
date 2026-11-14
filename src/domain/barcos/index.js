@@ -9,6 +9,7 @@
 export { PUERTOS, PARAMS_DEFAULT, BARCOS_SEMANA_BASE, ESTACIONALIDAD } from './datos.js';
 export { validarBarco, ESTADOS_BARCO } from './lineup.js';
 export { factorCalado } from './calado.js';
+export { aCalendarioDeCarga, calendarioDelPuerto, puertoDeTerminal } from './calendario.js';
 export {
   predecirDisponibilidad,
   esperaEsperada,

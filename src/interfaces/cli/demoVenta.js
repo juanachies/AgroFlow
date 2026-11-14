@@ -1,4 +1,4 @@
-// Demo por consola del caso de uso decidirVenta:
+// Demo por consola del caso de uso decidirVentaCosecha:
 //   node src/interfaces/cli/demoVenta.js [cultivo] [hoy] [lineup.csv | nabsa.txt]
 // Barcos (dominio) -> Venta (índices del puerto, vender o silobolsa, hasta dónde rinde) -> Cadetes.
 // Usa los datos de mercado publicados de data/mercado-ejemplo-2026-11.json.
@@ -7,13 +7,13 @@ import { crearContenedor } from '../../config/container.js';
 
 const [cultivo = 'soja', hoy = '2026-11-14', archivo] = process.argv.slice(2);
 const mercado = JSON.parse(readFileSync(new URL('../../../data/mercado-ejemplo-2026-11.json', import.meta.url), 'utf8'));
-const { decidirVenta } = crearContenedor({
+const { decidirVentaCosecha } = crearContenedor({
   barcos: !archivo ? 'simulado' : archivo.endsWith('.csv') ? 'manual' : 'nabsa',
   rutaLineup: archivo,
   mercado,
 });
 
-const r = await decidirVenta({
+const r = await decidirVentaCosecha({
   puerto: 'gran-rosario',
   cultivo,
   hoy,

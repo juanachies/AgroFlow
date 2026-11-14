@@ -5,6 +5,7 @@
 
 import { readFileSync } from 'node:fs';
 import { validarBarco } from '../../domain/barcos/lineup.js';
+import { calendarioDelPuerto } from '../../domain/barcos/calendario.js';
 
 const COLUMNAS = ['buque', 'puerto', 'cultivo', 'toneladas', 'eta', 'estado'];
 
@@ -27,9 +28,8 @@ export function crearBarcosManualAdapter({ csv = null, rutaCsv = null, mercado =
   const lineup = parsearLineupCSV(csv ?? (rutaCsv ? readFileSync(rutaCsv, 'utf8') : ''));
   const datosMercado = mercado ?? (rutaMercado ? JSON.parse(readFileSync(rutaMercado, 'utf8')) : null);
   return {
-    async calendario(puerto, _desde, hasta) {
-      // Los anunciados con ETA vencida siguen viniendo (atrasados): se conservan.
-      return lineup.filter((b) => b.puerto === puerto && (b.estado !== 'anunciado' || b.eta <= hasta));
+    async calendario(terminal, desde, hasta) {
+      return calendarioDelPuerto(lineup, terminal, desde, hasta);
     },
     async mercado() {
       return datosMercado ?? {};

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { calcularIndicesMercado, demandaDiariaBarcos } from '../../src/domain/barcos/index.js';
-import { evaluarIndicesPuerto, decidirVenta } from '../../src/domain/venta/index.js';
+import { evaluarIndicesPuerto, decidirVentaCosecha } from '../../src/domain/venta/index.js';
 import { sumarDias } from '../../src/domain/shared/util.js';
 
 test('índices: demanda/oferta con soja equivalente (grano + harina) y saturación', () => {
@@ -46,7 +46,7 @@ test('Venta: si el puerto no cumple los índices, elige acopio o silobolsa aunqu
   const barcos = { puerto: 'gran-rosario', cultivo: 'maiz', hoy: HOY, senal };
   const base = { barcos, cultivo: 'maiz', toneladas: 1000, fechaGranoListo: HOY, distanciaPuertoKm: 100, distanciaAcopioKm: 40 };
 
-  const sinMercado = decidirVenta(base);
+  const sinMercado = decidirVentaCosecha(base);
   assert.equal(sinMercado.canal, 'puerto');
   assert.equal(sinMercado.puertoHabilitado, true);
 
@@ -54,7 +54,7 @@ test('Venta: si el puerto no cumple los índices, elige acopio o silobolsa aunqu
     programadas: { desde: HOY, hasta: sumarDias(HOY, 22), toneladas: { maiz: 900000 }, fuente: 'BCR' },
     camiones: { fecha: HOY, camiones: { maiz: 2559, total: 6967 }, fuente: 'BCR' },
   };
-  const conMercado = decidirVenta({ ...base, mercado });
+  const conMercado = decidirVentaCosecha({ ...base, mercado });
   assert.equal(conMercado.puertoHabilitado, false);
   assert.ok(conMercado.indicesPuerto.bloqueos.includes('demandaOferta'));
   assert.notEqual(conMercado.canal, 'puerto');

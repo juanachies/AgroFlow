@@ -24,12 +24,12 @@ Ubicados en la arquitectura hexagonal del repo ([ARQUITECTURA.md](ARQUITECTURA.m
 src/
   domain/barcos/       analizarBarcos() -> { disponibilidad, senal[], calado, avisos }   no importa a venta ni cadetes
                        colaBuques.js, calado.js, indicesMercado.js, lineup.js, datos.js
-  domain/venta/        decidirVenta({ barcos, mercado, ... }) -> { decision, canal, indicesPuerto, mejorVenta,
+  domain/venta/        decidirVentaCosecha({ barcos, mercado, curvaPrecios, ... }) -> { decision, canal, indicesPuerto, mejorVenta,
                        silobolsa, hastaDondeRinde, curva, avisos }; criterios.js (índices a cumplir)
   domain/maquinaria/   cadetes.js: avisoCadetes({ venta, ... }) -> { destino, camiones | embolsadoras, pedirEl, aviso }
   domain/shared/       util.js (fechas, normal)
   application/ports/   BarcosPort (calendario, mercado), NivelRioPort (nivel)
-  application/usecases/decidirVenta.js   planificarVenta() puro + crearDecidirVenta({ barcos, nivelRio, respaldoBarcos })
+  application/usecases/decidirVentaCosecha.js   planificarVentaCosecha() puro + crearDecidirVentaCosecha({ barcos, nivelRio, respaldoBarcos, precios })
   infrastructure/barcos/   nabsaAdapter, bcrAdapter, barcosManualAdapter (CSV), barcosSimuladosAdapter (respaldo)
   infrastructure/rio/      nivelRioManualAdapter
   config/container.js      conecta el caso de uso con los adaptadores
@@ -126,3 +126,17 @@ Todos son editables y hay que decirlo en la demo.
 | Silobolsa: bolsa + embolsado + extracción, merma, tasa | 6,5 US$/t; 0,5% y 1% por mes; 3 meses | `domain/venta/supuestos.js` |
 | Precio hoy y futuro | Soja 300/310, maíz 180/186, trigo 210/216 | `domain/venta/supuestos.js` |
 | Camión, embolsadora, cola en terminal | 30 t, 150 t/h, 4 h | `domain/maquinaria/logistica.js` |
+
+## 6. Integración con el mapa del proyecto (silobolsa-venta)
+
+Del [mapa del proyecto](flujo-proyecto.html), el equipo de barcos toma lo relacionado con la llegada de barcos y el destino. La extracción, el embarque y el reparto de la capacidad del barco quedan a cargo del puerto.
+
+| # | Módulo del mapa | Qué se hizo | Dónde |
+|---|---|---|---|
+| 1 | Barcos del puerto (entrada de Elegir destino) | Con un `BarcosPort`, `compararDestinos` ajusta cada destino puerto: precio × factor de demanda, espera como costo adicional e índices a cumplir. Si no cumple, se descarta | `domain/destino/barcosDelPuerto.js`, `usecases/compararDestinos.js` |
+| 2 | Calendario de barcos (entrada de Decidir venta) | `BarcosPort` unificado (`id, terminal, arribo, cierreCarga, toneladasMax` + `puerto, cultivo, eta, estado`). NABSA, CSV y simulado lo cumplen. La venta de silobolsa filtra por cultivo | `domain/barcos/calendario.js`, `ports/BarcosPort.js` |
+| 3 | Precios spot y futuros | Curva con base que converge, usada en la venta de silobolsa y en la venta en cosecha. Adaptadores de `PreciosPort` manual (pizarra en pesos + A3) y simulado | `domain/venta/precios.js`, `infrastructure/precios/` |
+| 4 | Vender en acopio si no hay barco a tiempo | `decision: 'vender_acopio'` con el acopio de mayor neto que llegue antes de la fecha límite | `domain/venta/decisionVenta.js` |
+| — | Extracción, embarque, reparto de la capacidad del barco | No se toca: lo hace el puerto | — |
+
+La venta en cosecha según barcos se renombró a `decidirVentaCosecha` (`domain/venta/ventaCosecha.js`, `usecases/decidirVentaCosecha.js`) para no chocar con la venta de silobolsa (`decidirVenta`).
