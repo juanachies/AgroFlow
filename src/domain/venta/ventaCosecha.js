@@ -8,6 +8,8 @@
 //   vender_acopio(d) = t × (precio_hoy − descuento) − flete_corto − t × (tarifa + secado)
 //                      − t × días_en_campo × costo_guardar_corto
 //   silobolsa        = t × (1 − merma) × precio_futuro − bolsa/embolsado/extracción − flete − interés
+//                      (con curvaPrecios: precio esperado de 1 a N meses según spot + futuros; merma
+//                       mensual desde el monitoreo IoT de la silobolsa vía supuestos.silobolsa.mermaMensual)
 //
 // Vender A PUERTO requiere además CUMPLIR LOS ÍNDICES (criterios.js): demanda/oferta, espera,
 // saturación, demanda de barcos, nivel del Paraná. Si no cumple, el puerto queda descartado.
@@ -19,17 +21,20 @@ import { PRECIOS_DEFAULT, supuestosVenta } from './supuestos.js';
 import { evaluarIndicesPuerto } from './criterios.js';
 import { calcularIndicesMercado } from '../barcos/indicesMercado.js';
 import { diasViaje } from '../maquinaria/logistica.js';
+import { precioEsperado } from './precios.js';
 import { iso, sumarDias, diasEntre, redondear } from '../shared/util.js';
 
 export function decidirVentaCosecha({
   barcos, cultivo, toneladas, fechaGranoListo, distanciaPuertoKm, distanciaAcopioKm = null,
   precios = {}, supuestos = {}, logistica = {},
   mercado = {}, nivelParanaM = null, umbrales = {},
+  curvaPrecios = null, mesesMaxSilobolsa = 6, // curva de construirCurva() (spot + futuros)
 }) {
   if (!barcos?.senal) throw new Error('decidirVentaCosecha necesita la salida de analizarBarcos()');
   cultivo = cultivo ?? barcos.cultivo;
   const s = supuestosVenta(supuestos);
   const pr = { ...PRECIOS_DEFAULT[cultivo], ...precios };
+  if (curvaPrecios) pr.puertoHoyUSDt = curvaPrecios.spotUSDt; // el spot real reemplaza al supuesto
   if (!pr.puertoHoyUSDt) throw new Error(`Faltan precios para ${cultivo}`);
   const t = toneladas;
   const listo = iso(fechaGranoListo);
@@ -38,13 +43,23 @@ export function decidirVentaCosecha({
   const senalPorFecha = new Map(barcos.senal.map((x) => [x.fecha, x]));
 
   // --- Silobolsa (no depende de la fecha de despacho) ---
+  // Con curva de precios (spot + futuros) se evalúa guardar de 1 a `mesesMaxSilobolsa` meses con el
+  // precio esperado de cada mes y se elige el mejor; sin curva, se usa el plazo y el futuro fijos.
   const sb = s.silobolsa;
-  const merma = sb.mermaMensual * sb.mesesGuardado;
-  const silobolsa = resumen('silobolsa', t * (1 - merma) * pr.futuroUSDt, {
-    bolsaEmbolsadoExtraccion: t * (sb.bolsaUSDt + sb.embolsadoUSDt + sb.extraccionUSDt),
-    flete: t * distanciaPuertoKm * s.fleteUSDtKm,
-    financiero: t * pr.puertoHoyUSDt * sb.tasaMensual * sb.mesesGuardado,
-  }, t, { mesesGuardado: sb.mesesGuardado, mermaPct: redondear(merma * 100, 2), precioUSDt: pr.futuroUSDt, venderEl: sumarDias(listo, sb.mesesGuardado * 30) });
+  const opcionSilo = (meses, precioUSDt) => {
+    const mermaM = sb.mermaMensual * meses;
+    return resumen('silobolsa', t * (1 - mermaM) * precioUSDt, {
+      bolsaEmbolsadoExtraccion: t * (sb.bolsaUSDt + sb.embolsadoUSDt + sb.extraccionUSDt),
+      flete: t * distanciaPuertoKm * s.fleteUSDtKm,
+      financiero: t * pr.puertoHoyUSDt * sb.tasaMensual * meses,
+    }, t, { mesesGuardado: meses, mermaPct: redondear(mermaM * 100, 2), mermaMensualPct: redondear(sb.mermaMensual * 100, 2), precioUSDt: redondear(precioUSDt, 2), venderEl: sumarDias(listo, meses * 30) });
+  };
+  const opcionesSilo = curvaPrecios
+    ? Array.from({ length: mesesMaxSilobolsa }, (_, i) => opcionSilo(i + 1, precioEsperado(curvaPrecios, sumarDias(listo, (i + 1) * 30)).precioUSDt))
+    : [opcionSilo(sb.mesesGuardado, pr.futuroUSDt)];
+  const silobolsa = opcionesSilo.reduce((a, o) => (o.margenUSD > a.margenUSD ? o : a));
+  silobolsa.detalle.alternativas = opcionesSilo.map((o) => ({ meses: o.detalle.mesesGuardado, precioUSDt: o.detalle.precioUSDt, margenUSD: o.margenUSD }));
+  const merma = silobolsa.detalle.mermaPct / 100;
 
   // --- Curva por fecha de despacho: puerto y acopio ---
   const inicio = diasEntre(hoy, listo) > 0 ? listo : hoy;

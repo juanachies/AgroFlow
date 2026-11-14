@@ -1,6 +1,7 @@
 import { tarifaFleteUsdPorT } from '../flete/costoFlete.js';
 import { exigirPositivo } from '../shared/errores.js';
 import { sumarDias } from '../shared/fechas.js';
+import { curvaDesdePrecios, precioEsperado } from './precios.js';
 
 const MS_POR_DIA = 86400000;
 const DIAS_POR_MES = 30;
@@ -10,9 +11,10 @@ function diasEntre(desdeIso, hastaIso) {
   return Math.round((Date.parse(`${hastaIso}T00:00:00Z`) - Date.parse(`${desdeIso}T00:00:00Z`)) / MS_POR_DIA);
 }
 
-function precioPara(fechaIso, precio) {
-  const delMes = precio.futuros?.find((futuro) => futuro.mes === fechaIso.slice(0, 7));
-  const valor = delMes?.precio ?? precio.spot;
+// Precio esperado en la fecha de entrega con la curva spot + futuros: interpola entre posiciones y
+// hace converger la base (spot − futuro cercano) a 0 al vencimiento (ver precios.js).
+function precioPara(fechaIso, precio, hoy) {
+  const valor = precioEsperado(curvaDesdePrecios(hoy, precio), fechaIso).precioUSDt;
   exigirPositivo('precio', valor);
   return valor;
 }
@@ -42,7 +44,8 @@ function evaluarBarco(barco, contexto) {
   if (tonsNetas > barco.toneladasMax) return descartado('no entra en la capacidad del barco');
 
   const camion = camionMasBarato(tarifas);
-  const ingresoUsd = tonsNetas * precioPara(fechaEntrega, precio);
+  const precioUsdPorT = precioPara(fechaEntrega, precio, hoy);
+  const ingresoUsd = tonsNetas * precioUsdPorT;
   const fleteUsd = tonsNetas * tarifaFleteUsdPorT(km, tarifas) * camion.precio_relativo;
   const financieroUsd = (ingresoUsd * tasaAnual * diasEspera) / DIAS_POR_ANIO;
   return {
@@ -53,6 +56,7 @@ function evaluarBarco(barco, contexto) {
     diasEspera,
     tonsNetas,
     camiones: { tipo: camion.id, cantidad: Math.ceil(tonsNetas / camion.capacidad_t) },
+    precioUsdPorT,
     ingresoUsd,
     fleteUsd,
     financieroUsd,

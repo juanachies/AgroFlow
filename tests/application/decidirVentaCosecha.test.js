@@ -35,3 +35,13 @@ test('caso de uso con puertos: usa el respaldo si el adaptador de barcos falla y
   assert.ok(r.venta.indicesPuerto.checks.find((c) => c.id === 'nivelParana').estado === 'rojo');
   await assert.rejects(crearDecidirVentaCosecha({ barcos: roto })({ puerto: 'gran-rosario', cultivo: 'soja', hoy: HOY, fechaGranoListo: HOY, toneladas: 1, distanciaPuertoKm: 1 }), /sin red/);
 });
+
+test('con PreciosPort: usa el spot real y evalúa la silobolsa mes a mes; si falla, vuelve a los supuestos', async () => {
+  const precios = { origen: 'test', precios: async () => ({ spot: 280, futuros: [{ mes: '2027-05', precio: 330 }], fuente: 'test' }) };
+  const r = await crearDecidirVentaCosecha({ barcos: crearBarcosSimuladosAdapter({ semilla: 3 }), precios })({ puerto: 'gran-rosario', cultivo: 'soja', hoy: HOY, fechaGranoListo: HOY, toneladas: 1000, distanciaPuertoKm: 300 });
+  assert.equal(r.fuentes.precios, 'test');
+  assert.equal(r.venta.silobolsa.detalle.alternativas.length, 6);
+  const roto = { precios: async () => { throw new Error('caído'); } };
+  const r2 = await crearDecidirVentaCosecha({ barcos: crearBarcosSimuladosAdapter({ semilla: 3 }), precios: roto })({ puerto: 'gran-rosario', cultivo: 'soja', hoy: HOY, fechaGranoListo: HOY, toneladas: 10, distanciaPuertoKm: 10 });
+  assert.match(r2.fuentes.precios, /falló/);
+});
