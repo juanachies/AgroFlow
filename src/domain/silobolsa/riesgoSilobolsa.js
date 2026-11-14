@@ -22,10 +22,15 @@ function pendientePorDia(serie, variable) {
   return dias > 0 ? (ultimo[variable] - primero[variable]) / dias : null;
 }
 
-function diasHastaAlto(actual, pendiente, alto) {
-  if (actual > alto) return 0;
+function diasHastaSuperar(actual, pendiente, umbral) {
+  if (actual > umbral) return 0;
   if (pendiente === null || pendiente <= 0) return null;
-  return Math.ceil((alto - actual) / pendiente);
+  return Math.ceil((umbral - actual) / pendiente);
+}
+
+function menorPlazo(plazos) {
+  const conocidos = plazos.filter((dias) => dias !== null);
+  return conocidos.length > 0 ? Math.min(...conocidos) : null;
 }
 
 /**
@@ -48,17 +53,18 @@ export function evaluarRiesgo({ cultivo, lecturas }, tarifas) {
       valor: ultima[variable],
       nivel: nivelDe(ultima[variable], umbrales[variable]),
       pendientePorDia: pendiente,
-      diasHastaCritico: diasHastaAlto(ultima[variable], pendiente, umbrales[variable].alto),
+      diasHastaMedio: diasHastaSuperar(ultima[variable], pendiente, umbrales[variable].medio),
+      diasHastaCritico: diasHastaSuperar(ultima[variable], pendiente, umbrales[variable].alto),
     };
   }
   const medidas = Object.entries(variables);
   if (medidas.length === 0) throw new RangeError('la última lectura no trae humedad, temperatura ni co2');
   const nivel = NIVELES[Math.max(...medidas.map(([, v]) => NIVELES.indexOf(v.nivel)))];
-  const plazos = medidas.map(([, v]) => v.diasHastaCritico).filter((dias) => dias !== null);
   return {
     nivel,
     timestamp: ultima.timestamp,
-    diasHastaCritico: plazos.length > 0 ? Math.min(...plazos) : null,
+    diasHastaMedio: menorPlazo(medidas.map(([, v]) => v.diasHastaMedio)),
+    diasHastaCritico: menorPlazo(medidas.map(([, v]) => v.diasHastaCritico)),
     variables,
     motivos: medidas.filter(([, v]) => v.nivel !== 'bajo').map(([nombre, v]) => `${nombre} ${v.valor} (${v.nivel})`),
   };

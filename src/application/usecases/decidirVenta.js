@@ -11,14 +11,14 @@ const HORIZONTE_BARCOS_DIAS = 120;
  *   tarifas: import('../ports/TarifasPort.js').TarifasPort }} puertos
  */
 export function crearDecidirVenta({ evaluarSilobolsa, precios, barcos, tarifas }) {
-  return async function decidirVenta({ silobolsaId, hoy, destino, tasaAnual }) {
+  return async function decidirVenta({ silobolsaId, hoy, destino, tasaAnual, acopios = [] }) {
     const { silobolsa, riesgo } = await evaluarSilobolsa(silobolsaId);
     const [precio, calendario, vigentes] = await Promise.all([
       precios.precios(silobolsa.cultivo),
       barcos.calendario(destino.terminal, hoy, sumarDias(hoy, HORIZONTE_BARCOS_DIAS)),
       tarifas.vigentes(),
     ]);
-    const decision = decidir({ silobolsa, riesgo, precio, barcos: calendario, destino, hoy, tasaAnual }, vigentes);
+    const decision = decidir({ silobolsa, riesgo, precio, barcos: calendario, acopios, destino, hoy, tasaAnual }, vigentes);
     return { silobolsaId, ...decision };
   };
 }

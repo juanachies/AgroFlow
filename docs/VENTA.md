@@ -72,8 +72,25 @@ Si la humedad sube (14 → 15 % en 5 días, +0,2 %/día), el nivel alto llega en
 
 Todos se editan en `data/tarifas.json` (`silobolsa.por_cultivo.*.umbrales` y `silobolsa.merma_pct_por_mes`).
 
+## Qué cuenta cada opción (barco o acopio)
+
+`neto = ingreso − extracción − flete − costo del acopio − costo financiero`, sobre las toneladas que quedan después de la merma.
+
+| Concepto | Cómo se calcula |
+| --- | --- |
+| Merma | Fracción de peso perdida hasta el último día de extracción. El ritmo sube de bajo a medio y de medio a alto según los plazos que proyectan las lecturas del IoT (`diasHastaMedio`, `diasHastaCritico`). |
+| Extracción | `costo_usd_por_t_extraccion` por tonelada, y días de extractora = toneladas ÷ (`t_por_hora` × horas útiles). Un silobolsa grande tarda varios días y la entrega se corre. |
+| Anticipo | Primer día posible de carga = hoy + el mayor anticipo entre camión y extractora (`reserva.anticipo_dias`). |
+| Flete | Tarifa CATAC por km del destino (puerto o acopio) con el camión de menor costo por tonelada. |
+| Acopio | Precio del acopio y `costoAdicionalUsdPorT`; se vende en la primera fecha de carga. |
+| Financiero | Ingreso × tasa anual × días de espera ÷ 365. |
+
+Con riesgo alto se elige lo que se puede cargar primero, que suele ser el acopio. Con riesgo bajo o medio, el mayor neto. El último día de extracción también debe cumplir la fecha límite de seguridad.
+
 ## Límites actuales
 
-- La merma se calcula con el nivel de riesgo de hoy y se mantiene constante hasta la carga.
-- El flete usa el camión de menor costo por tonelada (bitrén) y la tarifa CATAC por km; no modela estadía ni disponibilidad de camiones.
-- Un solo barco por silobolsa: si no entra en `toneladasMax`, se descarta.
+- El flete usa el camión de menor costo por tonelada (bitrén); no modela estadía ni disponibilidad de camiones.
+- Un solo barco por silobolsa: si no entra en `toneladasMax`, se descarta, y la capacidad no se reparte entre bolsas.
+- El pedido de la extractora se informa en `elegido.extractora` (desde, hasta, días), pero `armarPedidos` todavía no lo incluye.
+- No se modelan almacenaje ni seguro durante la espera.
+- El acopio se evalúa en su primera fecha de carga: no hay precio futuro por acopio.

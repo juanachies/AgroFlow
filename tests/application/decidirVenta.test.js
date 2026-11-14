@@ -34,6 +34,14 @@ test('humedad en suba: no hay barco a tiempo y avisa la fecha límite', async ()
   assert.equal(resultado.fechaLimite, '2026-11-19');
 });
 
+test('los acopios que se pasan al caso de uso compiten con los barcos', async () => {
+  const { decidirVenta } = contenedorCon(lecturasSanas);
+  const acopios = [{ nombre: 'Cooperativa local', distanciaKm: 40, precioUsdPorT: 305, costoAdicionalUsdPorT: 6 }];
+  const resultado = await decidirVenta({ ...entrada, acopios });
+  assert.equal(resultado.decision, 'vender_en_acopio');
+  assert.equal(resultado.evaluados.filter((e) => e.tipo === 'acopio').length, 1);
+});
+
 test('evaluarSilobolsa devuelve el silobolsa con su riesgo', async () => {
   const { evaluarSilobolsa } = contenedorCon(lecturasHumedadSube);
   const { silobolsa, riesgo } = await evaluarSilobolsa('SB-001');
