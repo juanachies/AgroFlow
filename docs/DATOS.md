@@ -17,7 +17,9 @@ Estado al 14/11/2026. Para cada dato: si ya funciona, de dónde sale, si pide cu
 | Localidades de la zona núcleo | **Tenemos** (coordenadas aproximadas) | Lista propia, 16 localidades | — | Demo |
 | Terminales del Gran Rosario | **Tenemos** (coordenadas y capacidades aproximadas) | Lista propia, 6 terminales | — | 2, 5 |
 | Cifras del problema (camiones, silobolsas, flete, bajante) | **Tenemos** (de prensa que cita a BCR e INTA) | Ver "Cifras de referencia" | — | Pitch |
-| Arribos de barcos | **Sin fuente abierta** | Manual o simulado | — | 5 |
+| Line-up de barcos | **Funciona** (parser probado con la circular 210) | NABSA, PDF diario | No | 5 |
+| Buques a la carga y camiones a puerto | **Funciona** (parser de la tabla) | BCR, Excel diario | No | 5, venta |
+| Altura del Paraná en Rosario | Manual (reporte diario) | INA | No | 5 |
 | Ubicación de acopios y cooperativas | **Sin fuente abierta** | Lista curada de la zona de demo | — | 3 |
 | Precios, tarifas, capacidades de máquinas | **Supuesto editable** | Valores de referencia | — | 2, 3 |
 
@@ -145,3 +147,13 @@ Vienen de notas de prensa que citan a la BCR o al INTA. Verificar en el informe 
 | Distancia | Línea recta × 1,3 | Distancia por ruta de OSRM |
 | Desvío del viaje real | −10% a +25% del previsto | GPS de camiones |
 | Camiones por día en la demo | 2.600, listos entre las 6 y las 22 h | — |
+
+## Barcos y puerto (módulo 5)
+
+Hay datos publicados todos los días hábiles, aunque sin API. Detalle de fuentes, formatos, índices y umbrales en [INDICES_PUERTO.md](INDICES_PUERTO.md).
+
+- **NABSA, line-up:** `https://www.nabsa.com.ar/assets/vessel_update.pdf`. Tiene puerto, terminal, buque, estado (ETA / ETB / ETF / AT REC / BERTHED), toneladas, producto y destino. Adaptador: `src/infrastructure/barcos/nabsaAdapter.js`, que recibe el texto extraído del PDF.
+- **BCR, "Buques a la carga" y "Posición de camiones":** Excel diario en la sección Información Comercial. El archivo de buques arranca en 2022. Adaptador: `src/infrastructure/barcos/bcrAdapter.js`.
+- **MAGyP y Williams:** alternativas para los camiones a puerto.
+- **INA:** altura del Paraná en Rosario, con reporte diario y series en `alerta.ina.gob.ar`.
+- **aisstream.io:** posición AIS en tiempo real, gratis y en beta. Opcional.

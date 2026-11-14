@@ -91,6 +91,14 @@ Sobre 20 °C el riesgo sube; también influyen la hermeticidad y las roturas. Sa
 
 Estima cuándo habrá barcos para cargar y lo contrasta con la fecha en que el grano llega al puerto. Si llega antes, hay cola y costo de espera, o conviene guardar. Al inicio el calendario de arribos es manual o simulado; el nivel del Paraná (SWOT) puede afectar el calado y el flete fluvial.
 
+**Implementado** (`src/domain/barcos`, `src/domain/venta`, caso de uso `decidirVenta`):
+
+- **Barcos** es independiente: pronostica por día la probabilidad de barco, la espera, la demanda contra lo normal del mes y el calado. Usa el line-up real de **NABSA** o el de la **BCR**, una carga manual o una simulación (adaptadores de `BarcosPort`).
+- **Venta** solo recomienda vender **a puerto** si se cumplen los índices calculados con datos publicados: demanda de los barcos contra oferta de camiones, espera, saturación de descarga, demanda de barcos y nivel del Paraná. Si no, elige acopio o silobolsa. También informa **hasta dónde rinde vender**: ventana de venta, espera máxima, precio disponible mínimo y precio futuro de equilibrio.
+- **Cadetes** recibe la decisión y calcula los camiones o la embolsadora, con la fecha de pedido.
+
+Detalle en [docs/PLAN_BARCOS.md](docs/PLAN_BARCOS.md) y [docs/INDICES_PUERTO.md](docs/INDICES_PUERTO.md).
+
 ### Decisión de venta en el último mes
 
 ```
@@ -144,7 +152,8 @@ flowchart TD
 | Automático y abierto | Clima (NASA POWER), lluvia (GPM IMERG), nivel del Paraná (SWOT), rinde histórico (datos.gob.ar), rutas (OpenStreetMap) | API o precarga |
 | Manual del usuario | Cultivo, ubicación, ha, fechas, maquinaria propia, humedad medida | Formulario |
 | Supuesto editable | Precios de maquinaria, flete, silobolsa, acopio, grano, ha/día por máquina, capacidad del camión | Valores de referencia precargados |
-| Sin fuente abierta | Arribo de barcos, cola de puerto, ubicación de acopios | Manual o simulado |
+| Publicado (sin API) | Line-up de barcos (NABSA), buques a la carga y camiones a puerto (BCR), altura del Paraná (INA) | PDF / Excel diario, parser propio |
+| Sin fuente abierta | Ubicación de acopios | Manual o simulado |
 
 Precios y tarifas son supuestos editables con valores de referencia. Estado real de cada fuente (qué funciona, qué pide cuenta, qué no respondió) en [docs/DATOS.md](docs/DATOS.md).
 
@@ -163,6 +172,12 @@ cd marcianos
 ```bash
 npm test
 ```
+
+```bash
+npm run demo
+```
+
+`demo` corre la decisión de venta (barcos, índices del puerto y cadetes) con datos de mercado publicados la semana del 11/11/2026. Para usar el line-up real de NABSA: `node src/interfaces/cli/demoVenta.js maiz 2026-11-14 <texto del PDF>.txt`.
 
 ```bash
 npm run actualizar-tarifas
@@ -188,7 +203,7 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 ## Pendientes
 
 - Fuente de ubicaciones de acopios, cooperativas y concesionarias.
-- Método de predicción de barcos en el puerto.
+- Calibrar los umbrales de los índices del puerto con la serie histórica de la BCR (desde 2022).
 - Capacidad ha/día por cosechadora y capacidad de la embolsadora.
 - Tarifas vigentes: CATAC, FACMA, embolsado, silo profesional, alquiler de maquinaria.
 - Ciclo en días por cultivo.
@@ -201,3 +216,6 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Arquitectura hexagonal y árbol de carpetas |
 | [docs/DATOS.md](docs/DATOS.md) | Estado de cada dato, supuestos y cifras de referencia |
 | [docs/MAQUINARIA.md](docs/MAQUINARIA.md) | Catálogo de maquinaria, dimensionado y plan de pedido |
+| [docs/PLAN_BARCOS.md](docs/PLAN_BARCOS.md) | Barcos como módulo aparte, decisión de venta y cadetes: flujo, contratos y estado |
+| [docs/MODULO_5_BARCOS.md](docs/MODULO_5_BARCOS.md) | Método de Barcos, Venta y Cadetes, y avisos |
+| [docs/INDICES_PUERTO.md](docs/INDICES_PUERTO.md) | Índices a cumplir para vender a puerto y fuentes de datos de barcos |

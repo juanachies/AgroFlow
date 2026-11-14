@@ -1,0 +1,7 @@
+# Line-up de ejemplo (carga manual). Datos ficticios para la demo.
+buque,puerto,cultivo,toneladas,eta,estado
+MV Ejemplo Uno,gran-rosario,soja,42000,2027-04-20,cargando
+MV Ejemplo Dos,gran-rosario,soja,45000,2027-04-24,anunciado
+MV Ejemplo Tres,gran-rosario,maiz,50000,2027-04-25,anunciado
+MV Ejemplo Cuatro,gran-rosario,soja,38000,2027-05-03,anunciado
+MV Ejemplo Cinco,bahia-blanca,trigo,40000,2027-04-28,anunciado
