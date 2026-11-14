@@ -5,5 +5,7 @@ export * from './domain/maquinaria/index.js';
 export * from './domain/destino/index.js';
 export * from './domain/silobolsa/index.js';
 export * from './domain/venta/index.js';
+export * from './domain/marketplace/index.js';
+export * from './domain/saturacion/index.js';
 export * from './domain/shared/index.js';
 export * from './infrastructure/index.js';

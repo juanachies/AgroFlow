@@ -1,6 +1,8 @@
 # Venta del silobolsa: cuándo embarcar y qué fletes pedir
 
-Módulo independiente. Recibe silobolsas, lecturas del IoT, precios y barcos por puertos; no sabe de dónde vienen. Código: `src/domain/silobolsa`, `src/domain/venta`, casos de uso `evaluarSilobolsa` y `decidirVenta`.
+Módulo independiente. Recibe silobolsas, lecturas del IoT, precios y barcos por puertos; no sabe de dónde vienen.
+
+> En Argentina el buque lo nomina el exportador: elegir barco aplica a acopios y a grandes productores con venta directa. Para el productor típico, la salida útil es **cuándo sacar la bolsa** y el **acopio o canal** cuando no hay barco a tiempo ([FRENTE.md](FRENTE.md)). Código: `src/domain/silobolsa`, `src/domain/venta`, casos de uso `evaluarSilobolsa` y `decidirVenta`.
 
 ## Flujo de la decisión
 

@@ -134,3 +134,42 @@ test('contrato unificado de BarcosPort: campos de venta de silobolsa y de pronó
   assert.equal(milos.arribo, '2026-11-24');
   await assert.rejects(nabsa.calendario('Montevideo', '2026-11-10', '2026-12-31'), /terminal desconocida/);
 });
+
+// Extracto de la tabla "Barcos anunciados" de MAGyP (Bahía Blanca y Necochea con los valores
+// publicados; Rosario y San Lorenzo con valores de ejemplo).
+const MAGYP = [
+  'Barcos anunciados al 02-11-2026',
+  'PUERTO\tMUELLE\tCEBADA\tMAIZ\tSUBPROD\tTRIGO\tSOJA\tSUBPROD PY\tSORGO\tMALTA\tTotal general',
+  'BAHIA BLANCA\tADM AGRO (EX TOEPFER)\t\t131.000\t\t\t65.000\t\t\t\t196.000',
+  '\tCARGILL TERMINAL\t\t28.000\t19.800\t\t\t\t\t9.500\t57.300',
+  'Total BAHIA BLANCA\t\t14.000\t371.000\t19.800\t\t129.000\t\t\t9.500\t543.300',
+  'Total NECOCHEA\t\t10.000\t214.630\t47.000\t40.000\t48.877\t\t\t\t360.507',
+  'Total ROSARIO\t\t\t300.000\t500.000\t100.000\t\t20.000\t\t\t920.000',
+  'Total SAN LORENZO\t\t\t200.000\t900.000\t50.000\t60.000\t35.082\t\t\t1.245.082',
+  'Total general\t\t24.000\t1.085.630\t1.466.800\t190.000\t237.877\t55.082\t\t9.500\t3.068.889',
+].join('\n');
+
+test('MAGyP: toneladas anunciadas por puerto, sin las columnas de Paraguay', async () => {
+  const { parsearAnunciadosMAGyP, programadasDe, conProgramadasMAGyP } = await import('../../src/infrastructure/barcos/magypAdapter.js');
+  const m = parsearAnunciadosMAGyP(MAGYP);
+  assert.equal(m.desde, '2026-11-02');
+  assert.equal(m.hasta, '2026-11-16');
+  assert.deepEqual(m.porPuerto['gran-rosario'], { cebada: 0, maiz: 500000, harinas: 1400000, trigo: 150000, soja: 60000, sorgo: 0, malta: 0 });
+  assert.equal(m.porPuerto['bahia-blanca'].maiz, 371000);
+  assert.equal(m.porPuerto.quequen.soja, 48877);
+  assert.equal(m.totalesPorPuerto['SAN LORENZO'], 1245082);
+  const p = programadasDe(m, 'gran-rosario');
+  assert.equal(p.dias, 15);
+  assert.match(p.fuente, /MAGyP/);
+  assert.throws(() => parsearAnunciadosMAGyP('sin tabla'), /fecha/);
+  assert.throws(() => parsearAnunciadosMAGyP('x', { fecha: '2026-11-02' }), /encabezado/);
+  // Como envoltorio de un BarcosPort: el calendario sigue igual y el mercado trae lo oficial.
+  const base = { origen: 'sim', calendario: async () => ['b'], mercado: async () => ({ otro: 1 }) };
+  const conOficial = conProgramadasMAGyP(base, { texto: MAGYP, camiones: { fecha: '2026-11-02', camiones: { maiz: 2000 } } });
+  assert.deepEqual(await conOficial.calendario(), ['b']);
+  const mercado = await conOficial.mercado('gran-rosario', '2026-11-02');
+  assert.equal(mercado.programadas.toneladas.maiz, 500000);
+  assert.equal(mercado.camiones.camiones.maiz, 2000);
+  assert.equal(mercado.otro, 1);
+  assert.match(conOficial.origen, /MAGyP 2026-11-02/);
+});

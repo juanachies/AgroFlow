@@ -1,5 +1,7 @@
 # Módulos Barcos, Venta y Cadetes: método y uso
 
+> Barcos es un insumo del pronóstico de saturación del puerto y de la venta en cosecha ([MARKETPLACE.md](MARKETPLACE.md), [FRENTE.md](FRENTE.md)).
+
 Implementa **Barcos** (independiente) → **Venta** (vender o silobolsa, hasta dónde rinde) → **Cadetes** (ver [PLAN_BARCOS.md](PLAN_BARCOS.md)). Es código determinista y auditable, sin dependencias. La IA solo explica el resultado.
 
 ## Archivos
