@@ -1,0 +1,13 @@
+{
+  "name": "marcianos",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "update:weather": "node src/interfaces/cli/refreshWeather.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

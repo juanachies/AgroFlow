@@ -1,19 +1,24 @@
 # Datos: qué tenemos y qué no
 
-Estado al 14/11/2026. Para cada dato: si ya funciona, de dónde sale, si pide cuenta y qué módulo del plan lo usa.
+Estado de los conectores al 14/11/2026. El detalle de setup y límites está en [`FUENTES.md`](./FUENTES.md).
 
 ## Resumen
 
 | Dato | Estado | Fuente | Cuenta | Módulo |
 | --- | --- | --- | --- | --- |
-| Lluvia, temperatura, humedad, viento | **Funciona** | NASA POWER | No | 1, 2, 4 |
-| Humedad del suelo superficial | **Funciona** (como sustituto de SMAP) | NASA POWER, parámetro GWETTOP | No | 1, 2 |
-| Evento de lluvia real para la demo | **Funciona** | NASA POWER (mayo 2025) | No | Demo |
-| Lluvia fina (10 km, cada 30 min) | **Bloqueado** desde nuestra red | NASA GPM IMERG | Sí, Earthdata (ya creada y autorizada) | 1 |
-| Humedad del suelo | Sin probar | NASA SMAP | Sí, Earthdata | 1, 2 |
-| Nivel del río Paraná | Sin probar | SWOT (NASA/CNES) | Sí, Earthdata | 5 |
-| Rinde histórico por departamento | Sin probar | datos.gob.ar | No | 1 |
-| Distancias por ruta y geocodificación | Sin probar | OpenStreetMap (OSRM, Nominatim) | No | 2, 3 |
+| Pronóstico horario/diario y humedad modelada de suelo | **Conector implementado; API consultada** | Open-Meteo | No | 1, 2 |
+| Lluvia, temperatura, humedad y viento históricos | **Conector implementado** | NASA POWER | No | 1, 2, 4 |
+| Lluvia satelital fina (10 km, 30 min) | **Conector OPeNDAP; requiere validar credenciales/red local** | NASA GPM IMERG | Sí, Earthdata | 1 |
+| Humedad superficial y de zona radicular | **Búsqueda CMR y descarga HDF5; no rasterizada** | NASA SMAP L4 | Earthdata para descargar | 1, 2 |
+| Contexto histórico del suelo | **Descarga CSV asíncrona; requiere token/términos y posterior ingesta** | Copernicus ERA5-Land | Sí, CDS | 1 |
+| Pronóstico, alertas y precipitación observada | **Conector basado en documentación de prueba; producción sin confirmar** | SMN | Sí, token SMN | 1, 2 |
+| Rinde histórico por departamento | **CKAN conectado; cobertura y campañas dependen del recurso** | datos.gob.ar | No | 1 |
+| Rutas y geocodificación | **Conector implementado con caché y límite Nominatim** | OpenStreetMap (OSRM, Nominatim) | No | 2, 3 |
+| Cota puntual | **Conector implementado** | Open-Meteo Elevation | No | 1, 2 |
+| DEM de mayor detalle | **Descarga GeoTIFF; sin cálculo de pendiente/depresiones** | OpenTopography | Sí, API key | 1, 2 |
+| Productos satelitales ópticos y SAR | **Búsqueda STAC y descarga; sin índices/interpretación** | Copernicus Sentinel-1/2 | Cuenta para descargar | 1 |
+| Cartas de suelo y recomendaciones | **Referencias técnicas, no API automatizada** | INTA / GeoINTA | — | 1, 2 |
+| Nivel del río Paraná | Sin conector | SWOT / INA | Depende del producto | 5 |
 | Localidades de la zona núcleo | **Tenemos** (coordenadas aproximadas) | Lista propia, 16 localidades | — | Demo |
 | Terminales del Gran Rosario | **Tenemos** (coordenadas y capacidades aproximadas) | Lista propia, 6 terminales | — | 2, 5 |
 | Cifras del problema (camiones, silobolsas, flete, bajante) | **Tenemos** (de prensa que cita a BCR e INTA) | Ver "Cifras de referencia" | — | Pitch |
@@ -56,27 +61,47 @@ El escenario de demo usa el de mayo de 2025: en la ventana del 14 al 21 de mayo 
 
 Son valores razonables para la demo, no una norma. Se calibran por zona con productores.
 
-## Lo que está bloqueado o sin probar
+## Limitaciones y procesamiento pendiente
 
 ### NASA GPM IMERG (lluvia fina)
 
 - **Qué da:** lluvia cada 30 minutos, en celdas de 0,1° (~10 km).
 - **Dataset:** GPM_3IMERGHHL v07 (Late, ~14 h de demora). https://gpm.nasa.gov/data/imerg
-- **Cuenta:** Earthdata creada y app "NASA GESDISC DATA ARCHIVE" autorizada.
-- **Problema:** el servidor de datos `gpm1.gesdisc.eosdis.nasa.gov` no responde desde nuestra red (ni Chrome ni curl conectan; el portal `disc.gsfc.nasa.gov` sí). Puede ser la red o una caída.
-- **Peso:** 2,8 MB por archivo global; 8 días son ~1,1 GB. Por eso conviene pedir solo el recorte de la zona núcleo por OPeNDAP:
+- **Conector:** consulta un valor puntual en cada granula por OPeNDAP, evitando descargar archivos globales completos.
+- **Cuenta:** se requiere autenticación Earthdata en `~/.env`.
+- **Límite:** no se validó todavía con credenciales locales. El adaptador permite hasta 72 h por consulta y aplica concurrencia acotada; la latencia del producto puede dejar horas recientes sin publicar.
+- **Referencia de grilla regional** (para depurar consultas OPeNDAP):
 
   ```
   https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGHHL.07/2025/135/3B-HHR-L.MS.MRG.3IMERG.20250515-S000000-E002959.0000.V07B.HDF5.ascii?precipitation[0:0][1164:1200][549:589]
   ```
 
   Índices: longitud −63,5° a −60° = 1164 a 1200; latitud −35° a −31° = 549 a 589. La carpeta `135` es el día del año (15 de mayo). Las horas están en UTC; Argentina es UTC−3.
-- **Plan:** usar NASA POWER y nombrar IMERG en la demo como mejora de resolución. Probar desde otra red si hay tiempo.
+- NASA POWER sigue disponible como alternativa histórica/regional cuando IMERG no está autenticado o accesible.
 
 ### NASA SMAP (humedad del suelo)
 
-- Requiere cuenta Earthdata. No lo probamos.
-- Mientras tanto usamos `GWETTOP` de NASA POWER, que es humedad superficial del suelo del reanálisis.
+- La búsqueda de granulos se realiza por CMR para `SPL4SMGP` versión 008.
+- La descarga HDF5 requiere token Earthdata y el archivo aún no se convierte a valores de humedad.
+- Mientras tanto se muestran como contexto `GWETTOP` de NASA POWER y las capas de humedad de suelo modelada que ofrezca Open-Meteo.
+
+### Copernicus ERA5-Land
+
+- Se implementó el trabajo asíncrono oficial `reanalysis-era5-land-timeseries`, con CSV y selección de variables/área.
+- Requiere token personal CDS y aceptación manual de los términos del dataset.
+- El proceso no declara un selector de fechas en su contrato actual y puede devolver una serie histórica larga; por eso no se ejecuta en cada actualización ni se presenta como medición del lote.
+- El CSV descargado todavía requiere ingesta/filtrado antes de participar en indicadores.
+
+### Sentinel-1/2 y topografía
+
+- Copernicus STAC permite buscar productos por colección, bbox y período. La descarga de activos requiere sesión CDSE.
+- Sentinel-1 no se interpreta directamente como humedad/transitabilidad y Sentinel-2 no se presenta como medición de humedad de suelo.
+- OpenTopography permite descargar un DEM GeoTIFF con API key; aún no se calculan pendientes o depresiones. Para una cota puntual se consulta Open-Meteo Elevation.
+
+### INTA / GeoINTA y SMN
+
+- El conector SMN implementa forecast por coordenadas, alertas, avisos de corto plazo e historial por localidad según el Swagger de prueba. La URL de producción sigue sin confirmación: no se activa hasta configurar explícitamente `SMN_API_BASE_URL`.
+- GeoINTA y las publicaciones de INTA se conservan como referencias técnicas; no se identificó un servicio geoespacial abierto y estable con cobertura comprobada para cualquier lote.
 
 ### SWOT (nivel del río Paraná)
 
@@ -86,11 +111,13 @@ Son valores razonables para la demo, no una norma. Se calibran por zona con prod
 
 ### datos.gob.ar (rinde histórico)
 
-- Series de estimaciones agrícolas por departamento, sin cuenta. No lo probamos. https://datos.gob.ar/dataset?tags=agricultura
+- El conector consulta el recurso CKAN `Estimaciones Agrícolas` sin cuenta y usa rendimiento en kg/ha.
+- La cobertura no está garantizada para cada cultivo/departamento: al 14/11/2026, la consulta verificada de soja en Rosario no tuvo registros recientes. No se reemplaza por promedio provincial/nacional.
 
 ### OpenStreetMap (OSRM y Nominatim)
 
-- Sin cuenta, pero los servidores públicos tienen límites de uso: Nominatim admite ~1 consulta por segundo y pide identificar la app. Conviene guardar en caché las distancias de la zona de demo.
+- Los adaptadores usan Nominatim y OSRM, guardan geocodificaciones/rutas y esperan al menos un segundo entre consultas a Nominatim.
+- Los servidores públicos tienen límites y disponibilidad no garantizada; para uso productivo, identificar la aplicación y contratar/operar un servicio con SLA.
 
 ## Lo que no tiene fuente abierta
 
