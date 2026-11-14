@@ -1,7 +1,18 @@
-import { evaluarRiesgoSilobolsa } from '../../domain/silobolsa/riesgoSilobolsa.js';
+import { evaluarRiesgo } from '../../domain/silobolsa/riesgoSilobolsa.js';
 
-export function evaluarSilobolsa({ humedad = 14, temperatura = 20, mesesGuardado = 0 } = {}) {
-  return evaluarRiesgoSilobolsa({ humedad, temperatura, mesesGuardado });
+/**
+ * Lee el silobolsa y su serie del IoT y calcula el riesgo.
+ * @param {{ silobolsas: import('../ports/SilobolsasPort.js').SilobolsasPort,
+ *   lecturasIot: import('../ports/LecturasIotPort.js').LecturasIotPort,
+ *   tarifas: import('../ports/TarifasPort.js').TarifasPort }} puertos
+ */
+export function crearEvaluarSilobolsa({ silobolsas, lecturasIot, tarifas }) {
+  return async function evaluarSilobolsa(silobolsaId) {
+    const [silobolsa, lecturas, vigentes] = await Promise.all([
+      silobolsas.obtener(silobolsaId),
+      lecturasIot.lecturas(silobolsaId),
+      tarifas.vigentes(),
+    ]);
+    return { silobolsa, riesgo: evaluarRiesgo({ cultivo: silobolsa.cultivo, lecturas }, vigentes) };
+  };
 }
-
-export default evaluarSilobolsa;

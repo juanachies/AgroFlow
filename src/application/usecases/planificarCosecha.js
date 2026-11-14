@@ -1,43 +1,35 @@
-import { calcularVentanaCosecha } from '../../domain/cosecha/ventanaCosecha.js';
-import { lluviaAcumuladaPorPeriodo, diasConLluvia } from '../../domain/clima/diasDeLluvia.js';
-import { corteCaminos } from '../../domain/clima/corteCaminos.js';
+import { serviciosPedidos } from '../../domain/destino/servicios.js';
+import { armarPedidos, costosPorServicio } from '../../domain/maquinaria/pedidos.js';
 
-export function planificarCosecha({
-  lote = {},
-  pronostico = [],
-  cultivo = lote.cultivo ?? 'soja',
-} = {}) {
-  const ventana = calcularVentanaCosecha({
-    fechaSiembra: lote.fechaSiembra ?? '2025-10-15',
-    cultivo,
-    duracionDias: lote.cicloDias,
-  });
-
-  const lluvia7d = lluviaAcumuladaPorPeriodo(pronostico, 7);
-  const diasLluvia = diasConLluvia(pronostico);
-
-  const transitabilidad = pronostico.map((dia) => ({
-    fecha: dia.fecha,
-    lluvia48h: Number(dia.lluvia48h ?? dia.lluviaMm ?? 0),
-    ...corteCaminos({
-      lluvia48h: Number(dia.lluvia48h ?? dia.lluviaMm ?? 0),
-      sueloSaturado: Boolean(dia.sueloSaturado),
-      horasUltimaLluvia: Number(dia.horasUltimaLluvia ?? 0),
-    }),
-  }));
-
-  const recomendacion = lluvia7d > 100
-    ? 'Se recomienda acortar la ventana operativa y controlar el riesgo de falta de piso.'
-    : 'La ventana parece viable con monitoreo de la humedad del suelo y del pronóstico.';
-
-  return {
-    lote,
-    ventana,
-    lluvia7d: Number(lluvia7d.toFixed(2)),
-    diasLluvia,
-    transitabilidad,
-    recomendacion,
+/**
+ * Arma el plan de pedido: qué contratar (cosecha y, si se piden, transporte y almacenaje),
+ * cuánto, cuándo y a qué costo.
+ * @param {{
+ *   tarifas: import('../ports/TarifasPort.js').TarifasPort,
+ *   compararDestinos: ReturnType<typeof import('./compararDestinos.js').crearCompararDestinos>,
+ * }} dependencias
+ */
+export function crearPlanificarCosecha({ tarifas, compararDestinos }) {
+  return async function planificarCosecha(entrada) {
+    const { evaluados, mejor, criterio } = await compararDestinos(entrada);
+    const vigentes = await tarifas.vigentes();
+    const pedidos = armarPedidos(mejor.resultado, entrada.fechaInicioCosecha, vigentes);
+    return {
+      servicios: serviciosPedidos(entrada),
+      toneladas: mejor.resultado.toneladas,
+      urgencia: entrada.urgencia,
+      dias_efectivos: mejor.resultado.dias_efectivos,
+      recomendado: {
+        destino: mejor.destino,
+        tipo: mejor.tipo,
+        criterio,
+        costo_usd: mejor.costo_usd,
+        costo_extraccion_usd: mejor.costo_extraccion_usd,
+        margen_usd: mejor.margen_usd,
+        costos_por_servicio: costosPorServicio(pedidos),
+        pedidos,
+      },
+      alternativas: evaluados.map(({ destino, tipo, costo_usd, margen_usd }) => ({ destino, tipo, costo_usd, margen_usd })),
+    };
   };
 }
-
-export default planificarCosecha;

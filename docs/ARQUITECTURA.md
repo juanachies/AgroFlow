@@ -66,8 +66,8 @@ marcianos/
 │   │   ├── flete/                costoFlete.js
 │   │   ├── destino/              margen.js, comparadorDestinos.js
 │   │   ├── silobolsa/            riesgoSilobolsa.js (tabla INTA por humedad y temperatura)
-│   │   ├── barcos/               colaBuques.js, calado.js
-│   │   └── venta/                decisionVenta.js (vender ahora vs esperar, spread de equilibrio)
+│   │   ├── barcos/               colaBuques.js, calado.js, indicesMercado.js, lineup.js
+│   │   └── venta/                decisionVenta.js (puerto / acopio / silobolsa, hasta dónde rinde), criterios.js (índices a cumplir para vender a puerto)
 │   ├── application/
 │   │   ├── ports/                # contratos (JSDoc): qué necesita la app del mundo
 │   │   │   ├── ClimaPort.js          lluviaHoraria(), temperatura(), humedadSuelo()
@@ -88,12 +88,10 @@ marcianos/
 │   │       ├── explicarRecomendacion.js  # módulo 6
 │   │       └── simularEscenario.js       # "¿y si llueve 10 días más?"
 │   ├── infrastructure/           # adaptadores de salida
-│   │   ├── clima/                Open-Meteo, NASA POWER/IMERG/SMAP, SMN, ERA5-Land
-│   │   ├── terreno/              Open-Meteo Elevation, OpenTopography
-│   │   ├── satellite/            Copernicus STAC (Sentinel-1/2)
-│   │   ├── rinde/                datosGobArAdapter.js
-│   │   ├── rutas/                openStreetMapAdapter.js (Nominatim + OSRM)
-│   │   ├── barcos/               barcosSimuladosAdapter.js, barcosManualAdapter.js
+│   │   ├── clima/                nasaPowerAdapter.js, climaSimuladoAdapter.js
+│   │   ├── rinde/                datosGobArAdapter.js, rindeCsvAdapter.js
+│   │   ├── rutas/                osrmAdapter.js, nominatimAdapter.js, lineaRectaAdapter.js (respaldo: recta × 1,3)
+│   │   ├── barcos/               barcosSimuladosAdapter.js, barcosManualAdapter.js, nabsaAdapter.js, bcrAdapter.js
 │   │   ├── rio/                  nivelRioManualAdapter.js
 │   │   ├── acopios/              acopiosCsvAdapter.js
 │   │   ├── tarifas/              tarifasJsonAdapter.js
