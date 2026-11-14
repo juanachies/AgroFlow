@@ -1,0 +1,14 @@
+{
+  "_nota": "Datos publicados en la semana del 11 al 13/11/2026, cargados a mano para la demo. Las toneladas son el TOTAL de todos los puertos (la tabla de la BCR también trae la columna ROS / SL, que es la que corresponde al Up-River). Los camiones por producto son de zonas portuarias (informe de mercado del 13/11); el total es el ingreso a la zona portuaria de Rosario (BCR).",
+  "programadas": {
+    "desde": "2026-11-11",
+    "hasta": "2026-12-03",
+    "toneladas": { "trigo": 792300, "maiz": 1189733, "soja": 443400, "harinas": 1473250, "aceites": 413613 },
+    "fuente": "BCR 'Buques a la carga' (fuente NABSA), 11/11 al 03/12/2026"
+  },
+  "camiones": {
+    "fecha": "2026-11-13",
+    "camiones": { "maiz": 2559, "soja": 2276, "trigo": 2132, "total": 5068 },
+    "fuente": "BCR 'Posición de camiones' (total Rosario) e informe de mercado del 13/11 (por producto)"
+  }
+}
