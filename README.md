@@ -179,11 +179,23 @@ npm run demo
 
 `demo` corre la decisión de venta (barcos, índices del puerto y cadetes) con datos de mercado publicados la semana del 11/11/2026. Para usar el line-up real de NABSA: `node src/interfaces/cli/demoVenta.js maiz 2026-11-14 <texto del PDF>.txt`.
 
+### Frontend web
+
+La aplicación de planificación está implementada en React/JSX con Vite. Iniciá el servidor local con:
+
+```bash
+npm run dev
+```
+
+En la interfaz podés registrar lotes y sus puntos de referencia, importar límites GeoJSON y cargar snapshots climáticos generados por `npm run update:weather`. Los datos de lotes y snapshots se guardan en IndexedDB del navegador. La app no tiene backend ni consulta APIs con credenciales desde el cliente; los indicadores y capas que todavía no existen se identifican como no disponibles.
+
+El mapa base usa OpenFreeMap/OpenStreetMap y ofrece imágenes de Esri como alternativa, con atribución visible. Para generar una compilación de producción ejecutá `npm run build` (salida en `dist/`).
+
 ```bash
 npm run actualizar-tarifas
 ```
 
-`actualizar-tarifas` trae el dólar oficial y la tabla de flete de CATAC; si una fuente falla, conserva los valores anteriores. El servidor web y la URL pública están *(pendientes)*.
+`actualizar-tarifas` trae el dólar oficial y la tabla de flete de CATAC; si una fuente falla, conserva los valores anteriores. La API/backend y la URL pública siguen pendientes.
 
 Las keys (OpenAI) van en `~/.env`, nunca dentro del proyecto.
 
