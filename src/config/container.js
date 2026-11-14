@@ -6,6 +6,7 @@ import { crearDecidirVentaCosecha } from '../application/usecases/decidirVentaCo
 import { crearEvaluarSilobolsa } from '../application/usecases/evaluarSilobolsa.js';
 import { crearPlanificarCosecha } from '../application/usecases/planificarCosecha.js';
 import { crearSimularPlan, crearConfirmarReservas } from '../application/usecases/simularPlan.js';
+import { crearConsultarSaturacion } from '../application/usecases/consultarSaturacion.js';
 import { crearMarketplaceMemoriaAdapter } from '../infrastructure/marketplace/marketplaceMemoriaAdapter.js';
 import { crearTarifasJsonAdapter } from '../infrastructure/tarifas/tarifasJsonAdapter.js';
 import { crearBarcosSimuladosAdapter } from '../infrastructure/barcos/barcosSimuladosAdapter.js';
@@ -106,6 +107,7 @@ export function crearContenedor({
   // Producto central: simulador (plan + saturación del puerto) y marketplace de cadetes.
   contenedor.simularPlan = crearSimularPlan({ planificarCosecha, marketplace, barcos: adaptadorBarcos, nivelRio });
   contenedor.confirmarReservas = crearConfirmarReservas({ marketplace, tarifas });
+  contenedor.consultarSaturacion = crearConsultarSaturacion({ barcos: adaptadorBarcos, marketplace, nivelRio });
 
   // Venta durante la cosecha según los barcos (puerto si cumple los índices, acopio o silobolsa).
   contenedor.decidirVentaCosecha = crearDecidirVentaCosecha({
@@ -130,6 +132,7 @@ export function crearContenedor({
     usecases: {
       simularPlan: contenedor.simularPlan,
       confirmarReservas: contenedor.confirmarReservas,
+      consultarSaturacion: contenedor.consultarSaturacion,
       compararDestinos: contenedor.compararDestinos,
       planificarCosecha: contenedor.planificarCosecha,
       decidirVentaCosecha: contenedor.decidirVentaCosecha,

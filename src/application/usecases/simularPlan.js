@@ -9,12 +9,11 @@
 //      ventana de entrega sugerida.
 // No reserva nada: devuelve una propuesta. Para reservar, confirmarReservas().
 
-import { analizarBarcos, puertoDeTerminal, ordenar } from '../../domain/barcos/index.js';
-import { pronosticarSaturacion, mejorVentanaDeEntrega } from '../../domain/saturacion/index.js';
+import { puertoDeTerminal, ordenar } from '../../domain/barcos/index.js';
+import { mejorVentanaDeEntrega } from '../../domain/saturacion/index.js';
+import { crearConsultarSaturacion } from './consultarSaturacion.js';
 import { asignarPlan, crearReservas } from '../../domain/marketplace/index.js';
 import { sumarDias, diasEntre } from '../../domain/shared/util.js';
-
-const HORIZONTE_DIAS = 60;
 
 function aviso(tipo, nivel, fecha, mensaje, datos = {}) {
   return { modulo: 'plan', tipo, nivel, fecha, mensaje, datos };
@@ -27,8 +26,9 @@ function aviso(tipo, nivel, fecha, mensaje, datos = {}) {
  *           nivelRio?: import('../ports/NivelRioPort.js').NivelRioPort }} dependencias
  */
 export function crearSimularPlan({ planificarCosecha, marketplace, barcos = null, nivelRio = null }) {
+  const consultarSaturacion = barcos ? crearConsultarSaturacion({ barcos, marketplace, nivelRio }) : null;
   return async function simularPlan(entrada) {
-    const hoy = entrada.hoy ?? entrada.fechaInicioCosecha;
+    const hoy = entrada.hoy ?? entrada.fechaInicioCosecha ?? entrada.fechaSiembra;
     const plan = await planificarCosecha(entrada);
     const rec = plan.recomendado;
     let pedidos = rec.pedidos;
@@ -41,11 +41,7 @@ export function crearSimularPlan({ planificarCosecha, marketplace, barcos = null
     let puerto = null;
     if (barcos && destinoPuerto) {
       puerto = puertoDeTerminal(destinoPuerto.terminal ?? destinoPuerto.nombre ?? 'gran-rosario');
-      const nivelParanaM = entrada.nivelParanaM ?? (nivelRio ? await nivelRio.nivel(hoy).catch(() => null) : null);
-      const lineup = await barcos.calendario(puerto, hoy, sumarDias(hoy, HORIZONTE_DIAS));
-      const analisis = analizarBarcos({ lineup, puerto, cultivo: entrada.cultivo, hoy, horizonteDias: HORIZONTE_DIAS, nivelParanaM });
-      const reservas = await marketplace.reservas({ puerto, desde: hoy, hasta: sumarDias(hoy, HORIZONTE_DIAS) });
-      saturacion = pronosticarSaturacion({ barcos: analisis, reservas, camionesPublicadosDia: entrada.camionesPublicadosDia ?? null, params: entrada.paramsSaturacion });
+      saturacion = await consultarSaturacion({ puerto, cultivo: entrada.cultivo, hoy, nivelParanaM: entrada.nivelParanaM ?? null, camionesPublicadosDia: entrada.camionesPublicadosDia ?? null, params: entrada.paramsSaturacion });
 
       const camion = pedidos.find((p) => p.recurso === 'camión');
       if (rec.tipo === 'puerto' && camion) {
