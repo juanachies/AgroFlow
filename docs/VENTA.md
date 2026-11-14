@@ -18,12 +18,41 @@ flowchart TD
     PRE[Precios: spot y futuros] --> N
     TAR[Tarifas CATAC y camiones] --> N
     N --> E{Riesgo alto?}
+    AC[Acopios del destino] --> VA
     E -->|sí| P[Primer barco que se pueda cargar]
     E -->|no| M[Barco de mayor neto]
     P --> OUT[Barco, fechaCarga, camiones]
     M --> OUT
-    D1 & D2 & D3 -->|ninguno cumple| NB[sin_barco_factible + fechaLimite]
+    D1 & D2 & D3 -->|ninguno cumple| VA{Acopio que llegue antes de fechaLimite?}
+    VA -->|sí| VAC[vender_acopio: acopio de mayor neto y camiones]
+    VA -->|no| NB[sin_barco_factible + fechaLimite]
 ```
+
+### Precio de entrega (curva spot + futuros)
+
+El precio de cada barco ya no es "futuro del mes exacto o spot". Sale de la curva (`src/domain/venta/precios.js`):
+
+```
+base(hoy)          = spot − futuro de la posición más cercana
+precio(fecha)      = F(fecha) + base(fecha)
+  F(fecha)  = futuros interpolados entre posiciones (planos fuera de los extremos)
+  base(fecha) converge linealmente a 0 al vencimiento de la posición cercana
+```
+
+Con spot 300 y diciembre 320, un barco de noviembre cobra entre 300 y 320 (la base −20 se va cerrando), no 300 plano. Cada barco evaluado informa `precioUsdPorT`.
+
+### Vender en acopio si no hay barco a tiempo
+
+Si ningún barco es factible y la entrada trae `acopios` (`entrada.acopios` o `destino.acopios`: `{ nombre, distanciaKm, precioUsdPorT?, descuentoUsdPorT?, tarifaUsdPorT? }`), se evalúa cada acopio:
+- **Fechas:** carga apenas hay camiones (hoy + anticipo) y tiene que salir antes de la fecha límite de riesgo.
+- **Precio:** el precio esperado del puerto menos el descuento del acopio (8 US$/t por defecto), o el precio que informe el acopio.
+- **Costos:** flete CATAC a su distancia, tarifa y secado (6 US$/t por defecto), merma y costo financiero.
+
+Gana el de mayor neto (`vender_acopio`). Si ninguno llega a tiempo, sigue `sin_barco_factible` con `acopiosEvaluados`.
+
+### Barcos reales y por cultivo
+
+`BarcosPort` está unificado con el módulo de barcos: los adaptadores NABSA (line-up real), manual (CSV) y simulado devuelven `arribo` (ETA + demora típica), `cierreCarga` (ETF de NABSA o arribo + estadía) y `toneladasMax`, además del `cultivo`. `decidirVenta` solo considera los barcos del cultivo de la bolsa. Ver [PLAN_BARCOS.md](PLAN_BARCOS.md).
 
 ## Puertos y quién los provee
 
@@ -69,6 +98,7 @@ Si la humedad sube (14 → 15 % en 5 días, +0,2 %/día), el nivel alto llega en
 | CO2: medio / alto | 4 % / 8 % | **Supuesto**: sin fuente abierta con valores concretos |
 | Merma por mes: bajo / medio / alto | 0,1 % / 0,5 % / 2 % | **Supuesto**: a ~2 % de pérdida deja de convenir (INTA Balcarce, MPRA) |
 | Anticipo de camiones | 7 días | `reserva.anticipo_dias.camion` en `tarifas.json` |
+| Descuento y tarifa del acopio | 8 y 6 US$/t | **Supuesto** en `src/domain/venta/supuestos.js`; cada acopio puede informar los suyos |
 
 Todos se editan en `data/tarifas.json` (`silobolsa.por_cultivo.*.umbrales` y `silobolsa.merma_pct_por_mes`).
 
