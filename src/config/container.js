@@ -11,6 +11,7 @@ import { crearTarifasJsonAdapter } from '../infrastructure/tarifas/tarifasJsonAd
 import { crearBarcosSimuladosAdapter } from '../infrastructure/barcos/barcosSimuladosAdapter.js';
 import { crearBarcosManualAdapter } from '../infrastructure/barcos/barcosManualAdapter.js';
 import { crearBarcosNabsaAdapter } from '../infrastructure/barcos/nabsaAdapter.js';
+import { conProgramadasMAGyP } from '../infrastructure/barcos/magypAdapter.js';
 import { crearNivelRioManualAdapter } from '../infrastructure/rio/nivelRioManualAdapter.js';
 import { env } from './env.js';
 import { FileCache } from '../infrastructure/cache/fileCache.js';
@@ -81,17 +82,20 @@ function adaptadorDeBarcos(barcos, { rutaLineup, mercado, simulado }) {
  * @param {object|'simulado'|'manual'|'nabsa'} [opciones.barcos] BarcosPort o modo
  * @param {string} [opciones.rutaLineup]   CSV (manual) o texto extraído del PDF (nabsa)
  * @param {object} [opciones.mercado]      datos BCR de camiones / buques a la carga
+ * @param {string} [opciones.rutaMagyp]    tabla oficial de MAGyP "Barcos anunciados" (TSV/CSV): toneladas programadas
  * @param {number|null} [opciones.nivelParanaM]
  * @param {object} [opciones.fuentes]      adaptadores de clima, suelo, rinde, rutas y satélite
  * @param {object} [opciones.marketplace]  MarketplacePort (por defecto, en memoria con ofertas de ejemplo)
  */
 export function crearContenedor({
   tarifas = crearTarifasJsonAdapter(), silobolsas, lecturasIot, precios, barcos,
-  rutaLineup = null, mercado = null, nivelParanaM = null, fuentes = serviciosFuentes,
+  rutaLineup = null, mercado = null, nivelParanaM = null, fuentes = serviciosFuentes, rutaMagyp = null,
   marketplace = crearMarketplaceMemoriaAdapter(),
 } = {}) {
   const barcosSimulado = crearBarcosSimuladosAdapter({ mercado });
-  const adaptadorBarcos = adaptadorDeBarcos(barcos, { rutaLineup, mercado, simulado: barcosSimulado });
+  const base = adaptadorDeBarcos(barcos, { rutaLineup, mercado, simulado: barcosSimulado });
+  // Fuente oficial: las toneladas programadas salen de MAGyP si se carga su tabla.
+  const adaptadorBarcos = rutaMagyp ? conProgramadasMAGyP(base, { ruta: rutaMagyp, camiones: mercado?.camiones ?? null }) : base;
 
   const nivelRio = crearNivelRioManualAdapter(nivelParanaM);
   // Elegir destino usa los barcos del puerto solo si se pasó un BarcosPort o un modo explícito.
@@ -107,7 +111,7 @@ export function crearContenedor({
   contenedor.decidirVentaCosecha = crearDecidirVentaCosecha({
     barcos: adaptadorBarcos,
     nivelRio,
-    respaldoBarcos: adaptadorBarcos === barcosSimulado ? null : barcosSimulado,
+    respaldoBarcos: base === barcosSimulado ? null : barcosSimulado,
     precios,
   });
 
