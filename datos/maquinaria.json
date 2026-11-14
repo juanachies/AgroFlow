@@ -1,6 +1,10 @@
 {
   "_nota": "Campaña 2025/26, valores más recientes encontrados. Cada bloque dice su fuente y su estado: 'fuente' (publicado), 'estimado' o 'supuesto' (sin fuente, editable). Moneda USD salvo donde se indica ARS.",
   "campana": "2025/26",
+  "reserva": {
+    "_nota": "Días de anticipo con que hay que pedir cada recurso antes del inicio de cosecha. Estado: supuesto, confirmar con contratistas.",
+    "anticipo_dias": { "cosechadora": 15, "tractor_tolva": 10, "camion": 7, "embolsadora": 7, "silobolsa": 10 }
+  },
   "parametros_generales": {
     "horas_utiles_por_dia": 10,
     "velocidad_media_camion_kmh": 60,

@@ -16,6 +16,27 @@ dimensionarCosecha({
 
 Devuelve toneladas, cosechadoras, tractores con tolva, camiones (o silobolsa si el destino es el campo), las alternativas evaluadas y el costo total en USD. Tests: `node --test src/`.
 
+## Plan de pedido (`src/plan.js`)
+
+`planDePedido(entrada)` junta los datos del campo y de los destinos candidatos y devuelve qué pedir, cuánto, cuándo y a qué costo.
+
+Datos requeridos: `ha`, `qqHa`, `cultivo`, `diasDisponibles`, `urgencia`, `fechaInicioCosecha` (AAAA-MM-DD) y `destinos`. Cada destino lleva `tipo` (puerto, acopio o silobolsa) y `distanciaKm` (no hace falta para silobolsa). Opcionales por destino: `nombre`, `precioUsdPorT` y `costoAdicionalUsdPorT` (acopio). `datosFaltantes(entrada)` lista lo que falta; sin eso `planDePedido` falla con `faltan datos: ...`.
+
+Salida:
+- **Destino recomendado:** el de mayor margen neto si todos los destinos traen precio; si no, el de menor costo logístico.
+- **Pedidos:** una línea por recurso (cosechadora, tractor con tolva, camión, o embolsadora y silobolsas) con cantidad, tipo, fecha límite para pedir, período de uso y costo.
+- **Alternativas:** costo y margen de cada destino evaluado.
+
+Ejemplo, 2.000 ha de soja a 35 qq/ha (7.000 t), 20 días, inicio 10/04/2027, urgencia media:
+
+| Pedir | Cantidad | Tipo | Pedir antes del | Usar |
+|---|---|---|---|---|
+| Cosechadora | 3 | grande | 26/03 | 10/04 al 23/04 |
+| Tractor con tolva | 3 | tolva de 25 t | 31/03 | 10/04 al 23/04 |
+| Camión | 14 | bitrén, dedicado por día | 03/04 | 10/04 al 23/04 |
+
+Los anticipos de pedido (15, 10, 7 días) son supuestos editables en `reserva` del JSON. El flete de salida del silobolsa y el costo del acopio por mes no están modelados: el acopio entra como `costoAdicionalUsdPorT`.
+
 ## Urgencia
 
 La urgencia reserva una parte de los días para lluvia y roturas y decide con qué criterio se elige entre las opciones.
