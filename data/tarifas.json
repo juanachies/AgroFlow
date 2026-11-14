@@ -4224,20 +4224,82 @@
     "por_cultivo": {
       "soja": {
         "capacidad_t": 190,
-        "humedad_max_bajo_riesgo": 14
+        "humedad_max_bajo_riesgo": 14,
+        "umbrales": {
+          "humedad": {
+            "medio": 14,
+            "alto": 16
+          },
+          "temperatura": {
+            "medio": 25,
+            "alto": 35
+          },
+          "co2": {
+            "medio": 4,
+            "alto": 8
+          }
+        }
       },
       "maiz": {
         "capacidad_t": 200,
-        "humedad_max_bajo_riesgo": 14
+        "humedad_max_bajo_riesgo": 14,
+        "umbrales": {
+          "humedad": {
+            "medio": 14,
+            "alto": 16
+          },
+          "temperatura": {
+            "medio": 25,
+            "alto": 35
+          },
+          "co2": {
+            "medio": 4,
+            "alto": 8
+          }
+        }
       },
       "trigo": {
         "capacidad_t": 215,
-        "humedad_max_bajo_riesgo": 14
+        "humedad_max_bajo_riesgo": 14,
+        "umbrales": {
+          "humedad": {
+            "medio": 14,
+            "alto": 16
+          },
+          "temperatura": {
+            "medio": 25,
+            "alto": 35
+          },
+          "co2": {
+            "medio": 4,
+            "alto": 8
+          }
+        }
       },
       "girasol": {
         "capacidad_t": 110,
-        "humedad_max_bajo_riesgo": 11
+        "humedad_max_bajo_riesgo": 11,
+        "umbrales": {
+          "humedad": {
+            "medio": 11,
+            "alto": 14
+          },
+          "temperatura": {
+            "medio": 25,
+            "alto": 35
+          },
+          "co2": {
+            "medio": 4,
+            "alto": 8
+          }
+        }
       }
+    },
+    "merma_pct_por_mes": {
+      "_nota": "Supuesto editable: pérdida de peso por mes según nivel de riesgo. Referencia: a ~2% de pérdida la silobolsa deja de convenir frente al acopio (INTA Balcarce, MPRA). Temperatura y CO2: umbrales supuestos, sin fuente abierta con valores concretos; validar con INTA.",
+      "bajo": 0.1,
+      "medio": 0.5,
+      "alto": 2
     }
   },
   "actualizacion": {
