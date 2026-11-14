@@ -24,16 +24,25 @@ export function evaluarDestino(entrada, destino, tarifas) {
     costo_extraccion_usd: extraccion,
     ingreso_usd: ingreso,
     margen_usd: ingreso == null ? null : ingreso - costo,
+    habilitado: destino?.habilitado !== false,
+    ...(destino?.barcos ? { barcos: destino.barcos } : {}),
     resultado,
   };
 }
 
+// Los puertos que no cumplen los índices de barcos (habilitado: false) se descartan,
+// salvo que no quede ningún otro destino.
 export function elegirDestino(evaluados) {
-  if (evaluados.length === 1) return { mejor: evaluados[0], criterio: 'único destino evaluado' };
-  const conPrecio = evaluados.every((e) => e.margen_usd != null);
+  const habilitados = evaluados.filter((e) => e.habilitado !== false);
+  const descartados = evaluados.filter((e) => e.habilitado === false).map((e) => e.destino);
+  const candidatos = habilitados.length > 0 ? habilitados : evaluados;
+  const nota = descartados.length > 0 && habilitados.length > 0 ? `; puerto descartado por índices de barcos: ${descartados.join(', ')}` : '';
+  if (candidatos.length === 1) return { mejor: candidatos[0], criterio: `único destino evaluado${nota}`, descartados };
+  const conPrecio = candidatos.every((e) => e.margen_usd != null);
   const orden = conPrecio ? (a, b) => b.margen_usd - a.margen_usd : (a, b) => a.costo_usd - b.costo_usd;
   return {
-    mejor: [...evaluados].sort(orden)[0],
-    criterio: conPrecio ? 'mayor margen neto' : 'menor costo logístico (faltan precios para calcular margen)',
+    mejor: [...candidatos].sort(orden)[0],
+    criterio: `${conPrecio ? 'mayor margen neto' : 'menor costo logístico (faltan precios para calcular margen)'}${nota}`,
+    descartados,
   };
 }

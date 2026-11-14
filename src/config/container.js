@@ -37,14 +37,16 @@ export function crearContenedor({
   const barcosSimulado = crearBarcosSimuladosAdapter({ mercado });
   const adaptadorBarcos = adaptadorDeBarcos(barcos, { rutaLineup, mercado, simulado: barcosSimulado });
 
-  const compararDestinos = crearCompararDestinos({ tarifas });
+  const nivelRio = crearNivelRioManualAdapter(nivelParanaM);
+  // Elegir destino usa los barcos del puerto solo si se pasó un BarcosPort o un modo explícito.
+  const compararDestinos = crearCompararDestinos({ tarifas, barcos: barcos ? adaptadorBarcos : null, nivelRio });
   const planificarCosecha = crearPlanificarCosecha({ tarifas, compararDestinos });
   const contenedor = { tarifas, compararDestinos, planificarCosecha };
 
   // Venta durante la cosecha según los barcos (puerto si cumple los índices, acopio o silobolsa).
   contenedor.decidirVentaCosecha = crearDecidirVentaCosecha({
     barcos: adaptadorBarcos,
-    nivelRio: crearNivelRioManualAdapter(nivelParanaM),
+    nivelRio,
     respaldoBarcos: adaptadorBarcos === barcosSimulado ? null : barcosSimulado,
     precios,
   });
