@@ -66,7 +66,7 @@ Para levantar la API (el front la consume; documentación en [docs/API.md](docs/
 npm start
 ```
 
-Queda en `http://localhost:3000` (`GET /api/salud`). Si el front está en `src/interfaces/web`, se sirve desde la misma URL.
+Queda en `http://localhost:3000` (`GET /api/salud`). Si el front está compilado en `dist/` (`npm run build`), se sirve desde la misma URL. Para publicarlo: [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
 
 Otros comandos:
 
@@ -95,7 +95,7 @@ Para guardar un pronóstico diario, configurar `LOT_LATITUDE` y `LOT_LONGITUDE` 
 | **Saturación del puerto** | Qué días se satura el puerto y cuándo despachar | `domain/saturacion`, `domain/barcos` | [MARKETPLACE.md](docs/MARKETPLACE.md), [INDICES_PUERTO.md](docs/INDICES_PUERTO.md) |
 | Venta | Vender ya o guardar (spot y futuros), y canal | `domain/venta`, `decidirVentaCosecha` | [VENTA.md](docs/VENTA.md), [PLAN_BARCOS.md](docs/PLAN_BARCOS.md) |
 | Silobolsa | Riesgo por IoT (CO₂, humedad, temperatura) y "sacar y vender" | `domain/silobolsa`, `evaluarSilobolsa`, `decidirVenta` | [VENTA.md](docs/VENTA.md) |
-| IA | Explica la recomendación y responde escenarios; no calcula | *(pendiente)* | [PROYECTO.md](PROYECTO.md) |
+| IA | Explica el plan y responde escenarios "¿y si…?" (lluvia, demora, precio, flete, saturación); no calcula. OpenAI con reintentos y plantilla de respaldo | `domain/ia`, `explicarRecomendacion`, `simularEscenario` | [API.md](docs/API.md) |
 
 Todos los cálculos son código determinista y auditable. Internamente se calcula en toneladas y USD.
 
@@ -110,7 +110,9 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 - [x] API HTTP para el front (`npm start`)
 - [ ] Formulario del lote y vista del plan, desplegado con URL pública
 - [ ] Persistencia del marketplace (base de datos) y alta de proveedores
-- [ ] Explicación con IA y escenarios
+- [x] Explicación con IA y escenarios (OpenAI con respaldo de plantilla)
+- [x] Clima real (Open-Meteo) y distancias por ruta (OSRM) en el simulador
+- [x] API de silobolsas (registro, lecturas del IoT, riesgo y venta) y venta en cosecha
 - [ ] Guion de demo de 2 minutos
 
 ## Pendientes
@@ -128,6 +130,7 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 | [docs/FRENTE.md](docs/FRENTE.md) | Posicionamiento, problema, diferencial frente a lo que existe, barreras y guion de pitch |
 | [docs/MARKETPLACE.md](docs/MARKETPLACE.md) | Marketplace de cadetes, reservas y pronóstico de saturación del puerto |
 | [docs/API.md](docs/API.md) | API HTTP para el front: endpoints, entradas, respuestas y errores |
+| [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md) | URL pública: servidor con pm2 o Docker, variables de entorno y datos reales |
 | [PROYECTO.md](PROYECTO.md) | Plan técnico original: módulos, fórmulas, flujo, datos, reglas del evento |
 | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Arquitectura hexagonal y árbol de carpetas |
 | [docs/DATOS.md](docs/DATOS.md) | Estado de cada dato, supuestos y cifras de referencia |

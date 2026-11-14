@@ -37,6 +37,7 @@ export function responder(res, estado, cuerpo, encabezados = {}) {
 
 // Errores del dominio (RangeError / TypeError: datos faltantes o inválidos) -> 400. El resto -> 500.
 export function responderError(res, error) {
+  if (error?.name === 'DatoNoDisponible') return responder(res, 404, { error: error.message });
   if (error instanceof ErrorHttp) return responder(res, error.estado, { error: error.message, ...(error.detalle ? { detalle: error.detalle } : {}) });
   if (error instanceof RangeError || error instanceof TypeError) return responder(res, 400, { error: error.message });
   console.error(error);

@@ -30,6 +30,7 @@ cargarEnvDelUsuario();
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   openAIApiKey: process.env.OPENAI_API_KEY ?? '',
+  openAIModel: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
   openMeteoBaseUrl: process.env.OPENMETEO_BASE_URL ?? 'https://api.open-meteo.com/v1/forecast',
   powerBaseUrl: process.env.POWER_BASE_URL ?? 'https://power.larc.nasa.gov/api/temporal/hourly/point',
   gpmProductBaseUrl: process.env.GPM_PRODUCT_BASE_URL

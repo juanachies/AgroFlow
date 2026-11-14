@@ -1,50 +1,86 @@
-// Servidor HTTP de AgroFlow:  npm start   (PORT, HOST y CORS_ORIGIN por entorno)
+// Servidor HTTP de AgroFlow:  npm start
 //
-// Arma el contenedor con:
-//   - barcos simulados (o NABSA / CSV si se configuran en el contenedor),
-//   - marketplace en memoria con las ofertas de ejemplo y, salvo AGROFLOW_MERCADO_DEMO=0, reservas
-//     simuladas del resto del mercado con un pico en Gran Rosario a mediados de abril de 2027,
-//   - precios de data/precios-ejemplo.json.
-// Si existe src/interfaces/web, se sirve como front en la misma URL.
+// Variables de entorno (todas opcionales; también se leen de ~/.env):
+//   PORT, HOST, CORS_ORIGIN
+//   OPENAI_API_KEY, OPENAI_MODEL     IA para explicar; sin key se usa la plantilla
+//   AGROFLOW_FUENTES_EXTERNAS=0      apaga pronóstico (Open-Meteo) y rutas (OSRM) en el simulador
+//   AGROFLOW_MERCADO_DEMO=0          sin reservas simuladas del resto del mercado
+//   AGROFLOW_PRECIOS                 JSON de precios (pizarra + futuros); por defecto data/precios-ejemplo.json
+//   AGROFLOW_LINEUP                  line-up real: texto del PDF de NABSA (.txt) o CSV manual (.csv)
+//   AGROFLOW_MAGYP                   tabla oficial "Barcos anunciados" de MAGyP (TSV/CSV)
+//   AGROFLOW_MERCADO                 JSON con { programadas?, camiones? } (BCR / MAGyP del día)
+//
+// Si existe dist/ (front compilado con `npm run build`), se sirve en la misma URL.
 
 import http from 'node:http';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { crearContenedor } from '../../config/container.js';
 import { crearBarcosSimuladosAdapter } from '../../infrastructure/barcos/barcosSimuladosAdapter.js';
 import { crearMarketplaceMemoriaAdapter, simularReservasMercado } from '../../infrastructure/marketplace/marketplaceMemoriaAdapter.js';
 import { crearPreciosManualAdapter } from '../../infrastructure/precios/preciosManualAdapter.js';
+import { crearSilobolsasMemoriaAdapter } from '../../infrastructure/silobolsas/silobolsasMemoriaAdapter.js';
+import { crearLecturasMemoriaAdapter } from '../../infrastructure/iot/lecturasMemoriaAdapter.js';
 import { crearApi } from './app.js';
 import { crearServidorEstatico } from './estatico.js';
 
-const RAIZ_WEB = fileURLToPath(new URL('../web/', import.meta.url));
-const RUTA_PRECIOS = fileURLToPath(new URL('../../../data/precios-ejemplo.json', import.meta.url));
+const RAIZ = new URL('../../../', import.meta.url);
+const DIST = fileURLToPath(new URL('dist/', RAIZ));
+const RUTA_PRECIOS_EJEMPLO = fileURLToPath(new URL('data/precios-ejemplo.json', RAIZ));
 
-export function armarContenedor({ mercadoDemo = true } = {}) {
+/**
+ * @param {{ mercadoDemo?: boolean, fuentesExternas?: boolean, explicador?: object|null|undefined,
+ *           rutaPrecios?: string, rutaLineup?: string|null, rutaMagyp?: string|null, rutaMercado?: string|null }} opciones
+ *   explicador: undefined = OpenAI si hay key; null = solo plantilla.
+ */
+export function armarContenedor({
+  mercadoDemo = true,
+  fuentesExternas = false,
+  explicador = undefined,
+  rutaPrecios = RUTA_PRECIOS_EJEMPLO,
+  rutaLineup = null,
+  rutaMagyp = null,
+  rutaMercado = null,
+} = {}) {
   const reservas = mercadoDemo
     ? simularReservasMercado({ puerto: 'gran-rosario', desde: '2027-03-01', dias: 90, camionesBaseDia: 3800, picos: [{ fecha: '2027-04-14', camionesDia: 7200, ancho: 5 }] })
     : [];
+  const barcos = rutaLineup ? (rutaLineup.endsWith('.csv') ? 'manual' : 'nabsa') : crearBarcosSimuladosAdapter({ semilla: 7 });
   return crearContenedor({
     marketplace: crearMarketplaceMemoriaAdapter({ reservas }),
-    barcos: crearBarcosSimuladosAdapter({ semilla: 7 }),
-    precios: crearPreciosManualAdapter({ ruta: RUTA_PRECIOS }),
+    barcos,
+    rutaLineup,
+    rutaMagyp,
+    mercado: rutaMercado ? JSON.parse(readFileSync(rutaMercado, 'utf8')) : null,
+    precios: crearPreciosManualAdapter({ ruta: rutaPrecios }),
+    silobolsas: crearSilobolsasMemoriaAdapter(),
+    lecturasIot: crearLecturasMemoriaAdapter(),
+    fuentesExternas,
+    ...(explicador === undefined ? {} : { explicador }),
   });
 }
 
 export function crearServidor({ contenedor = armarContenedor(), origenCors = '*', conFront = true } = {}) {
-  const servirEstatico = conFront && existsSync(RAIZ_WEB) ? crearServidorEstatico(RAIZ_WEB) : null;
+  const servirEstatico = conFront && existsSync(`${DIST}index.html`) ? crearServidorEstatico(DIST) : null;
   return http.createServer(crearApi({ contenedor, servirEstatico, origenCors }));
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const puerto = Number(process.env.PORT ?? 3000);
-  const host = process.env.HOST ?? '0.0.0.0';
-  const servidor = crearServidor({
-    contenedor: armarContenedor({ mercadoDemo: process.env.AGROFLOW_MERCADO_DEMO !== '0' }),
-    origenCors: process.env.CORS_ORIGIN ?? '*',
+  const e = process.env;
+  const puerto = Number(e.PORT ?? 3000);
+  const host = e.HOST ?? '0.0.0.0';
+  const contenedor = armarContenedor({
+    mercadoDemo: e.AGROFLOW_MERCADO_DEMO !== '0',
+    fuentesExternas: e.AGROFLOW_FUENTES_EXTERNAS !== '0',
+    rutaPrecios: e.AGROFLOW_PRECIOS ?? RUTA_PRECIOS_EJEMPLO,
+    rutaLineup: e.AGROFLOW_LINEUP ?? null,
+    rutaMagyp: e.AGROFLOW_MAGYP ?? null,
+    rutaMercado: e.AGROFLOW_MERCADO ?? null,
   });
+  const servidor = crearServidor({ contenedor, origenCors: e.CORS_ORIGIN ?? '*' });
   servidor.listen(puerto, host, () => {
-    console.log(`AgroFlow API escuchando en http://${host === '0.0.0.0' ? 'localhost' : host}:${puerto}  (GET /api/salud)`);
+    const front = existsSync(`${DIST}index.html`) ? ' + front (dist/)' : '';
+    console.log(`AgroFlow API${front} en http://${host === '0.0.0.0' ? 'localhost' : host}:${puerto} · IA: ${contenedor.explicador?.origen ?? 'plantilla'}`);
   });
   const cerrar = () => servidor.close(() => process.exit(0));
   process.on('SIGINT', cerrar);
