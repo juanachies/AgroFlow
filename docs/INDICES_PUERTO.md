@@ -1,4 +1,6 @@
-# Vender o no a puerto: índices a cumplir y fuentes de datos
+# Índices del puerto y fuentes de datos de barcos
+
+> Estos índices son **insumos** del producto: alimentan la decisión de destino y el pronóstico de saturación del puerto ([MARKETPLACE.md](MARKETPLACE.md)). El diferencial no es el índice sino el cruce con las reservas propias del marketplace ([FRENTE.md](FRENTE.md)).
 
 El módulo **Venta** solo recomienda vender **a puerto** si el puerto cumple estos índices. Los índices se calculan en **Barcos** con datos publicados. Si el puerto no cumple, Venta elige acopio o silobolsa aunque en el papel el puerto dé más margen.
 
@@ -6,6 +8,7 @@ El módulo **Venta** solo recomienda vender **a puerto** si el puerto cumple est
 
 | Fuente | Qué publica | Formato y frecuencia | Dirección | Uso en el modelo |
 |---|---|---|---|---|
+| **MAGyP**, "Barcos anunciados" (**fuente oficial preferida**) | Toneladas anunciadas por puerto, muelle y producto (line-up NABSA agregado por el Estado) | Tabla web + Excel (`buques_cargados_y_anunciados.xlsx`) | magyp.gob.ar → Mercados Agropecuarios → Logística → Posición de Buques | `parsearAnunciadosMAGyP` / `conProgramadasMAGyP` → toneladas programadas (I1) |
 | **NABSA** (North American Shipping Agencies), line-up | Cada buque por puerto y terminal: estado (ETA / ETB / ETF / AT REC / BERTHED), fecha, operación (carga o descarga), toneladas, producto, destino y cargador | PDF exportado de Excel, días hábiles (circular numerada) | `https://www.nabsa.com.ar/assets/vessel_update.pdf` (versiones anteriores: `vessel_prior1..4.pdf`) | `parsearLineupNABSA` → `nabsaALineup` alimenta el pronóstico de Barcos; `toneladasProgramadas` alimenta el índice I1 |
 | **NABSA**, buques zarpados | Embarques realizados | PDF diario y XLSX histórico | `https://www.nabsa.com.ar/assets/vessels_sailed_update.pdf`, `https://www.nabsa.com.ar/SAILED/` | Calibración: estacionalidad y demora de ETA (pendiente) |
 | **BCR**, "Buques a la carga" | Toneladas programadas por producto (trigo, maíz, soja, harinas, aceites…) y por zona (ROS/SL, Necochea, Bahía Blanca, otros), para unas 3 semanas. Fuente: NABSA | Tabla web + Excel diario (`buques_AAAAMMDD.xls`), archivo desde 2022 | [bcr.com.ar → Información Comercial](https://www.bcr.com.ar/es/mercados/mercado-de-granos/informacion-comercial/informacion-comercial) | `parsearBuquesBCR` → índice I1 (demanda de los barcos) |
@@ -15,7 +18,7 @@ El módulo **Venta** solo recomienda vender **a puerto** si el puerto cumple est
 | **INA**, Instituto Nacional del Agua | Altura del Paraná en Rosario y otras estaciones, con umbrales | PDF diario y series en `alerta.ina.gob.ar/a5/secciones` | [alerta.ina.gob.ar](https://alerta.ina.gob.ar/) | Índice I5 (calado) |
 | **aisstream.io** (opcional) | Posición AIS de buques en tiempo real por WebSocket | Gratis con API key, beta sin SLA, solo desde backend | [aisstream.io](https://aisstream.io) | Fase posterior: ETA propia de los buques en ruta |
 
-> Referencia: el proyecto público `Diegof10/cola-buques-rosario` ingiere NABSA, MAGyP y Williams para un tablero del Up-River. Sirve para comparar enfoques, pero no tiene licencia declarada, así que no se copia código.
+> Existen tableros públicos del Up-River (por ejemplo `Diegof10/cola-buques-rosario`) que muestran colas de buques y camiones con estas mismas fuentes. No reutilizamos su código. Nuestro uso de estos datos es interno: alimentar la decisión del productor y el pronóstico de saturación junto con las reservas propias.
 
 **Cómo entran los datos a la app:**
 1. El PDF de NABSA se descarga y su texto se extrae con `pdf-parse` en el servidor, para pasarlo a `parsearLineupNABSA`.

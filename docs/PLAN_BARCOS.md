@@ -1,5 +1,7 @@
 # Plan: Barcos como módulo aparte para decidir vender o silobolsa
 
+> **Frente actual:** Barcos es un **insumo interno del pronóstico de saturación del puerto** ([MARKETPLACE.md](MARKETPLACE.md)) y de la venta en cosecha. No se comunica como "predicción de barcos" ([FRENTE.md](FRENTE.md)). La fuente preferida para la demanda de los barcos es la tabla oficial de MAGyP (`infrastructure/barcos/magypAdapter.js`).
+
 **Barcos** es un módulo independiente: solo predice barcos y entrega una señal. **Venta** usa esa señal para decidir si vender (a puerto o acopio) o mandar a silobolsa, y calcula **hasta dónde rinde** vender. **Cadetes** recibe la decisión y dice qué maquinaria pedir, cuánta, cuándo y adónde.
 
 ## 1. Flujo
