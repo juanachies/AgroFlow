@@ -1,0 +1,105 @@
+{
+  "_nota": "Valores de ejemplo para estimar. No son tarifas vigentes: el usuario los edita. Moneda USD. Rendimientos expresados para soja con 10 horas útiles por día.",
+  "parametros_generales": {
+    "horas_utiles_por_dia": 10,
+    "velocidad_media_camion_kmh": 60,
+    "rinde_soja_t_ha_ejemplo": 3.5
+  },
+  "cosechadoras": [
+    {
+      "id": "cosechadora-chica",
+      "descripcion": "Cosechadora de 180 a 220 CV, plataforma de 7 a 9 m",
+      "ha_por_dia": 25,
+      "costo_usd_por_ha": 95
+    },
+    {
+      "id": "cosechadora-mediana",
+      "descripcion": "Cosechadora de 240 a 300 CV, plataforma de 9 a 12 m",
+      "ha_por_dia": 35,
+      "costo_usd_por_ha": 90
+    },
+    {
+      "id": "cosechadora-grande",
+      "descripcion": "Cosechadora de más de 300 CV, plataforma de 12 a 14 m",
+      "ha_por_dia": 50,
+      "costo_usd_por_ha": 85
+    }
+  ],
+  "tractores_con_tolva": [
+    {
+      "id": "tractor-tolva-18t",
+      "descripcion": "Tractor de 150 CV con tolva autodescargable de 18 t",
+      "capacidad_t": 18,
+      "costo_usd_por_hora": 40
+    },
+    {
+      "id": "tractor-tolva-25t",
+      "descripcion": "Tractor de 200 CV con tolva autodescargable de 25 t",
+      "capacidad_t": 25,
+      "costo_usd_por_hora": 50
+    },
+    {
+      "id": "tractor-tolva-30t",
+      "descripcion": "Tractor de 250 CV con tolva autodescargable de 30 t",
+      "capacidad_t": 30,
+      "costo_usd_por_hora": 60
+    }
+  ],
+  "camiones": [
+    {
+      "id": "camion-chasis",
+      "descripcion": "Camión chasis simple",
+      "capacidad_t": 15,
+      "carga_h": 0.4,
+      "descarga_h": 0.6,
+      "costo_usd_por_t_km": 0.11,
+      "costo_usd_por_dia_contrato": 250
+    },
+    {
+      "id": "camion-semi",
+      "descripcion": "Semirremolque",
+      "capacidad_t": 30,
+      "carga_h": 0.5,
+      "descarga_h": 0.75,
+      "costo_usd_por_t_km": 0.094,
+      "costo_usd_por_dia_contrato": 350
+    },
+    {
+      "id": "camion-bitren",
+      "descripcion": "Bitrén",
+      "capacidad_t": 40,
+      "carga_h": 0.6,
+      "descarga_h": 0.9,
+      "costo_usd_por_t_km": 0.085,
+      "costo_usd_por_dia_contrato": 450
+    }
+  ],
+  "embolsadoras": [
+    {
+      "id": "embolsadora-chica",
+      "descripcion": "Embolsadora para bolsa de 9 pies",
+      "t_por_hora": 150,
+      "costo_usd_por_t": 3
+    },
+    {
+      "id": "embolsadora-grande",
+      "descripcion": "Embolsadora de alto rendimiento",
+      "t_por_hora": 250,
+      "costo_usd_por_t": 3
+    }
+  ],
+  "silobolsa": {
+    "descripcion": "Bolsa de 9 pies por 60 m",
+    "capacidad_t": 200,
+    "costo_usd_por_t_bolsa": 5,
+    "costo_usd_por_t_extraccion": 3
+  },
+  "extractoras": [
+    {
+      "id": "extractora-estandar",
+      "descripcion": "Extractora de silobolsa",
+      "t_por_hora": 150,
+      "costo_usd_por_t": 3
+    }
+  ]
+}
