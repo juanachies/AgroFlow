@@ -46,6 +46,7 @@ export function simularReservasMercado({ puerto, desde, dias, camionesBaseDia, p
 
 export function crearMarketplaceMemoriaAdapter({ ofertas = null, rutaOfertas = RUTA_OFERTAS, reservas = [] } = {}) {
   const catalogo = (ofertas ?? JSON.parse(readFileSync(rutaOfertas, 'utf8')).ofertas).map(validarOferta);
+  let secuencia = catalogo.length;
   const confirmadas = [...reservas];
   return {
     async ofertas({ desde, hasta, recurso } = {}) {
@@ -54,6 +55,12 @@ export function crearMarketplaceMemoriaAdapter({ ofertas = null, rutaOfertas = R
     async reservas({ desde, hasta, puerto } = {}) {
       const enRango = desde && hasta ? reservasEnRango(confirmadas, desde, hasta) : confirmadas;
       return enRango.filter((r) => !puerto || r.puerto === puerto);
+    },
+    async publicar(oferta) {
+      const nueva = validarOferta({ ...oferta, id: oferta.id ?? `of-${String(++secuencia).padStart(3, '0')}` });
+      if (catalogo.some((o) => o.id === nueva.id)) throw new RangeError(`la oferta ${nueva.id} ya existe`);
+      catalogo.push(nueva);
+      return nueva;
     },
     async reservar(nuevas) {
       const ids = new Set(confirmadas.map((r) => r.id));

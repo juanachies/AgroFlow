@@ -60,6 +60,14 @@ npm run demo
 
 `demo` recorre el producto completo con un lote de soja cerca de Pergamino en el pico de abril: destino por margen neto, saturación del puerto día por día, corrimiento del despacho para evitar la cola, asignación del pedido a proveedores del marketplace (ficticios) y confirmación de reservas.
 
+Para levantar la API (el front la consume; documentación en [docs/API.md](docs/API.md)):
+
+```bash
+npm start
+```
+
+Queda en `http://localhost:3000` (`GET /api/salud`). Si el front está en `src/interfaces/web`, se sirve desde la misma URL.
+
 Otros comandos:
 
 ```bash
@@ -99,6 +107,7 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 
 - [x] Simulador: destino por margen neto, plan de pedido, venta y saturación del puerto
 - [x] Marketplace de cadetes: asignación y reservas (en memoria)
+- [x] API HTTP para el front (`npm start`)
 - [ ] Formulario del lote y vista del plan, desplegado con URL pública
 - [ ] Persistencia del marketplace (base de datos) y alta de proveedores
 - [ ] Explicación con IA y escenarios
@@ -118,6 +127,7 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 | --- | --- |
 | [docs/FRENTE.md](docs/FRENTE.md) | Posicionamiento, problema, diferencial frente a lo que existe, barreras y guion de pitch |
 | [docs/MARKETPLACE.md](docs/MARKETPLACE.md) | Marketplace de cadetes, reservas y pronóstico de saturación del puerto |
+| [docs/API.md](docs/API.md) | API HTTP para el front: endpoints, entradas, respuestas y errores |
 | [PROYECTO.md](PROYECTO.md) | Plan técnico original: módulos, fórmulas, flujo, datos, reglas del evento |
 | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Arquitectura hexagonal y árbol de carpetas |
 | [docs/DATOS.md](docs/DATOS.md) | Estado de cada dato, supuestos y cifras de referencia |

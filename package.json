@@ -6,6 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "start": "node src/interfaces/http/server.js",
     "test": "node --test \"tests/**/*.test.js\"",
     "demo:flujo": "node src/interfaces/cli/demoFlujo.js",
     "actualizar-tarifas": "node src/infrastructure/tarifas/actualizarTarifas.js",

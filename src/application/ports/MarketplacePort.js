@@ -15,6 +15,7 @@
  * @property {(filtro: { desde: string, hasta: string, recurso?: string }) => Promise<Oferta[]>} ofertas
  * @property {(filtro: { desde: string, hasta: string, puerto?: string }) => Promise<Reserva[]>} reservas
  * @property {(reservas: Reserva[]) => Promise<Reserva[]>} reservar
+ * @property {(oferta: Oferta) => Promise<Oferta>} [publicar]  alta de un proveedor (id opcional)
  * @property {string} [origen]
  */
 export {};

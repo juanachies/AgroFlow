@@ -110,10 +110,11 @@ marcianos/
 │   │   └── http.js               timeout, reintentos y normalización de observaciones
 │   ├── interfaces/               # adaptadores de entrada
 │   │   ├── cli/                  refreshWeather.js (snapshot meteorológico diario)
-│   │   ├── http/
-│   │   │   ├── server.js
-│   │   │   ├── routes/           plan.js, destinos.js, silobolsa.js, venta.js, explicar.js
-│   │   │   └── validacion.js
+│   │   ├── http/                 # API para el front (docs/API.md), sin dependencias
+│   │   │   ├── server.js         npm start: arma el contenedor y escucha en PORT
+│   │   │   ├── app.js            rutas /api/* (simular, reservas, ofertas, saturacion, salud, ejemplo)
+│   │   │   ├── estatico.js       sirve src/interfaces/web si existe
+│   │   │   └── validacion.js     JSON, errores y parámetros
 │   │   └── web/                  index.html, app.js, styles.css
 │   └── config/
 │       ├── container.js          # arma los casos de uso con sus adaptadores
