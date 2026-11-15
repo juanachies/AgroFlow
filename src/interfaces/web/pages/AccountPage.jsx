@@ -37,7 +37,7 @@ function FieldForm({ profile, onSave, onCancel }) {
   );
 }
 
-export default function AccountPage({ user, account, onAccountChange, onSignOut }) {
+export default function AccountPage({ user, account, onAccountChange, onSignOut, guest = false }) {
   const [editing, setEditing] = useState(false);
   const [addingField, setAddingField] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -88,6 +88,22 @@ export default function AccountPage({ user, account, onAccountChange, onSignOut 
     } finally {
       setBusy(false);
     }
+  }
+
+  if (guest) {
+    return (
+      <div className="account-page">
+        <div className="page-intro">
+          <div>
+            <span className="eyebrow">TU PERFIL</span>
+            <h2>Modo invitado</h2>
+          </div>
+        </div>
+        <div className="app-alert" role="status">
+          Cuentas no configuradas: estás usando AgroFlow en modo invitado. Los lotes se guardan en este navegador.
+        </div>
+      </div>
+    );
   }
 
   return (

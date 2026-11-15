@@ -43,6 +43,11 @@ export const api = {
   ofertas: (params = {}) => pedir(`/api/ofertas${query(params)}`),
   publicarOferta: (oferta) => pedir('/api/ofertas', { metodo: 'POST', cuerpo: oferta }),
   saturacion: (params) => pedir(`/api/saturacion${query(params)}`),
+  silobolsas: () => pedir('/api/silobolsas'),
+  registrarSilobolsa: (datos) => pedir('/api/silobolsas', { metodo: 'POST', cuerpo: datos }),
+  cargarLecturas: (id, lecturas) => pedir(`/api/silobolsas/${encodeURIComponent(id)}/lecturas`, { metodo: 'POST', cuerpo: { lecturas } }),
+  riesgoSilobolsa: (id) => pedir(`/api/silobolsas/${encodeURIComponent(id)}/riesgo`),
+  venderSilobolsa: (id, datos) => pedir(`/api/silobolsas/${encodeURIComponent(id)}/venta`, { metodo: 'POST', cuerpo: datos }),
 };
 
 // Valores de referencia editables para precargar el formulario (USD/t y qq/ha). No son cotizaciones.

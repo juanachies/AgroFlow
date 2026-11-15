@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
-  Activity, CalendarRange, ChartNoAxesCombined, CloudSun, House, Map as MapIcon, Moon, Plus, Route,
+  Activity, CalendarRange, ChartNoAxesCombined, CloudSun, House, Map as MapIcon, Moon, Package, Plus, Route,
   Sprout, Store, Sun, UserRound, Wheat,
 } from 'lucide-react';
 import ChatBubble from './components/ChatBubble.jsx';
@@ -26,6 +26,7 @@ import { api } from './lib/api.js';
 import { useTheme } from './lib/theme.js';
 import AccountPage from './pages/AccountPage.jsx';
 import MarketplacePage from './pages/MarketplacePage.jsx';
+import SilobolsasPage from './pages/SilobolsasPage.jsx';
 
 const MapView = lazy(() => import('./components/MapView.jsx'));
 const PlanDespacho = lazy(() => import('./components/PlanDespacho.jsx'));
@@ -37,6 +38,7 @@ const PAGES = [
   { id: 'technical', label: 'Análisis técnico', icon: ChartNoAxesCombined, group: 'campo' },
   { id: 'despacho', label: 'Plan y despacho', icon: Route, group: 'red' },
   { id: 'marketplace', label: 'Marketplace', icon: Store, group: 'red' },
+  { id: 'silobolsas', label: 'Silobolsas', icon: Package, group: 'red' },
   { id: 'account', label: 'Cuenta', icon: UserRound, group: 'cuenta' },
 ];
 
@@ -511,7 +513,7 @@ function TechnicalPage({ lot, snapshotRecord }) {
   );
 }
 
-export function WorkspaceApp({ user, account, onAccountChange, onSignOut }) {
+export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest = false }) {
   const [page, setPage] = useState('summary');
   const [lots, setLots] = useState([]);
   const [snapshots, setSnapshots] = useState({});
@@ -634,7 +636,8 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut }) {
               {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
               {page === 'marketplace' && <MarketplacePage lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
-              {page === 'account' && <AccountPage user={user} account={account} onAccountChange={onAccountChange} onSignOut={onSignOut} />}
+              {page === 'silobolsas' && <SilobolsasPage lots={lots} />}
+              {page === 'account' && <AccountPage user={user} account={account} onAccountChange={onAccountChange} onSignOut={onSignOut} guest={guest} />}
             </Suspense>
           </div>
         )}

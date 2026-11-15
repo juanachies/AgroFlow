@@ -6,20 +6,16 @@ import AuthPage from './pages/AuthPage.jsx';
 import { WorkspaceApp } from './App.jsx';
 import './styles.css';
 
+const USUARIO_INVITADO = { id: 'invitado', name: 'Invitado', email: '' };
+
+const CUENTA_INVITADO = {
+  profile: { displayName: 'Invitado', role: 'productor', phone: '' },
+  fields: [],
+  offering: null,
+};
+
 function Loading({ message }) {
   return <main className="loading-state" role="status">{message}</main>;
-}
-
-function ConfigurationError() {
-  return (
-    <main className="auth-page auth-page--centered">
-      <section className="panel auth-config-error" role="alert">
-        <span className="eyebrow">CONFIGURACIÓN PENDIENTE</span>
-        <h1>No se configuró Neon Auth</h1>
-        <p>Revisá la variable <code>NEON_AUTH_BASE_URL</code> en el entorno de Vercel o en el archivo local ignorado por Git.</p>
-      </section>
-    </main>
-  );
 }
 
 function AccountSetup({ user, onCreated, onSignOut }) {
@@ -56,12 +52,13 @@ function AccountSetup({ user, onCreated, onSignOut }) {
   );
 }
 
-function SignedInApp({ user, onSignOut, signOutError, onClearSignOutError }) {
-  const [account, setAccount] = useState(null);
-  const [loading, setLoading] = useState(true);
+function SignedInApp({ user, guest = false, onSignOut, signOutError, onClearSignOutError }) {
+  const [account, setAccount] = useState(guest ? CUENTA_INVITADO : null);
+  const [loading, setLoading] = useState(!guest);
   const [error, setError] = useState('');
 
   const loadAccount = useCallback(async () => {
+    if (guest) return;
     setLoading(true);
     setError('');
     try {
@@ -71,11 +68,11 @@ function SignedInApp({ user, onSignOut, signOutError, onClearSignOutError }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [guest]);
 
   useEffect(() => {
-    loadAccount();
-  }, [loadAccount]);
+    if (!guest) loadAccount();
+  }, [guest, loadAccount]);
 
   if (loading) return <Loading message="Cargando tu perfil seguro…" />;
   if (error) {
@@ -109,6 +106,7 @@ function SignedInApp({ user, onSignOut, signOutError, onClearSignOutError }) {
       <WorkspaceApp
         user={user}
         account={account}
+        guest={guest}
         onAccountChange={setAccount}
         onSignOut={onSignOut}
       />
@@ -155,7 +153,17 @@ export default function AuthenticatedApp() {
   }
 
   if (loading) return <Loading message="Verificando sesión…" />;
-  if (!authClient) return <ConfigurationError />;
+  if (!authClient) {
+    return (
+      <SignedInApp
+        user={USUARIO_INVITADO}
+        guest
+        onSignOut={() => {}}
+        signOutError=""
+        onClearSignOutError={() => {}}
+      />
+    );
+  }
   if (authError) {
     return (
       <main className="auth-page auth-page--centered">
