@@ -48,7 +48,7 @@ export const accountApi = {
   deleteField: (id) => request(`/api/fields?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
   getOffering: () => request('/api/offering'),
   saveOffering: (offering) => request('/api/offering', { method: 'PUT', body: offering }),
-  listServiceOfferings: (serviceType = '') => request(`/api/service-offerings${serviceType ? `?serviceType=${encodeURIComponent(serviceType)}` : ''}`),
+  listServiceOfferings: (fieldId = '') => request(`/api/service-offerings${fieldId ? `?fieldId=${encodeURIComponent(fieldId)}` : ''}`),
   listServiceRequests: () => request('/api/service-requests'),
   createServiceRequest: (serviceRequest) => request('/api/service-requests', { method: 'POST', body: serviceRequest }),
   submitServiceQuote: (id, quote) => request(`/api/service-requests?id=${encodeURIComponent(id)}`, {
