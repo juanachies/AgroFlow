@@ -181,7 +181,7 @@ export default function AuthenticatedApp() {
       </main>
     );
   }
-  if (!authClient || !session) return <AuthPage onAuthenticated={setSession} onGuest={() => setVisitante(true)} />;
+  if (!authClient || !session) return <AuthPage onAuthenticated={setSession} onGuest={(tipo) => setVisitante(tipo === 'prestador' ? 'prestador' : 'productor')} />;
   return (
     <SignedInApp
       user={session.user}
