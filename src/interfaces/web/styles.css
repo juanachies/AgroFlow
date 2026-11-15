@@ -955,3 +955,55 @@ input[type='checkbox'] { width: 18px; min-height: 18px; height: 18px; accent-col
 .alm-alerta--alerta { background: #fef3c7; color: #78350f; }
 .alm-alerta--critico { background: #fee2e2; color: #7f1d1d; }
 @media (max-width: 980px) { .alm-cuerpo { grid-template-columns: 1fr; } }
+
+/* ---------- Economía de la campaña ---------- */
+.eco { display: grid; gap: 18px; }
+.eco-versus { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.eco-card { display: grid; gap: 14px; align-content: start; padding: 18px; border: 1px solid var(--border); border-top: 5px solid var(--tone); border-radius: 18px; background: var(--surface); }
+.eco-card--rapida { --tone: #2563eb; }
+.eco-card--grande { --tone: #16a34a; }
+.eco-card header { display: flex; gap: 12px; align-items: center; }
+.eco-card h4 { margin: 2px 0 0; font-size: 16px; }
+.eco-card-icono { display: grid; flex: none; width: 36px; height: 36px; place-items: center; border-radius: 10px; color: #fff; background: var(--tone, #64748b); }
+.eco-total { display: grid; gap: 2px; }
+.eco-total strong { font-size: 32px; line-height: 1.1; color: var(--tone); }
+.eco-total span { color: var(--text-2); font-size: 13px; }
+.eco-fechas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 0; }
+.eco-fechas div { display: grid; gap: 1px; }
+.eco-fechas dt { color: var(--text-3); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.eco-fechas dd { margin: 0; font-size: 13px; font-weight: 600; }
+.eco-riesgo { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; color: var(--text-2); font-size: 13px; }
+.eco-merma { display: inline-flex; gap: 5px; align-items: center; }
+.eco-dinero { display: grid; gap: 10px; }
+.eco-barra { display: flex; height: 16px; overflow: hidden; border-radius: 999px; background: var(--surface-2); }
+.eco-barra span { display: block; height: 100%; }
+.eco-desglose { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.eco-desglose li { display: grid; grid-template-columns: 12px 1fr auto auto; gap: 8px; align-items: center; font-size: 13px; }
+.eco-desglose li i { width: 10px; height: 10px; border-radius: 3px; }
+.eco-desglose li small { min-width: 92px; color: var(--text-3); text-align: right; }
+.eco-desglose li.is-neta { padding-top: 6px; border-top: 1px dashed var(--border-strong); font-weight: 700; }
+.eco-delta.is-igual { background: var(--surface-2); }
+.eco-subtitulo { margin: 0 0 10px; font-size: 15px; }
+.eco-ahorros { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.eco-ahorro { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
+.eco-ahorro > div { display: grid; gap: 3px; min-width: 0; }
+.eco-ahorro strong { color: var(--primary); font-size: 17px; }
+.eco-ahorro small { color: var(--text-2); font-size: 12px; line-height: 1.4; }
+.eco-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.eco-col { display: grid; gap: 8px; align-content: start; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.eco-col.is-elegida { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 28%, transparent); }
+.eco-col header { display: flex; gap: 8px; align-items: center; }
+.eco-col header h4 { flex: 1; margin: 0; font-size: 15px; }
+.eco-col-neta { font-size: 24px; line-height: 1.1; }
+.eco-col-qq { color: var(--text-2); font-size: 12px; }
+.eco-col ul { display: grid; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; }
+.eco-col li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.eco-col li span { color: var(--text-3); }
+.eco-col li b { text-align: right; }
+.eco-pos { color: var(--primary); }
+.eco-silo { display: grid; gap: 4px; padding-top: 8px; border-top: 1px dashed var(--border-strong); }
+.eco-silo p { margin: 0; color: var(--text-2); font-size: 12px; line-height: 1.45; }
+.eco-curva { width: 100%; height: 64px; }
+.eco-curva-linea { fill: none; stroke: #0d9488; stroke-width: 2; }
+.eco-curva-ref { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 4 3; }
+.eco-curva circle { fill: #0d9488; }

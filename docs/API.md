@@ -164,6 +164,13 @@ Misma entrada que `/api/simular`. Devuelve la simulación completa más `decisio
 - `transporte`: desde, hasta, destino, camiones, fecha límite de reserva y días de puerto saturado (`null` si el destino es silobolsa).
 - `almacenaje`: `silobolsa`, `acopio` o `directo al puerto`, con toneladas, bolsas y días de espera en el campo.
 - `almanaque`: un registro por día con clima, rango de cosecha, rango de transporte, día de reserva y saturación; `diasClave`, `alertas` y `resumen`.
+- `economia` (si la entrada trae `destinos` con precio): cuánto gana el productor, en USD y por quintal.
+  - `rapida`: cosechar y cobrar lo antes posible (urgencia alta, primer inicio sin lluvia fuerte, primer barco con al menos 50 % de probabilidad de llegar).
+  - `grande`: la mayor ganancia neta entre varias combinaciones de urgencia y fecha de cosecha (incluida la rápida), exigiendo 80 % de probabilidad de llegar al barco. Nunca rinde menos que `rapida`; si coinciden, `comparacion.coinciden` es `true`.
+  - Cada estrategia trae `elegida` y `modalidades` (`puerto`, `acopio`, `silobolsa`) con ingreso bruto, costos (cosecha, transporte, almacenaje, espera, riesgo de perder el barco, financiero), merma (cosecha, manipuleo, almacenaje) en % / qq / USD, ganancia bruta y neta, `porQq` y `riesgo.probLlegar`. La silobolsa agrega `curvaSilobolsa` (de 1 a 6 meses) y `silobolsa.mesesParaMejorar` / `extraVsVenderYaUSD`.
+  - `comparacion`: ganancia extra de `grande` sobre `rapida` y el ahorro de cada decisión (`cosecha`, `transporte`, `almacenaje`).
+  - Cada estrategia trae su `simulacionId`, que se confirma con `POST /api/reservas`.
+  - Los supuestos (costo financiero, mermas, espera) salen en `supuestos` y son editables; los precios vienen de `data/precios-ejemplo.json` (valores ilustrativos).
 - Con `simulacionId` se puede confirmar con `POST /api/reservas`.
 
 ### `POST /api/explicar`

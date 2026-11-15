@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Anchor, Package, Sprout, Star, Truck, Wheat } from 'lucide-react';
 import Almanaque from './Almanaque.jsx';
+import EconomiaCampana from './EconomiaCampana.jsx';
 import LogisticsMap, { CAPAS } from './LogisticsMap.jsx';
 import { Avisos, Destinos, formularioInicial, Pedido, Saturacion } from './PlanDespacho.jsx';
 import { api, armarEntrada } from '../lib/api.js';
@@ -308,6 +309,8 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
       </div>
 
       {sim?.decision && <Almanaque decision={sim.decision} nombreLote={selectedLot?.name} />}
+      {sim?.decision?.economia && <EconomiaCampana economia={sim.decision.economia} nombreLote={selectedLot?.name} />}
+      {sim?.decision?.errorEconomia && <div className="pd-aviso pd-aviso--alerta"><strong>No se pudo estimar la ganancia</strong> {sim.decision.errorEconomia}</div>}
 
       <div className="cl-two">
         <FleterosPanel cercanos={cercanos} resumen={resumen} cargado={ofertas !== false} />
