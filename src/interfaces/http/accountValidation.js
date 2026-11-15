@@ -13,6 +13,11 @@ const PRICE_UNITS = new Set([
   'por_hora',
 ]);
 const CAPACITY_UNITS = new Set(['toneladas', 'hectareas_dia', 'hectareas', 'metros_cubicos']);
+const CARGO_TYPES = new Set(['granos', 'insumos', 'maquinaria', 'otros']);
+const CROPS = new Set(['soja', 'maiz', 'trigo', 'girasol']);
+const STORAGE_TYPES = new Set(['silo_bolsa', 'silo_fijo', 'deposito', 'celda']);
+const MACHINERY_ACTIVITIES = new Set(['cosecha', 'siembra', 'pulverizacion', 'labranza', 'embolsado']);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function text(value, field, { required = true, max = 120 } = {}) {
   if (value == null && !required) return null;
@@ -41,6 +46,52 @@ function validDate(value, field) {
     throw new ErrorHttp(400, `${field} no es una fecha válida`);
   }
   return value;
+}
+
+function object(value, field) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ErrorHttp(400, `${field} tiene que ser un objeto`);
+  }
+  return value;
+}
+
+function enumList(value, field, allowed) {
+  if (value == null) return [];
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string' || !allowed.has(item))) {
+    throw new ErrorHttp(400, `${field} contiene opciones inválidas`);
+  }
+  return [...new Set(value)];
+}
+
+function boolean(value, field, fallback = false) {
+  if (value == null) return fallback;
+  if (typeof value !== 'boolean') throw new ErrorHttp(400, `${field} tiene que ser verdadero o falso`);
+  return value;
+}
+
+function uuid(value, field) {
+  if (typeof value !== 'string' || !UUID.test(value)) throw new ErrorHttp(400, `${field} no es válido`);
+  return value;
+}
+
+export function validarDetallesOferta(serviceType, value = {}) {
+  const details = object(value, 'los detalles del servicio');
+  if (serviceType === 'transporte') {
+    return { loadTypes: enumList(details.loadTypes, 'los tipos de carga', CARGO_TYPES) };
+  }
+  if (serviceType === 'almacenamiento') {
+    const storageTypes = enumList(details.storageTypes, 'los tipos de almacenamiento', STORAGE_TYPES);
+    const crops = enumList(details.crops, 'los cultivos admitidos', CROPS);
+    return {
+      storageTypes,
+      crops,
+      dryingAvailable: boolean(details.dryingAvailable, 'el servicio de secado'),
+    };
+  }
+  return {
+    activities: enumList(details.activities, 'las tareas de maquinaria', MACHINERY_ACTIVITIES),
+    operatorIncluded: boolean(details.operatorIncluded, 'la inclusión del operador'),
+  };
 }
 
 export function validarCampo(input) {
@@ -85,8 +136,87 @@ export function validarOferta(input) {
     serviceRadiusKm: number(input.serviceRadiusKm, 'radio de servicio', { min: Number.MIN_VALUE }),
     availableFrom,
     availableUntil,
+    details: validarDetallesOferta(input.serviceType, input.details),
     notes: text(input.notes, 'notas', { required: false, max: 500 }),
   };
+}
+
+export function validarFiltroServicio(value) {
+  if (value == null || value === '') return null;
+  if (typeof value !== 'string' || !SERVICE_TYPES.has(value)) throw new ErrorHttp(400, 'tipo de servicio inválido');
+  return value;
+}
+
+export function validarIdentificadorSolicitud(value) {
+  return uuid(value, 'el identificador de solicitud');
+}
+
+export function validarSolicitudCotizacion(input) {
+  const request = object(input, 'los datos de la solicitud');
+  if (!SERVICE_TYPES.has(request.serviceType)) throw new ErrorHttp(400, 'tipo de servicio inválido');
+  const neededFrom = validDate(request.neededFrom, 'fecha estimada desde');
+  const neededUntil = validDate(request.neededUntil, 'fecha estimada hasta');
+  if (neededFrom && neededUntil && neededUntil < neededFrom) {
+    throw new ErrorHttp(400, 'la fecha hasta no puede ser anterior a la fecha desde');
+  }
+  const details = object(request.requestDetails, 'los detalles solicitados');
+  let requestDetails;
+  if (request.serviceType === 'transporte') {
+    if (!CARGO_TYPES.has(details.loadType)) throw new ErrorHttp(400, 'tipo de carga inválido');
+    requestDetails = {
+      loadType: details.loadType,
+      destination: text(details.destination, 'destino', { max: 120 }),
+    };
+  } else if (request.serviceType === 'almacenamiento') {
+    if (!CROPS.has(details.crop)) throw new ErrorHttp(400, 'cultivo inválido');
+    if (!STORAGE_TYPES.has(details.storageType)) throw new ErrorHttp(400, 'tipo de almacenamiento inválido');
+    const storageDays = number(details.storageDays, 'días de almacenamiento', { min: 1, max: 3650 });
+    if (!Number.isInteger(storageDays)) throw new ErrorHttp(400, 'los días de almacenamiento tienen que ser un entero');
+    requestDetails = {
+      crop: details.crop,
+      storageType: details.storageType,
+      storageDays,
+    };
+  } else {
+    if (!MACHINERY_ACTIVITIES.has(details.activity)) throw new ErrorHttp(400, 'tarea de maquinaria inválida');
+    requestDetails = { activity: details.activity };
+  }
+  return {
+    providerId: uuid(request.providerId, 'el prestador'),
+    offeringId: uuid(request.offeringId, 'la oferta'),
+    fieldId: uuid(request.fieldId, 'el campo'),
+    serviceType: request.serviceType,
+    quantity: number(request.quantity, 'cantidad', { min: Number.MIN_VALUE }),
+    quantityUnit: request.serviceType === 'maquinaria' ? 'hectareas' : 'toneladas',
+    neededFrom,
+    neededUntil,
+    requestDetails,
+    message: text(request.message, 'mensaje', { required: false, max: 1000 }),
+  };
+}
+
+export function validarCotizacion(input) {
+  const quote = object(input, 'los datos de la cotización');
+  const currency = quote.currency;
+  if (!['ARS', 'USD'].includes(currency)) throw new ErrorHttp(400, 'moneda de cotización inválida');
+  const validUntil = validDate(quote.validUntil, 'vigencia de la cotización');
+  if (validUntil && validUntil < new Date().toISOString().slice(0, 10)) {
+    throw new ErrorHttp(400, 'la vigencia de la cotización no puede ser anterior a hoy');
+  }
+  return {
+    price: number(quote.price, 'precio cotizado', { min: Number.MIN_VALUE }),
+    currency,
+    message: text(quote.message, 'mensaje de la cotización', { required: false, max: 1000 }),
+    validUntil,
+  };
+}
+
+export function validarAccionSolicitud(input) {
+  const body = object(input, 'la respuesta a la solicitud');
+  if (!['quote', 'decline', 'accept_quote', 'decline_quote', 'cancel'].includes(body.action)) {
+    throw new ErrorHttp(400, 'acción de solicitud inválida');
+  }
+  return body.action;
 }
 
 function validarDatosPerfil(input) {

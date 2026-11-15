@@ -26,7 +26,13 @@ test('salud y ejemplo, con CORS', async () => {
   assert.equal(ejemplo.cultivo, 'soja');
   const pre = await fetch(`${base}/api/simular`, { method: 'OPTIONS' });
   assert.equal(pre.status, 204);
-  assert.match(pre.headers.get('access-control-allow-methods'), /POST/);
+  assert.match(pre.headers.get('access-control-allow-methods'), /PATCH/);
+  assert.match(pre.headers.get('access-control-allow-headers'), /authorization/i);
+  const accountRoute = await fetch(`${base}/api/service-offerings`);
+  assert.equal(accountRoute.status, 401);
+  assert.equal(accountRoute.headers.get('access-control-allow-origin'), 'https://front.example');
+  const missingRoute = await fetch(`${base}/api/does-not-exist`);
+  assert.equal(missingRoute.headers.get('access-control-allow-origin'), 'https://front.example');
 });
 
 test('simular, confirmar y ver la reserva en la saturación', async () => {

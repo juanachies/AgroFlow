@@ -33,6 +33,40 @@ const CAPACITY_UNITS = {
   ],
 };
 
+const DEFAULT_DETAILS = {
+  transporte: { loadTypes: ['granos'] },
+  almacenamiento: { storageTypes: ['silo_bolsa'], crops: ['soja', 'maiz', 'trigo'], dryingAvailable: false },
+  maquinaria: { activities: ['cosecha'], operatorIncluded: true },
+};
+
+const DETAIL_OPTIONS = {
+  loadTypes: [
+    ['granos', 'Granos'],
+    ['insumos', 'Insumos'],
+    ['maquinaria', 'Maquinaria'],
+    ['otros', 'Otros'],
+  ],
+  storageTypes: [
+    ['silo_bolsa', 'Silo bolsa'],
+    ['silo_fijo', 'Silo fijo'],
+    ['deposito', 'Depósito'],
+    ['celda', 'Celda'],
+  ],
+  crops: [
+    ['soja', 'Soja'],
+    ['maiz', 'Maíz'],
+    ['trigo', 'Trigo'],
+    ['girasol', 'Girasol'],
+  ],
+  activities: [
+    ['cosecha', 'Cosecha'],
+    ['siembra', 'Siembra'],
+    ['pulverizacion', 'Pulverización'],
+    ['labranza', 'Labranza'],
+    ['embolsado', 'Embolsado'],
+  ],
+};
+
 function defaultValues(initial = {}) {
   const field = initial.fields?.[0] ?? {};
   const offering = initial.offering ?? {};
@@ -57,6 +91,7 @@ function defaultValues(initial = {}) {
     serviceRadiusKm: offering.serviceRadiusKm ?? '',
     availableFrom: offering.availableFrom?.slice(0, 10) ?? '',
     availableUntil: offering.availableUntil?.slice(0, 10) ?? '',
+    details: { ...DEFAULT_DETAILS[serviceType], ...offering.details },
     notes: offering.notes ?? '',
   };
 }
@@ -93,9 +128,30 @@ function toPayload(values) {
       serviceRadiusKm: values.serviceRadiusKm,
       availableFrom: values.availableFrom || null,
       availableUntil: values.availableUntil || null,
+      details: values.details,
       notes: values.notes,
     },
   };
+}
+
+function DetailOptions({ name, label, options, values, onToggle }) {
+  return (
+    <fieldset className="service-detail-options">
+      <legend>{label}</legend>
+      <div>
+        {options.map(([value, optionLabel]) => (
+          <label className="service-detail-option" key={value}>
+            <input
+              type="checkbox"
+              checked={values.includes(value)}
+              onChange={() => onToggle(name, value)}
+            />
+            <span>{optionLabel}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
 }
 
 export default function AccountDetailsForm({
@@ -118,10 +174,33 @@ export default function AccountDetailsForm({
           serviceType: value,
           priceUnit: PRICE_UNITS[value][0][0],
           capacityUnit: CAPACITY_UNITS[value][0][0],
+          details: DEFAULT_DETAILS[value],
         };
       }
       return { ...current, [name]: value };
     });
+  }
+
+  function toggleDetail(name, value) {
+    setValues((current) => {
+      const selected = current.details[name] ?? [];
+      return {
+        ...current,
+        details: {
+          ...current.details,
+          [name]: selected.includes(value)
+            ? selected.filter((item) => item !== value)
+            : [...selected, value],
+        },
+      };
+    });
+  }
+
+  function updateDetail(name, value) {
+    setValues((current) => ({
+      ...current,
+      details: { ...current.details, [name]: value },
+    }));
   }
 
   async function submit(event) {
@@ -228,6 +307,60 @@ export default function AccountDetailsForm({
               {CAPACITY_UNITS[values.serviceType].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
+          {values.serviceType === 'transporte' && (
+            <DetailOptions
+              name="loadTypes"
+              label="Qué podés transportar"
+              options={DETAIL_OPTIONS.loadTypes}
+              values={values.details.loadTypes ?? []}
+              onToggle={toggleDetail}
+            />
+          )}
+          {values.serviceType === 'almacenamiento' && (
+            <>
+              <DetailOptions
+                name="storageTypes"
+                label="Instalaciones disponibles"
+                options={DETAIL_OPTIONS.storageTypes}
+                values={values.details.storageTypes ?? []}
+                onToggle={toggleDetail}
+              />
+              <DetailOptions
+                name="crops"
+                label="Cultivos que recibís"
+                options={DETAIL_OPTIONS.crops}
+                values={values.details.crops ?? []}
+                onToggle={toggleDetail}
+              />
+              <label className="service-detail-option">
+                <input
+                  type="checkbox"
+                  checked={values.details.dryingAvailable ?? false}
+                  onChange={(event) => updateDetail('dryingAvailable', event.target.checked)}
+                />
+                <span>Ofrezco servicio de secado</span>
+              </label>
+            </>
+          )}
+          {values.serviceType === 'maquinaria' && (
+            <>
+              <DetailOptions
+                name="activities"
+                label="Tareas que realizás"
+                options={DETAIL_OPTIONS.activities}
+                values={values.details.activities ?? []}
+                onToggle={toggleDetail}
+              />
+              <label className="service-detail-option">
+                <input
+                  type="checkbox"
+                  checked={values.details.operatorIncluded ?? false}
+                  onChange={(event) => updateDetail('operatorIncluded', event.target.checked)}
+                />
+                <span>Incluyo operador</span>
+              </label>
+            </>
+          )}
           <div className="account-form-grid">
             <label>
               Latitud de base
