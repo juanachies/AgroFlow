@@ -1,9 +1,10 @@
 import {
-  CalendarRange, ChartNoAxesCombined, House, LayoutDashboard, Map as MapIcon, Package, Route, Store, Truck, UserRound,
+  CalendarRange, ChartNoAxesCombined, Compass, House, LayoutDashboard, Map as MapIcon, Package, Route, Store, Truck, UserRound,
 } from 'lucide-react';
 
 const PRODUCER_PAGES = [
   { id: 'summary', label: 'Resumen', icon: House, group: 'campo' },
+  { id: 'estrategias', label: 'Estrategia y decisiones', icon: Compass, group: 'campo' },
   { id: 'centro', label: 'Centro logístico', icon: LayoutDashboard, group: 'campo' },
   { id: 'lots', label: 'Lotes y mapa', icon: MapIcon, group: 'campo' },
   { id: 'planning', label: 'Planificación', icon: CalendarRange, group: 'campo' },

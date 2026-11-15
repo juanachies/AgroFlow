@@ -23,6 +23,8 @@ import { randomUUID } from 'node:crypto';
 import { ESCENARIOS } from '../../application/usecases/explicar.js';
 import { coordenadaParam, ErrorHttp, exigirFecha, fechaParam, leerJson, responder, responderError } from './validacion.js';
 import { manejarCuenta } from './accountApi.js';
+import { armarEstrategias, AVISO_ESTRATEGIAS } from '../../domain/estrategia/index.js';
+import { iso } from '../../domain/shared/util.js';
 
 export const ENTRADA_EJEMPLO = {
   lote: { id: 'lote-pergamino', lat: -33.95, lon: -60.6 },
@@ -114,6 +116,11 @@ export function crearApi({ contenedor, servirEstatico = null, origenCors = '*', 
       const { estrategiasSimuladas, entradaAutomatica, ...publico } = resultado;
       for (const [modo, { entrada: entradaDelModo, simulacion }] of Object.entries(estrategiasSimuladas ?? {})) {
         publico.decision.economia[modo].simulacionId = guardar(entradaDelModo, simulacion);
+      }
+      try {
+        publico.estrategias = armarEstrategias({ decision: publico.decision, hoy: iso(new Date()) });
+      } catch (error) {
+        publico.estrategias = { aviso: AVISO_ESTRATEGIAS, estrategias: [], error: error.message };
       }
       return [200, { simulacionId: guardar(entradaAutomatica, publico), ...publico }];
     },

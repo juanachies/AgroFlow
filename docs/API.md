@@ -173,6 +173,16 @@ Misma entrada que `/api/simular`. Devuelve la simulación completa más `decisio
   - Los supuestos (costo financiero, mermas, espera) salen en `supuestos` y son editables; los precios vienen de `data/precios-ejemplo.json` (valores ilustrativos).
 - Con `simulacionId` se puede confirmar con `POST /api/reservas`.
 
+### `POST /api/decision-lote`
+
+Decisión completa a partir del lote: `{ lat, lon, ha, cultivo, fechaSiembra }`. Devuelve lo mismo que `/api/decision` más `estrategias`:
+
+- `aviso`: recordatorio de que el índice de confianza es orientativo.
+- `estrategias`: una por modalidad (`puerto`, `acopio`, `silobolsa` y, si aplica, `cosecha-rapida`), ordenadas por ganancia neta.
+  - Cada una trae `id`, `titulo`, `resumen`, `accion`, `gananciaNetaUSD`, `diferenciaVsMejorUSD`, `fechaCobro`, `diasHastaCobro`, `recomendadaPorModelo`, `confianza` (`indice`, `nivel`, `explicacion`), `factores` y `supuestos`.
+- Si el cálculo de estrategias falla, la respuesta sigue con `estrategias: { aviso, estrategias: [], error }`.
+- La información es orientativa: AgroFlow no asegura resultados ni reemplaza la decisión del productor o su agrónomo.
+
 ### `POST /api/explicar`
 
 ```json

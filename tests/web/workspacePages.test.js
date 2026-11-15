@@ -6,7 +6,8 @@ test('el productor recibe funcionalidades de campo y acceso separado al Marketpl
   const producerPages = getWorkspacePages('productor');
   const pages = producerPages.map(({ id }) => id);
 
-  assert.deepEqual(pages, ['summary', 'centro', 'lots', 'planning', 'technical', 'silobolsas', 'despacho', 'marketplace', 'account']);
+  assert.deepEqual(pages, ['summary', 'estrategias', 'centro', 'lots', 'planning', 'technical', 'silobolsas', 'despacho', 'marketplace', 'account']);
+  assert.equal(producerPages.find(({ id }) => id === 'estrategias').group, 'campo');
   assert.equal(producerPages.find(({ id }) => id === 'marketplace').group, 'marketplace');
   assert.equal(getHomePageForRole('productor'), 'summary');
 });

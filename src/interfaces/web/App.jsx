@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Activity, ChartNoAxesCombined, CloudSun, House, LayoutDashboard, Map as MapIcon, Moon, Package, Plus, Route,
+  Activity, ChartNoAxesCombined, CloudSun, Compass, House, LayoutDashboard, Map as MapIcon, Moon, Package, Plus, Route,
   Sprout, Store, Sun, UserRound, Wheat,
 } from 'lucide-react';
 import ChatBubble from './components/ChatBubble.jsx';
@@ -29,6 +29,7 @@ import {
 import { useTheme } from './lib/theme.js';
 import { getHomePageForRole, getWorkspacePages } from './lib/workspacePages.js';
 import AccountPage from './pages/AccountPage.jsx';
+import EstrategiasPage from './pages/EstrategiasPage.jsx';
 import MarketplacePage from './pages/MarketplacePage.jsx';
 import ServicesPage from './pages/ServicesPage.jsx';
 import SilobolsasPage from './pages/SilobolsasPage.jsx';
@@ -39,6 +40,7 @@ const CentroLogistico = lazy(() => import('./components/CentroLogistico.jsx'));
 
 const SECTIONS = [
   { id: 'inicio', label: 'Inicio', icon: House, pages: [{ id: 'summary', label: 'Resumen' }] },
+  { id: 'estrategia', label: 'Estrategia y decisiones', icon: Compass, pages: [{ id: 'estrategias', label: 'Estrategias' }] },
   { id: 'centro', label: 'Centro logístico', icon: LayoutDashboard, pages: [{ id: 'centro', label: 'Centro logístico' }] },
   {
     id: 'lotes', label: 'Gestionar lotes', icon: MapIcon,
@@ -61,7 +63,7 @@ const SECTIONS = [
 
 const PAGES = SECTIONS.flatMap(({ pages }) => pages);
 const sectionOf = (pageId) => SECTIONS.find(({ pages }) => pages.some(({ id }) => id === pageId));
-const PAGES_WITH_LOT_SELECTOR = new Set(['summary', 'centro', 'lots', 'planning', 'technical', 'despacho', 'marketplace']);
+const PAGES_WITH_LOT_SELECTOR = new Set(['summary', 'estrategias', 'centro', 'lots', 'planning', 'technical', 'despacho', 'marketplace']);
 
 function BrandMark() {
   return (
@@ -749,6 +751,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
           <div className="page-content">
             <Suspense fallback={<div className="loading-state" role="status">Cargando mapa…</div>}>
               {page === 'summary' && <SummaryPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onNavigate={navigate} onSelectLot={setSelectedLotId} onCreate={openCreate} theme={theme} />}
+              {page === 'estrategias' && <EstrategiasPage lot={selectedLot} />}
               {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onEdit={(lot) => setDialog({ type: 'lot', lot })} onSow={(lot) => setDialog({ type: 'sow', lot })} onClearSowing={(lot) => setDialog({ type: 'clear', lot })} onDelete={(lot) => setDialog({ type: 'delete', lot })} onCreate={openCreate} onDrawnBoundary={saveDrawnBoundary} onCreateFromDrawing={createFromDrawing} theme={theme} />}
               {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSow={() => setDialog({ type: 'sow', lot: selectedLot })} />}
               {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
