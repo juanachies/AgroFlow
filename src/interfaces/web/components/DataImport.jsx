@@ -63,7 +63,7 @@ export function BoundaryImport({ onImport }) {
       )}
       {message && <p className="form-success" role="status">{message}</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
-      <small>Se aceptan polígonos GeoJSON WGS84. La app no crea ni modifica geometrías.</small>
+      <small>Se aceptan polígonos GeoJSON WGS84. También podés dibujar el límite en el mapa.</small>
     </div>
   );
 }

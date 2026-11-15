@@ -46,7 +46,7 @@ export const env = {
   cdseUsername: process.env.CDSE_USERNAME ?? '',
   cdsePassword: process.env.CDSE_PASSWORD ?? '',
   cdseTotp: process.env.CDSE_TOTP ?? '',
-  osmUserAgent: process.env.OSM_USER_AGENT ?? 'MarcianosCosecha/1.0',
+  osmUserAgent: process.env.OSM_USER_AGENT ?? 'AgroFlow/1.0',
   cacheDirectory: process.env.DATA_CACHE_DIRECTORY ?? './data/cache',
 };
 

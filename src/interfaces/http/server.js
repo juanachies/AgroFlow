@@ -17,7 +17,9 @@ import { crearPreciosManualAdapter } from '../../infrastructure/precios/preciosM
 import { crearApi } from './app.js';
 import { crearServidorEstatico } from './estatico.js';
 
-const RAIZ_WEB = fileURLToPath(new URL('../web/', import.meta.url));
+// El front es React (JSX): se sirve el build de Vite (npm run build → dist/). Sin build, la fuente.
+const RAIZ_DIST = fileURLToPath(new URL('../../../dist/', import.meta.url));
+const RAIZ_WEB = existsSync(`${RAIZ_DIST}index.html`) ? RAIZ_DIST : fileURLToPath(new URL('../web/', import.meta.url));
 const RUTA_PRECIOS = fileURLToPath(new URL('../../../data/precios-ejemplo.json', import.meta.url));
 
 export function armarContenedor({ mercadoDemo = true } = {}) {

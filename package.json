@@ -1,5 +1,5 @@
 {
-  "name": "marcianos",
+  "name": "agroflow",
   "private": true,
   "type": "module",
   "engines": {
@@ -13,9 +13,11 @@
     "demo": "node src/interfaces/cli/demoVenta.js",
     "update:weather": "node src/interfaces/cli/refreshWeather.js",
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "dev:api": "node --watch src/interfaces/http/server.js"
   },
   "dependencies": {
+    "lucide-react": "^0.468.0",
     "maplibre-gl": "^6.18.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

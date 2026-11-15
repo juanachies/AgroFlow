@@ -147,3 +147,15 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 | [docs/PLAN_BARCOS.md](docs/PLAN_BARCOS.md) | Módulo de barcos (insumo de la saturación) y venta en cosecha |
 | [docs/INDICES_PUERTO.md](docs/INDICES_PUERTO.md) | Índices del puerto y fuentes de datos de barcos |
 | [docs/MODULO_5_BARCOS.md](docs/MODULO_5_BARCOS.md) | Método del módulo de barcos y avisos |
+
+## Front + API en local
+
+```bash
+npm install
+npm run dev:api   # API HTTP en http://localhost:3000
+npm run dev       # front con Vite; /api se reenvía a la API
+```
+
+O todo en una sola URL: `npm run build && npm start` (el servidor sirve `dist/` y la API).
+
+El front incluye tema claro/oscuro, dibujo y edición del límite del lote sobre el mapa (calcula la superficie en ha), plan logístico (`POST /api/simular` + `POST /api/reservas`), marketplace de contratistas y transportistas (`/api/ofertas`) y un asistente en burbuja de chat.

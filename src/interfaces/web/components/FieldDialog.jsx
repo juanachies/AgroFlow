@@ -1,13 +1,14 @@
 import { useState } from 'react';
+import { X } from 'lucide-react';
 import { crearLote, CULTIVOS } from '../lib/data.js';
 
-export default function FieldDialog({ onClose, onCreate }) {
+export default function FieldDialog({ initial = null, onClose, onCreate }) {
   const [values, setValues] = useState({
     name: '',
     crop: CULTIVOS[0].value,
-    areaHa: '',
-    latitude: '',
-    longitude: '',
+    areaHa: initial?.areaHa ?? '',
+    latitude: initial?.latitude ?? '',
+    longitude: initial?.longitude ?? '',
     sowingDate: '',
     cycleDays: String(CULTIVOS[0].cycleDays),
   });
@@ -33,7 +34,8 @@ export default function FieldDialog({ onClose, onCreate }) {
     setError('');
     try {
       setSaving(true);
-      await onCreate(crearLote(values));
+      const lot = crearLote(values);
+      await onCreate(initial?.boundary ? { ...lot, boundary: initial.boundary } : lot);
       onClose();
     } catch (reason) {
       setError(reason.message || 'No se pudo guardar el lote.');
@@ -50,9 +52,9 @@ export default function FieldDialog({ onClose, onCreate }) {
         <div className="dialog-heading">
           <div>
             <span className="eyebrow">Tu información queda en este navegador</span>
-            <h2 id="field-dialog-title">Agregar un lote</h2>
+            <h2 id="field-dialog-title">{initial?.boundary ? 'Crear lote desde el mapa' : 'Agregar un lote'}</h2>
           </div>
-          <button type="button" className="icon-button" aria-label="Cerrar" onClick={onClose}>×</button>
+          <button type="button" className="icon-button" aria-label="Cerrar" onClick={onClose}><X size={18} /></button>
         </div>
         <form className="field-form" onSubmit={submit}>
           <label>
@@ -67,7 +69,7 @@ export default function FieldDialog({ onClose, onCreate }) {
               </select>
             </label>
             <label>
-              Superficie declarada (ha)
+              {initial?.boundary ? 'Superficie medida (ha)' : 'Superficie declarada (ha)'}
               <input name="areaHa" type="number" min="0.01" step="any" value={values.areaHa} onChange={update} placeholder="Ej. 48.5" required />
             </label>
           </div>
@@ -90,7 +92,9 @@ export default function FieldDialog({ onClose, onCreate }) {
             <input name="cycleDays" type="number" min="1" step="1" value={values.cycleDays} onChange={update} required />
             <small>Valor inicial orientativo por cultivo; ajustalo según el híbrido o variedad.</small>
           </label>
-          <p className="inline-note">La superficie se ingresa manualmente y no se calcula desde el polígono. El punto sirve para consultas regionales; importá el límite GeoJSON luego.</p>
+          <p className="inline-note">{initial?.boundary
+            ? 'La superficie y el punto de referencia salen del polígono que dibujaste. Podés ajustarlos si hace falta.'
+            : 'Podés dibujar el límite del lote en el mapa después: AgroFlow calcula la superficie y la actualiza.'}</p>
           {error && <div className="form-error" role="alert">{error}</div>}
           <div className="dialog-actions">
             <button type="button" className="button button--secondary" onClick={onClose} disabled={saving}>Cancelar</button>

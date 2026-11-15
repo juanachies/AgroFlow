@@ -41,7 +41,7 @@ flowchart LR
 ## Árbol de carpetas
 
 ```
-marcianos/
+agroflow/   (repo: marcianos)
 ├── package.json                  # "type": "module", "engines": { "node": "<versión del Cloud Server>" }
 ├── .gitignore                    # node_modules, data/cache, .env
 ├── README.md
