@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": "22.23.5"
   },
   "scripts": {
     "start": "node src/interfaces/http/server.js",

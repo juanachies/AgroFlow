@@ -4,7 +4,7 @@ La API y el front corren en un solo proceso de Node (`npm start`). Si existe `di
 
 ## Opción A: servidor del evento (pm2)
 
-Requisitos: Node 22 o superior.
+Requisitos: Node 22.23.5 (fijada en `package.json`, `.nvmrc` y el `Dockerfile`).
 
 1. Clonar el repo e instalar dependencias:
    ```bash
@@ -49,7 +49,7 @@ Requisitos: Node 22 o superior.
    }
    ```
 
-**Versión de Node:** la regla del evento pide fijar la versión del servidor en `package.json`. Para eso, correr `node -v` en el servidor y poner esa versión en `engines.node`.
+**Versión de Node:** la regla del evento pide fijar la versión del servidor en `package.json`. Está fijada en 22.23.5. Correr `node -v` en el servidor: si da otra versión, instalar la 22.23.5 o cambiarla en `engines.node`, `.nvmrc` y el `Dockerfile` para que coincidan.
 
 ## Opción B: Docker (Render, Railway, Fly.io o cualquier servidor con Docker)
 

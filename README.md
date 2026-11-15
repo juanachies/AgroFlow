@@ -4,7 +4,7 @@
 
 Desafío 02 del Hackatón Nasa Space Apps. Posicionamiento y diferencial en [docs/FRENTE.md](docs/FRENTE.md); plan técnico original en [PROYECTO.md](PROYECTO.md).
 
-**URL pública:** *(pendiente)*
+**URL pública:** https://agroflow-mctx.onrender.com
 
 ---
 
@@ -40,7 +40,7 @@ Estado de cada fuente en [docs/DATOS.md](docs/DATOS.md) y [docs/FUENTES.md](docs
 
 ## Cómo correrlo
 
-Requisitos: Node 22 o superior. Para actualizar el flete desde el PDF de CATAC hace falta `pdftotext` (paquete `poppler-utils`).
+Requisitos: Node 22.23.5, la versión fijada en `package.json` y `.nvmrc`. Para actualizar el flete desde el PDF de CATAC hace falta `pdftotext` (paquete `poppler-utils`).
 
 ```bash
 git clone https://github.com/juanachies/marcianos.git
@@ -113,7 +113,7 @@ El mapa base usa OpenFreeMap/OpenStreetMap y ofrece imágenes de Esri como alter
 npm run actualizar-tarifas
 ```
 
-`actualizar-tarifas` trae el dólar oficial y la tabla de flete de CATAC; si una fuente falla, conserva los valores anteriores. La API/backend y la URL pública siguen pendientes.
+`actualizar-tarifas` trae el dólar oficial y la tabla de flete de CATAC; si una fuente falla, conserva los valores anteriores. La API y el front se sirven juntos con `npm start`; la URL pública está arriba.
 
 ## Módulos
 
@@ -139,12 +139,12 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 - [x] Simulador: destino por margen neto, plan de pedido, venta y saturación del puerto
 - [x] Marketplace de cadetes: asignación y reservas (en memoria)
 - [x] API HTTP para el front (`npm start`)
-- [ ] Formulario del lote y vista del plan, desplegado con URL pública
+- [x] Formulario del lote y vista del plan, desplegado con URL pública
 - [ ] Persistencia del marketplace (base de datos) y alta de proveedores
 - [x] Explicación con IA y escenarios (OpenAI con respaldo de plantilla)
 - [x] Clima real (Open-Meteo) y distancias por ruta (OSRM) en el simulador
 - [x] API de silobolsas (registro, lecturas del IoT, riesgo y venta) y venta en cosecha
-- [ ] Guion de demo de 2 minutos
+- [x] Guion de demo de 2 minutos ([FRENTE.md](docs/FRENTE.md#7-guion-de-pitch-2-minutos))
 
 ## Pendientes
 
