@@ -135,7 +135,7 @@ function DiasClave({ diasClave }) {
   );
 }
 
-export default function Almanaque({ decision, nombreLote }) {
+export default function Almanaque({ decision, nombreLote, compacto = false }) {
   const porFecha = new Map(decision.almanaque.map((dia) => [dia.fecha, dia]));
   const meses = mesesDelRango(decision.almanaque);
   const usaHistorico = decision.almanaque.some((dia) => dia.clima.fuente === 'climatologia');
@@ -144,8 +144,7 @@ export default function Almanaque({ decision, nombreLote }) {
       <div className="section-heading">
         <div><span className="eyebrow">ALMANAQUE DE LA CAMPAÑA</span><h3>{nombreLote ? `${nombreLote}: cuándo cosechar y transportar` : 'Cuándo cosechar y transportar'}</h3></div>
       </div>
-      <p className="cl-highlight">{decision.resumen}</p>
-      <Rangos decision={decision} />
+      {!compacto && <Rangos decision={decision} />}
       <div className="alm-cuerpo">
         <div className="alm-meses">{meses.map((mes) => <Mes key={mes.clave} mes={mes} porFecha={porFecha} decision={decision} />)}</div>
         <div className="alm-lateral">
@@ -161,7 +160,7 @@ export default function Almanaque({ decision, nombreLote }) {
           </div>
         </div>
       </div>
-      {decision.alertas.length > 0 && (
+      {!compacto && decision.alertas.length > 0 && (
         <ul className="alm-alertas">
           {decision.alertas.map((alerta) => (
             <li key={alerta.mensaje} className={`alm-alerta alm-alerta--${alerta.nivel}`}>
@@ -171,11 +170,13 @@ export default function Almanaque({ decision, nombreLote }) {
           ))}
         </ul>
       )}
-      <p className="cl-muted">
-        {usaHistorico
-          ? 'Los días con "frecuencia histórica" no son un pronóstico: indican qué tan seguido llovió fuerte en esa fecha en los últimos 10 años. Se reemplazan por el pronóstico a medida que se acercan.'
-          : 'Clima: pronóstico de Open-Meteo. No mide la transitabilidad del lote.'}
-      </p>
+      {!compacto && (
+        <p className="cl-muted">
+          {usaHistorico
+            ? 'Los días con "frecuencia histórica" no son un pronóstico: indican qué tan seguido llovió fuerte en esa fecha en los últimos 10 años. Se reemplazan por el pronóstico a medida que se acercan.'
+            : 'Clima: pronóstico de Open-Meteo. No mide la transitabilidad del lote.'}
+        </p>
+      )}
     </section>
   );
 }

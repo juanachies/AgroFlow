@@ -269,6 +269,10 @@ export function promedio(values = []) {
   return present.length ? present.reduce((sum, value) => sum + value, 0) / present.length : null;
 }
 
+export function columnasConDatos(filas = [], columnas = []) {
+  return columnas.filter((columna) => filas.some((fila) => columna.valor(fila) != null));
+}
+
 export function nombreCultivo(value) {
   return CULTIVOS.find(({ value: crop }) => crop === value)?.label ?? 'Sin cultivo';
 }

@@ -74,17 +74,20 @@ function CronogramaCamiones({ transporte, camionesPorDia, saturacionPorFecha }) 
   );
 }
 
-export default function PlanCamiones({ sim, ofertas, nombreLote, reservas = [], onConfirmar }) {
+function usePlanCamiones(sim, ofertas) {
+  return useMemo(
+    () => armarPlanDeProveedores({ asignacion: sim.asignacion, ofertas, toneladas: sim.plan.toneladas }),
+    [sim, ofertas],
+  );
+}
+
+// La caja "Decisión" queda siempre a la vista fuera de las pestañas: es el único lugar con el resumen y el botón de reserva.
+export function DecisionCamiones({ sim, ofertas, nombreLote, reservas = [], onConfirmar }) {
   const [confirmando, setConfirmando] = useState(false);
   const [aviso, setAviso] = useState('');
   const decision = sim.decision;
   const transporte = decision.transporte;
-  const plan = useMemo(
-    () => armarPlanDeProveedores({ asignacion: sim.asignacion, ofertas, toneladas: sim.plan.toneladas }),
-    [sim, ofertas],
-  );
-  const saturacionPorFecha = useMemo(() => new Map((sim.saturacion?.dias ?? []).map((dia) => [dia.fecha, dia.estado])), [sim]);
-  const camionesPorDia = sim.plan.recomendado.pedidos.find((p) => p.recurso === 'camión')?.cantidad ?? 0;
+  const plan = usePlanCamiones(sim, ofertas);
   const elegida = decision.economia?.grande?.elegida;
   const yaReservado = reservas.length > 0;
   const desplazamiento = sim.ventana?.desplazamientoDias ?? 0;
@@ -95,12 +98,7 @@ export default function PlanCamiones({ sim, ofertas, nombreLote, reservas = [], 
   }
 
   return (
-    <section className="panel cam" aria-label={`Camiones y despacho de ${nombreLote ?? 'la campaña'}`}>
-      <div className="section-heading">
-        <div><span className="eyebrow">CAMIONES Y DESPACHO</span><h3>{nombreLote ? `${nombreLote}: quién viene, cuánto cuesta y cuándo se va a puerto` : 'Quién viene, cuánto cuesta y cuándo se va a puerto'}</h3></div>
-        {plan.coberturaPct != null && <span className={`status-pill${plan.coberturaPct >= 100 ? '' : ' status-pill--muted'}`}>Cobertura {plan.coberturaPct}%</span>}
-      </div>
-
+    <section className="panel cam" aria-label={`Decisión de despacho de ${nombreLote ?? 'la campaña'}`}>
       <div className="cam-decision">
         <div>
           <span className="eyebrow">DECISIÓN</span>
@@ -126,6 +124,34 @@ export default function PlanCamiones({ sim, ofertas, nombreLote, reservas = [], 
         </div>
       </div>
       {aviso && <p className="result-note">{aviso}</p>}
+
+      {confirmando && (
+        <ConfirmDialog
+          title="Confirmar reservas"
+          message={`Se reservan ${plan.filas.length} contrataciones (${plan.camiones.unidades} camiones de ${plan.camiones.transportistas} transportistas, más cosecha y embolsado) por ${usd(plan.costoTotalUSD)} para ${nombreLote ?? 'este lote'}. Los camiones a puerto pasan a contar en la saturación del puerto de todos los productores.`}
+          confirmLabel="Confirmar reservas"
+          onClose={() => setConfirmando(false)}
+          onConfirm={confirmar}
+        />
+      )}
+    </section>
+  );
+}
+
+export default function PlanCamiones({ sim, ofertas, nombreLote, reservas = [] }) {
+  const decision = sim.decision;
+  const transporte = decision.transporte;
+  const plan = usePlanCamiones(sim, ofertas);
+  const saturacionPorFecha = useMemo(() => new Map((sim.saturacion?.dias ?? []).map((dia) => [dia.fecha, dia.estado])), [sim]);
+  const camionesPorDia = sim.plan.recomendado.pedidos.find((p) => p.recurso === 'camión')?.cantidad ?? 0;
+  const yaReservado = reservas.length > 0;
+
+  return (
+    <section className="panel cam" aria-label={`Camiones y despacho de ${nombreLote ?? 'la campaña'}`}>
+      <div className="section-heading">
+        <div><span className="eyebrow">CAMIONES Y DESPACHO</span><h3>{nombreLote ? `${nombreLote}: quién viene, cuánto cuesta y cuándo se va a puerto` : 'Quién viene, cuánto cuesta y cuándo se va a puerto'}</h3></div>
+        {plan.coberturaPct != null && <span className={`status-pill${plan.coberturaPct >= 100 ? '' : ' status-pill--muted'}`}>Cobertura {plan.coberturaPct}%</span>}
+      </div>
 
       {plan.filas.length > 0 && (
         <div className="cam-kpis">
@@ -157,16 +183,6 @@ export default function PlanCamiones({ sim, ofertas, nombreLote, reservas = [], 
             ))}
           </ul>
         </div>
-      )}
-
-      {confirmando && (
-        <ConfirmDialog
-          title="Confirmar reservas"
-          message={`Se reservan ${plan.filas.length} contrataciones (${plan.camiones.unidades} camiones de ${plan.camiones.transportistas} transportistas, más cosecha y embolsado) por ${usd(plan.costoTotalUSD)} para ${nombreLote ?? 'este lote'}. Los camiones a puerto pasan a contar en la saturación del puerto de todos los productores.`}
-          confirmLabel="Confirmar reservas"
-          onClose={() => setConfirmando(false)}
-          onConfirm={confirmar}
-        />
       )}
     </section>
   );

@@ -434,7 +434,7 @@ function SourceNote({ lot, snapshot }) {
   );
 }
 
-function PlanningPage({ lot, snapshotRecord, onSow }) {
+function PlanningPage({ lot, snapshotRecord, onSow, onNavigate }) {
   const snapshot = snapshotRecord?.snapshot;
   const window = ventanaDelLote(lot);
   const days = diasEnVentana(snapshot?.dailyForecast, window);
@@ -469,20 +469,19 @@ function PlanningPage({ lot, snapshotRecord, onSow }) {
               )}
             </section>
             <section className="panel recommendation-panel">
-              <span className="eyebrow">ESTADO DE DECISIÓN</span>
-              <div className="decision-status"><span className="decision-status-dot" /> Sin evaluación de transitabilidad</div>
-              <p>No se calcula probabilidad ni semáforo de cosecha. Los indicadores disponibles no están calibrados con mediciones de piso del lote.</p>
-              <ul>
-                <li>Sin capacidad portante medida en el lote</li>
-                <li>Humedad de suelo disponible solo como modelo regional</li>
-                <li>Sin modelo validado que convierta lluvia en transitabilidad</li>
-              </ul>
+              <span className="eyebrow">SIGUIENTE PASO</span>
+              <h3>¿Qué conviene hacer?</h3>
+              <p>Compará las estrategias disponibles para este lote con su ventana de cosecha.</p>
+              <button type="button" className="button button--primary button--small" onClick={() => onNavigate('estrategias')}>Ver estrategias</button>
             </section>
           </div>
           <div className="section-heading section-heading--standalone">
-            <div><h3>Pronóstico durante la ventana</h3><p>Se muestran los días que el pronóstico automático alcanza a cubrir (hasta 16 días).</p></div>
+            <div>
+              <h3>Pronóstico durante la ventana</h3>
+              <p>Se muestran los días que el pronóstico automático alcanza a cubrir (hasta 16 días).</p>
+              {snapshot && <span className="data-footnote">Fuente Open-Meteo · consultado el {formatDate(snapshot.queriedAt)}</span>}
+            </div>
           </div>
-          {snapshot && <SourceNote lot={lot} snapshot={snapshot} />}
           {!snapshot ? (
             <EmptyState title="Sin pronóstico por ahora" description="El pronóstico se descarga solo cuando la API está conectada. Si estás sin conexión, volvé a intentarlo en un rato." />
           ) : days.length ? (
@@ -753,7 +752,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
               {page === 'summary' && <SummaryPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onNavigate={navigate} onSelectLot={setSelectedLotId} onCreate={openCreate} theme={theme} />}
               {page === 'estrategias' && <EstrategiasPage lot={selectedLot} />}
               {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onEdit={(lot) => setDialog({ type: 'lot', lot })} onSow={(lot) => setDialog({ type: 'sow', lot })} onClearSowing={(lot) => setDialog({ type: 'clear', lot })} onDelete={(lot) => setDialog({ type: 'delete', lot })} onCreate={openCreate} onDrawnBoundary={saveDrawnBoundary} onCreateFromDrawing={createFromDrawing} theme={theme} />}
-              {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSow={() => setDialog({ type: 'sow', lot: selectedLot })} />}
+              {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSow={() => setDialog({ type: 'sow', lot: selectedLot })} onNavigate={navigate} />}
               {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
               {page === 'centro' && <CentroLogistico lots={lots} selectedLot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} theme={theme} onSelectLot={setSelectedLotId} onNavigate={navigate} />}
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}

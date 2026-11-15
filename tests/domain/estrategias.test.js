@@ -34,7 +34,7 @@ function decision({
   diasSaturados = [],
 } = {}) {
   return {
-    cosecha: { diasMalos, diasRegulares: 0, diasBuenos: 5, fuenteClima, humedadGranoPct: 13.2, diasConVientoFuerte },
+    cosecha: { inicio: '2027-03-25', fin: '2027-04-05', diasMalos, diasRegulares: 0, diasBuenos: 5, fuenteClima, humedadGranoPct: 13.2, diasConVientoFuerte },
     transporte: { diasSaturados, distanciaKm: 230, destino: 'Puerto Rosario' },
     condiciones: { humedadBaseRecibo: 13.5 },
     alertas: [],
@@ -122,6 +122,63 @@ test('recomendadaPorModelo marca exactamente una de las estrategias con confianz
 
   assert.equal(recomendadas.length, 1);
   assert.equal(recomendadas[0].gananciaNetaUSD, Math.max(...candidatas.map((e) => e.gananciaNetaUSD)));
+});
+
+const IDS_ETAPAS = ['cosecha', 'transporte', 'almacenaje', 'venta'];
+
+test('cada estrategia tiene las cuatro etapas en orden con sus datos', () => {
+  const estrategia = estrategiaDe(armarEstrategias({ hoy: HOY, decision: decision() }), 'puerto');
+
+  assert.deepEqual(estrategia.etapas.map((etapa) => etapa.id), IDS_ETAPAS);
+  for (const etapa of estrategia.etapas) {
+    assert.equal(typeof etapa.titulo, 'string');
+    assert.equal(typeof etapa.decision, 'string');
+    assert.ok(Array.isArray(etapa.factores));
+    assert.equal(typeof etapa.detalle, 'string');
+  }
+  assert.match(estrategia.etapas[0].decision, /^Cosechar del 2027-03-25 al 2027-04-05$/);
+  assert.match(estrategia.etapas[3].decision, /^Vender en puerto y cobrar el 2027-04-10$/);
+});
+
+test('los valores de los factores se muestran para lectura humana', () => {
+  const estrategia = estrategiaDe(armarEstrategias({ hoy: HOY, decision: decision() }), 'puerto');
+  const valor = (id) => estrategia.factores.find((factor) => factor.id === id).valor;
+
+  assert.equal(valor('clima-fuente'), 'Pronóstico');
+  assert.equal(valor('clima-dias-malos'), '0 días');
+  assert.equal(valor('grano-humedad'), '13.2 %');
+  assert.equal(valor('logistica-barco'), '95 %');
+});
+
+test('ningún valor numérico de los factores tiene más de dos decimales', () => {
+  const resultado = armarEstrategias({
+    hoy: HOY,
+    decision: decision({
+      modalidades: [
+        modalidad(),
+        modalidad({ tipo: 'silobolsa', mesesGuardado: 3, riesgo: { probLlegar: null, nivel: 'medio' }, humedad: { granoPct: 14.37, exceso: 0.9 } }),
+      ],
+    }),
+  });
+
+  for (const estrategia of resultado.estrategias) {
+    for (const factor of estrategia.factores) {
+      if (typeof factor.valor === 'number') {
+        assert.equal(factor.valor, Math.round(factor.valor * 100) / 100, `${factor.id} tiene más de dos decimales`);
+      }
+    }
+  }
+});
+
+test('la silobolsa tiene una etapa de transporte con la decisión diferida', () => {
+  const resultado = armarEstrategias({
+    hoy: HOY,
+    decision: decision({ modalidades: [modalidad({ tipo: 'silobolsa', mesesGuardado: 4, riesgo: { probLlegar: null, nivel: 'bajo' } })] }),
+  });
+  const transporte = estrategiaDe(resultado, 'silobolsa-4').etapas.find((etapa) => etapa.id === 'transporte');
+
+  assert.equal(transporte.decision, 'Sin transporte inmediato');
+  assert.equal(transporte.fecha, null);
 });
 
 test('"Cosecha rápida" aparece solo si las estrategias no coinciden', () => {

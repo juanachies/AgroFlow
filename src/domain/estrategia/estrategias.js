@@ -32,9 +32,25 @@ const FUENTE_CLIMA = {
   'sin-dato': 'sin fuente de clima',
 };
 
+const FUENTE_CLIMA_VALOR = {
+  pronostico: 'Pronóstico',
+  mixta: 'Mixta',
+  climatologia: 'Climatología histórica',
+  'sin-dato': 'Sin dato',
+};
+
 const TITULOS = { puerto: 'Venta directa a puerto', acopio: 'Venta en acopio', silobolsa: 'Silobolsa' };
 
+export const ETAPAS = ['cosecha', 'transporte', 'almacenaje', 'venta'];
+
+const TITULOS_ETAPA = { cosecha: 'Cosecha', transporte: 'Transporte', almacenaje: 'Almacenaje', venta: 'Venta' };
+
 const acotar = (valor, minimo, maximo) => Math.min(maximo, Math.max(minimo, valor));
+
+const textoDias = (dias) => `${dias} ${dias === 1 ? 'día' : 'días'}`;
+const textoMeses = (meses) => `${meses} ${meses === 1 ? 'mes' : 'meses'}`;
+const textoPorcentaje = (fraccion) => `${Math.round(fraccion * 100)} %`;
+const textoHumedad = (valor) => `${valor.toFixed(1)} %`;
 
 function nivelDeConfianza(indice) {
   if (indice >= NIVEL_ALTA_DESDE) return 'alta';
@@ -54,7 +70,7 @@ function factorFuenteClima(cosecha) {
     id: 'clima-fuente',
     categoria: 'clima',
     nombre: 'Fuente del pronóstico',
-    valor: fuente,
+    valor: FUENTE_CLIMA_VALOR[fuente] ?? FUENTE_CLIMA_VALOR['sin-dato'],
     detalle: impacto === 0 ? 'Hay pronóstico para la ventana de cosecha.' : 'El clima de la ventana no es un pronóstico firme.',
     impacto,
     fuente: FUENTE_CLIMA[fuente] ?? FUENTE_CLIMA['sin-dato'],
@@ -67,7 +83,7 @@ function factorDiasMalos(cosecha) {
     id: 'clima-dias-malos',
     categoria: 'clima',
     nombre: 'Días malos en la cosecha',
-    valor: dias,
+    valor: textoDias(dias),
     detalle: dias ? `${dias} día(s) con lluvia o condiciones adversas en la ventana.` : 'Sin días malos en la ventana de cosecha.',
     impacto: Math.max(TOPE_DIAS_MALOS, dias * IMPACTO_POR_DIA_MALO),
     fuente: FUENTE_CLIMA[cosecha?.fuenteClima] ?? FUENTE_CLIMA['sin-dato'],
@@ -80,7 +96,7 @@ function factorViento(cosecha) {
     id: 'clima-viento',
     categoria: 'clima',
     nombre: 'Días con viento fuerte',
-    valor: dias,
+    valor: textoDias(dias),
     detalle: dias ? `${dias} día(s) con ráfagas fuertes: más desgrane y menos horas de cosecha.` : 'Sin días de viento fuerte en la ventana.',
     impacto: Math.max(TOPE_VIENTO, dias * IMPACTO_POR_DIA_VIENTO),
     fuente: FUENTE_CLIMA[cosecha?.fuenteClima] ?? FUENTE_CLIMA['sin-dato'],
@@ -107,7 +123,7 @@ function factorPrecioFuturo(modalidad) {
     id: 'precio-futuro',
     categoria: 'precio',
     nombre: 'Precio futuro del grano',
-    valor: meses,
+    valor: textoMeses(meses),
     detalle: `Guardar ${meses} mes(es) hace más incierto el precio de venta.`,
     impacto: meses * IMPACTO_POR_MES_SILOBOLSA,
     fuente: 'curva de precios',
@@ -121,7 +137,7 @@ function factorRiesgoBarco(modalidad) {
     id: 'logistica-barco',
     categoria: 'logistica',
     nombre: 'Riesgo de perder el barco',
-    valor: hayDato ? probLlegar : null,
+    valor: hayDato ? textoPorcentaje(probLlegar) : null,
     detalle: hayDato
       ? `Probabilidad estimada de llegar al barco: ${Math.round(probLlegar * 100)} %.`
       : 'Sin dato de llegada al barco.',
@@ -136,7 +152,7 @@ function factorPuertoSaturado(modalidad, transporte) {
     id: 'logistica-saturacion',
     categoria: 'logistica',
     nombre: 'Puerto saturado',
-    valor: dias,
+    valor: textoDias(dias),
     detalle: dias ? `${dias} día(s) de transporte caen con el puerto saturado.` : 'Sin días de puerto saturado en la ventana.',
     impacto: Math.max(TOPE_SATURACION, dias * IMPACTO_POR_DIA_SATURADO),
     fuente: 'simulación de logística',
@@ -153,7 +169,7 @@ function factorHumedad(modalidad, decision) {
     id: 'grano-humedad',
     categoria: 'grano',
     nombre: 'Humedad del grano',
-    valor: Number.isFinite(granoPct) ? granoPct : null,
+    valor: Number.isFinite(granoPct) ? textoHumedad(granoPct) : null,
     detalle: fueraDeBase
       ? `El grano húmedo obliga a secar y agrega merma${Number.isFinite(basePct) ? ` sobre la base de ${basePct} %` : ''}.`
       : 'La humedad está dentro de la base de recibo.',
@@ -228,9 +244,93 @@ function diasHastaCobroDe(modalidad, hoy) {
   return null;
 }
 
-function estrategiaDe(modalidad, { decision, economia, hoy, id, tipo, titulo, accion }) {
+function idsDeCategoria(factores, categorias) {
+  return factores.filter((factor) => categorias.includes(factor.categoria)).map((factor) => factor.id);
+}
+
+function etapaCosecha({ cosecha, factores }) {
+  const inicio = cosecha?.inicio ?? null;
+  const fin = cosecha?.fin ?? null;
+  const dias = inicio && fin ? Math.max(1, diasEntre(inicio, fin) + 1) : null;
+  return {
+    id: 'cosecha',
+    titulo: TITULOS_ETAPA.cosecha,
+    decision: inicio && fin ? `Cosechar del ${inicio} al ${fin}` : 'Cosechar en la fecha del plan',
+    fecha: inicio,
+    detalle: dias ? `${textoDias(dias)} de cosecha.` : 'Sin fechas de cosecha confirmadas.',
+    factores: idsDeCategoria(factores, ['clima', 'grano']),
+  };
+}
+
+function etapaTransporte({ modalidad, tipo, decision, factores }) {
+  if (tipo === 'silobolsa') {
+    return {
+      id: 'transporte',
+      titulo: TITULOS_ETAPA.transporte,
+      decision: 'Sin transporte inmediato',
+      fecha: null,
+      detalle: 'El flete se paga al abrir la bolsa y vender el grano.',
+      factores: idsDeCategoria(factores, ['logistica']),
+    };
+  }
+  const transporte = decision.transporte;
+  const destino = transporte?.destino ?? modalidad.destino ?? null;
+  const camiones = Number(transporte?.camiones) || 0;
+  const tramo = transporte?.desde && transporte?.hasta ? ` Del ${transporte.desde} al ${transporte.hasta}.` : '';
+  return {
+    id: 'transporte',
+    titulo: TITULOS_ETAPA.transporte,
+    decision: destino
+      ? `Llevar a ${destino}${camiones ? ` en ${camiones} ${camiones === 1 ? 'camión' : 'camiones'}` : ''}`
+      : 'Sin datos de transporte',
+    fecha: transporte?.desde ?? null,
+    detalle: `${camiones ? `${camiones} ${camiones === 1 ? 'camión' : 'camiones'} programados.` : 'Sin camiones programados.'}${tramo}`,
+    factores: idsDeCategoria(factores, ['logistica']),
+  };
+}
+
+function etapaAlmacenaje({ tipo, modalidad, factores }) {
+  const meses = Number(modalidad.mesesGuardado) || 0;
+  const silobolsa = tipo === 'silobolsa';
+  return {
+    id: 'almacenaje',
+    titulo: TITULOS_ETAPA.almacenaje,
+    decision: silobolsa ? `Silobolsa ${textoMeses(meses)}` : 'Directo, sin almacenar',
+    fecha: null,
+    detalle: silobolsa
+      ? 'El grano queda en el campo y se vende al abrir la bolsa.'
+      : 'El grano se entrega apenas se cosecha.',
+    factores: idsDeCategoria(factores, ['almacenaje']),
+  };
+}
+
+function etapaVenta({ tipo, modalidad, factores }) {
+  const fechaCobro = modalidad.fechaCobro ?? null;
+  const destino = tipo === 'puerto' ? 'puerto' : 'acopio';
+  const precio = Number.isFinite(modalidad.precioUSDt) ? `Precio estimado USD ${modalidad.precioUSDt}/t.` : 'Sin precio estimado para esta estrategia.';
+  return {
+    id: 'venta',
+    titulo: TITULOS_ETAPA.venta,
+    decision: fechaCobro ? `Vender en ${destino} y cobrar el ${fechaCobro}` : `Vender en ${destino}`,
+    fecha: fechaCobro,
+    detalle: precio,
+    factores: idsDeCategoria(factores, ['precio']),
+  };
+}
+
+function etapasDe({ modalidad, tipo, decision, cosecha, factores }) {
+  return [
+    etapaCosecha({ cosecha, factores }),
+    etapaTransporte({ modalidad, tipo, decision, factores }),
+    etapaAlmacenaje({ tipo, modalidad, factores }),
+    etapaVenta({ tipo, modalidad, factores }),
+  ];
+}
+
+function estrategiaDe(modalidad, { decision, economia, hoy, id, tipo, titulo, accion, cosecha }) {
   const gananciaNetaUSD = Number.isFinite(modalidad.gananciaNetaUSD) ? modalidad.gananciaNetaUSD : 0;
   const factores = factoresDe({ ...modalidad, tipo }, decision, economia);
+  const conTipo = { ...modalidad, tipo };
   return {
     id,
     titulo: titulo ?? tituloDe({ ...modalidad, tipo }),
@@ -243,6 +343,7 @@ function estrategiaDe(modalidad, { decision, economia, hoy, id, tipo, titulo, ac
     diasHastaCobro: diasHastaCobroDe(modalidad, hoy),
     confianza: confianzaDe(factores),
     factores,
+    etapas: etapasDe({ modalidad: conTipo, tipo, decision, cosecha: cosecha ?? decision.cosecha, factores }),
     supuestos: [
       'Ganancia neta estimada en USD, con los costos y precios del escenario simulado.',
       'El índice de confianza es una probabilidad orientativa, no una garantía de resultado.',
@@ -268,12 +369,14 @@ export function armarEstrategias({ decision, hoy = null }) {
   const economia = decision?.economia;
   if (!economia) return { aviso: AVISO_ESTRATEGIAS, estrategias: [] };
 
-  const base = modalidadesDe(economia).map(({ modalidad, id, tipo }) => estrategiaDe(modalidad, { decision, economia, hoy, id, tipo }));
+  const cosechaGrande = economia.grande?.cosecha ?? decision.cosecha;
+  const base = modalidadesDe(economia).map(({ modalidad, id, tipo }) => estrategiaDe(modalidad, { decision, economia, hoy, id, tipo, cosecha: cosechaGrande }));
   const rapida = economia.rapida?.elegida;
   if (economia.comparacion?.coinciden === false && rapida) {
     base.push(estrategiaDe(rapida, {
       decision, economia, hoy, id: 'cosecha-rapida', tipo: rapida.tipo,
       titulo: 'Cosecha rápida',
+      cosecha: economia.rapida?.cosecha ?? decision.cosecha,
       accion: 'Cosechá y vendé lo antes posible para cobrar antes, aceptando menos ganancia.',
     }));
   }

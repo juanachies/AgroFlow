@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowRight, BadgeCheck, CalendarRange, Container, MapPin, Package, Plus, RefreshCw, Search,
+  ArrowRight, BadgeCheck, CalendarRange, Container, Package, Plus, RefreshCw, Search,
   Sprout, Star, Tractor, Truck, Users, Wheat, X,
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { distanciaKm } from '../lib/data.js';
+import { claveRango, rangoMasComun } from '../lib/marketplace.js';
 import ServiceMarketplace from '../components/ServiceMarketplace.jsx';
+
+const OFERTAS_POR_PAGINA = 12;
 
 export const ACTORES = [
   { id: '', label: 'Todos', icon: Users },
@@ -33,38 +36,34 @@ function PriceTag({ value }) {
   return <span className={`price-tag ${pct < 0 ? 'price-tag--good' : 'price-tag--high'}`}>{pct > 0 ? '+' : ''}{pct}% vs. referencia</span>;
 }
 
-function OfferCard({ offer, lot }) {
+function OfferCard({ offer, lot, mostrarFechas }) {
   const Icon = iconFor(offer.recurso);
   const distance = lot ? distanciaKm({ latitude: lot.latitude, longitude: lot.longitude }, { latitude: offer.base.lat, longitude: offer.base.lon }) : null;
   const covers = distance !== null && distance <= offer.radioKm;
+  const tipo = [offer.recurso, offer.tipo?.replace(/-/g, ' ')].filter(Boolean).join(' · ');
   return (
-    <article className="offer-card">
-      <header className="offer-head">
-        <span className="offer-avatar" aria-hidden="true">{initials(offer.proveedor)}</span>
-        <div className="offer-title">
-          <strong>{offer.proveedor}</strong>
-          <span><MapPin size={13} aria-hidden="true" /> {offer.base.localidad ?? `${offer.base.lat.toFixed(2)}, ${offer.base.lon.toFixed(2)}`} · radio {fmt(offer.radioKm)} km</span>
-        </div>
+    <article className="offer-card offer-card--compact">
+      <div className="offer-line offer-line--main">
+        <strong className="offer-name">{offer.proveedor}</strong>
         {offer.calificacion != null && (
           <span className="offer-rating" aria-label={`Calificación ${offer.calificacion} de 5`}><Star size={13} aria-hidden="true" /> {offer.calificacion.toFixed(1)}</span>
         )}
-      </header>
-      <div className="offer-resource">
-        <span className="resource-icon"><Icon size={18} aria-hidden="true" /></span>
-        <div>
-          <strong className="tabular">{fmt(offer.unidades)} {offer.unidades === 1 ? 'unidad' : 'unidades'}</strong>
-          <small>{offer.recurso}{offer.tipo ? ` · ${offer.tipo.replace(/-/g, ' ')}` : ''}</small>
-        </div>
-        <PriceTag value={offer.precioRelativo} />
       </div>
-      <footer className="offer-foot">
-        <span><CalendarRange size={13} aria-hidden="true" /> {fmtDate(offer.disponibleDesde)} – {fmtDate(offer.disponibleHasta)}</span>
+      <div className="offer-line offer-line--meta">
+        <span className="offer-type"><Icon size={14} aria-hidden="true" /> {tipo}</span>
+        <strong className="tabular">{fmt(offer.unidades)} {offer.unidades === 1 ? 'unidad' : 'unidades'}</strong>
+      </div>
+      <div className="offer-line offer-line--chips">
+        <PriceTag value={offer.precioRelativo} />
         {distance !== null && (
           <span className={`status-pill ${covers ? 'status-pill--success' : 'status-pill--muted'}`}>
             {covers ? <><BadgeCheck size={12} aria-hidden="true" /> Llega a tu lote · {fmt(distance)} km</> : `Fuera de radio · ${fmt(distance)} km`}
           </span>
         )}
-      </footer>
+        {mostrarFechas && (
+          <span className="offer-dates"><CalendarRange size={13} aria-hidden="true" /> {fmtDate(offer.disponibleDesde)} – {fmtDate(offer.disponibleHasta)}</span>
+        )}
+      </div>
     </article>
   );
 }
@@ -169,6 +168,7 @@ export default function MarketplacePage({ role, fields = [], guest = false, lot,
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [pagina, setPagina] = useState(OFERTAS_POR_PAGINA);
 
   async function load() {
     setLoading(true);
@@ -186,6 +186,8 @@ export default function MarketplacePage({ role, fields = [], guest = false, lot,
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => { setPagina(OFERTAS_POR_PAGINA); }, [actor, search, sort]);
+
   const counts = useMemo(() => Object.fromEntries(ACTORES.map((a) => [a.id, a.id ? offers.filter((o) => o.recurso === a.id).length : offers.length])), [offers]);
 
   const visible = useMemo(() => {
@@ -201,6 +203,9 @@ export default function MarketplacePage({ role, fields = [], guest = false, lot,
   const providers = new Set(offers.map((o) => o.proveedor)).size;
   const units = offers.reduce((t, o) => t + o.unidades, 0);
   const avgPrice = offers.length ? offers.reduce((t, o) => t + o.precioRelativo, 0) / offers.length : 1;
+  const rangoComun = useMemo(() => rangoMasComun(offers), [offers]);
+  const mostradas = visible.slice(0, pagina);
+  const restantes = visible.length - mostradas.length;
 
   return (
     <>
@@ -258,7 +263,14 @@ export default function MarketplacePage({ role, fields = [], guest = false, lot,
           {loading ? (
             <div className="offer-grid">{Array.from({ length: 6 }, (_, i) => <div className="offer-card skeleton" key={i} />)}</div>
           ) : visible.length ? (
-            <div className="offer-grid">{visible.map((offer) => <OfferCard key={offer.id} offer={offer} lot={lot} />)}</div>
+            <>
+              <div className="offer-grid">{mostradas.map((offer) => <OfferCard key={offer.id} offer={offer} lot={lot} mostrarFechas={claveRango(offer) !== rangoComun} />)}</div>
+              {restantes > 0 && (
+                <div className="market-more">
+                  <button type="button" className="button button--secondary" onClick={() => setPagina((n) => n + OFERTAS_POR_PAGINA)}>Ver más ({restantes})</button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="panel compact-empty">No hay ofertas que coincidan con el filtro.</div>
           )}

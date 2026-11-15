@@ -4,7 +4,7 @@ import Almanaque from './Almanaque.jsx';
 import EconomiaCampana from './EconomiaCampana.jsx';
 import LogisticsMap, { CAPAS } from './LogisticsMap.jsx';
 import { Avisos, Destinos, Pedido, Saturacion } from './PlanDespacho.jsx';
-import PlanCamiones from './PlanCamiones.jsx';
+import PlanCamiones, { DecisionCamiones } from './PlanCamiones.jsx';
 import ZonaLote from './ZonaLote.jsx';
 import { api } from '../lib/api.js';
 import { nombreCultivo, ventanaDelLote } from '../lib/data.js';
@@ -33,6 +33,14 @@ const NIVEL_RIESGO = {
   alto: { texto: 'Riesgo alto', clase: 'bad' },
   critico: { texto: 'Riesgo crítico', clase: 'bad' },
 };
+
+const PESTANAS = [
+  { id: 'mapa', label: 'Mapa y clima' },
+  { id: 'camiones', label: 'Camiones' },
+  { id: 'almanaque', label: 'Almanaque' },
+  { id: 'ganancia', label: 'Ganancia' },
+  { id: 'zona', label: 'Datos de la zona' },
+];
 
 function Kpi({ icono, etiqueta, valor, detalle, tono = 'green' }) {
   return (
@@ -192,6 +200,7 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
   const [reservas, setReservas] = useState([]);
   const [simulando, setSimulando] = useState(false);
   const [capas, setCapas] = useState(() => Object.fromEntries(CAPAS.map(({ id }) => [id, true])));
+  const [pestana, setPestana] = useState('mapa');
 
   useEffect(() => {
     let vivo = true;
@@ -299,63 +308,105 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
 
       <LotesStrip lots={lots} selectedLot={selectedLot} onSelectLot={onSelectLot} />
 
-      <div className="cl-main">
-        <section className="panel cl-map-panel">
-          <div className="cl-layers" role="group" aria-label="Capas del mapa">
-            {CAPAS.map(({ id, label, color }) => (
-              <label key={id} className={`cl-layer${capas[id] ? ' is-on' : ''}`} style={{ '--tone': color }}>
-                <input type="checkbox" checked={capas[id]} onChange={() => setCapas((actual) => ({ ...actual, [id]: !actual[id] }))} />
-                <i />{label}
-              </label>
-            ))}
-          </div>
-          <LogisticsMap
-            key={theme}
-            lots={lots}
-            selectedLot={selectedLot}
-            silobolsas={silobolsas}
-            acopios={ACOPIOS_EJEMPLO}
-            puertos={PUERTOS_GEO}
-            fleteros={cercanos}
-            destino={destinoPuerto}
-            visible={capas}
-            theme={theme}
-            onSelectLot={onSelectLot}
-          />
-          <p className="cl-muted cl-map-note">Los acopios son datos de ejemplo: el sistema aún no tiene un padrón real. La línea dorada une el lote con el puerto recomendado.</p>
-        </section>
-        <div className="cl-side">
-          <CicloTimeline lot={selectedLot} ventana={ventana} etapa={etapa} />
-          <ClimaPanel clima={clima} sim={sim} ventana={ventana} />
-        </div>
-      </div>
-
-      {sim?.decision && <PlanCamiones sim={sim} ofertas={ofertas} nombreLote={selectedLot?.name} reservas={reservas} onConfirmar={confirmarReservas} />}
-      {sim?.decision && <ZonaLote decision={sim.decision} />}
-      {sim?.decision && <Almanaque decision={sim.decision} nombreLote={selectedLot?.name} />}
-      {sim?.decision?.economia && <EconomiaCampana economia={sim.decision.economia} nombreLote={selectedLot?.name} />}
-      {sim?.decision?.errorEconomia && <div className="pd-aviso pd-aviso--alerta"><strong>No se pudo estimar la ganancia</strong> {sim.decision.errorEconomia}</div>}
-
-      <div className="cl-two">
-        <FleterosPanel cercanos={cercanos} resumen={resumen} cargado={ofertas !== false} />
-        <SilobolsasPanel bolsas={bolsas || []} riesgos={riesgos} lots={lots} cargado={bolsas !== false} />
-      </div>
-
-      <div className="section-heading section-heading--standalone">
-        <div><h3>Decisiones para {selectedLot?.name}</h3><p>Plan calculado solo con los datos de tu lote y de tu zona; si querés probar otros valores, usá el simulador.</p></div>
-        <button type="button" className="button button--secondary button--small" onClick={() => onNavigate('despacho')}>Abrir simulador completo</button>
-      </div>
       {!sembrado && <div className="panel compact-empty">El lote no tiene cultivo sembrado: sembralo en Gestionar lotes para calcular destino, flete y despacho.</div>}
       {simulando && <div className="loading-state" role="status">Calculando el plan logístico…</div>}
       {simError && <div className="pd-aviso pd-aviso--critico"><strong>No se pudo calcular el plan</strong> {simError}</div>}
-      {sim && (
-        <div className="pd-resultado">
-          <Avisos avisos={sim.avisos} />
-          <Destinos plan={sim.plan} />
-          <Saturacion saturacion={sim.saturacion} ventana={sim.ventana} puerto={sim.puerto} />
-          <Pedido pedidos={sim.plan.recomendado.pedidos} asignacion={sim.asignacion} />
+      {sim?.decision && <DecisionCamiones sim={sim} ofertas={ofertas} nombreLote={selectedLot?.name} reservas={reservas} onConfirmar={confirmarReservas} />}
+
+      <div className="cl-tabs" role="tablist" aria-label="Secciones del centro logístico">
+        {PESTANAS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            role="tab"
+            id={`cl-tab-${p.id}`}
+            aria-selected={pestana === p.id}
+            aria-controls={`cl-panel-${p.id}`}
+            tabIndex={pestana === p.id ? 0 : -1}
+            className={`cl-tab${pestana === p.id ? ' is-active' : ''}`}
+            onClick={() => setPestana(p.id)}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {pestana === 'mapa' && (
+        <div id="cl-panel-mapa" role="tabpanel" aria-labelledby="cl-tab-mapa" className="cl-tabpanel">
+          <div className="cl-main">
+            <section className="panel cl-map-panel">
+              <div className="cl-layers" role="group" aria-label="Capas del mapa">
+                {CAPAS.map(({ id, label, color }) => (
+                  <label key={id} className={`cl-layer${capas[id] ? ' is-on' : ''}`} style={{ '--tone': color }}>
+                    <input type="checkbox" checked={capas[id]} onChange={() => setCapas((actual) => ({ ...actual, [id]: !actual[id] }))} />
+                    <i />{label}
+                  </label>
+                ))}
+              </div>
+              <LogisticsMap
+                key={theme}
+                lots={lots}
+                selectedLot={selectedLot}
+                silobolsas={silobolsas}
+                acopios={ACOPIOS_EJEMPLO}
+                puertos={PUERTOS_GEO}
+                fleteros={cercanos}
+                destino={destinoPuerto}
+                visible={capas}
+                theme={theme}
+                onSelectLot={onSelectLot}
+              />
+              <p className="cl-muted cl-map-note">Los acopios son datos de ejemplo: el sistema aún no tiene un padrón real. La línea dorada une el lote con el puerto recomendado.</p>
+            </section>
+            <div className="cl-side">
+              <CicloTimeline lot={selectedLot} ventana={ventana} etapa={etapa} />
+              <ClimaPanel clima={clima} sim={sim} ventana={ventana} />
+            </div>
+          </div>
+          <div className="cl-two">
+            <FleterosPanel cercanos={cercanos} resumen={resumen} cargado={ofertas !== false} />
+            <SilobolsasPanel bolsas={bolsas || []} riesgos={riesgos} lots={lots} cargado={bolsas !== false} />
+          </div>
         </div>
       )}
+
+      {pestana === 'camiones' && (
+        <div id="cl-panel-camiones" role="tabpanel" aria-labelledby="cl-tab-camiones" className="cl-tabpanel">
+          {sim?.decision ? <PlanCamiones sim={sim} ofertas={ofertas} nombreLote={selectedLot?.name} reservas={reservas} /> : <div className="panel compact-empty">Sin plan de camiones todavía.</div>}
+          {sim && (
+            <div className="pd-resultado">
+              <Avisos avisos={sim.avisos} />
+              <Destinos plan={sim.plan} />
+              <Saturacion saturacion={sim.saturacion} ventana={sim.ventana} puerto={sim.puerto} />
+              <Pedido pedidos={sim.plan.recomendado.pedidos} asignacion={sim.asignacion} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {pestana === 'almanaque' && (
+        <div id="cl-panel-almanaque" role="tabpanel" aria-labelledby="cl-tab-almanaque" className="cl-tabpanel">
+          {sim?.decision ? <Almanaque decision={sim.decision} nombreLote={selectedLot?.name} compacto /> : <div className="panel compact-empty">Sin almanaque todavía.</div>}
+        </div>
+      )}
+
+      {pestana === 'ganancia' && (
+        <div id="cl-panel-ganancia" role="tabpanel" aria-labelledby="cl-tab-ganancia" className="cl-tabpanel">
+          {sim?.decision?.economia ? <EconomiaCampana economia={sim.decision.economia} nombreLote={selectedLot?.name} /> : <div className="panel compact-empty">Sin estimación de ganancia todavía.</div>}
+          {sim?.decision?.errorEconomia && <div className="pd-aviso pd-aviso--alerta"><strong>No se pudo estimar la ganancia</strong> {sim.decision.errorEconomia}</div>}
+        </div>
+      )}
+
+      {pestana === 'zona' && (
+        <div id="cl-panel-zona" role="tabpanel" aria-labelledby="cl-tab-zona" className="cl-tabpanel">
+          {sim?.decision ? <ZonaLote decision={sim.decision} /> : <div className="panel compact-empty">Sin datos de la zona todavía.</div>}
+        </div>
+      )}
+
+      <div className="section-heading section-heading--standalone">
+        <div><h3>Simulador completo</h3><p>Si querés probar otros valores, usá el simulador.</p></div>
+        <button type="button" className="button button--secondary button--small" onClick={() => onNavigate('despacho')}>Abrir simulador completo</button>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { promedio } from '../lib/data.js';
+import { columnasConDatos, promedio } from '../lib/data.js';
 
 function compactDate(value) {
   if (!value) return '—';
@@ -39,30 +39,33 @@ export function WeatherChart({ title, unit, points, color = 'green', note }) {
   );
 }
 
+const FORECAST_COLUMNS = [
+  { key: 'date', label: 'Fecha', valor: (day) => compactDate(day.date) },
+  { key: 'rain', label: 'Lluvia pronosticada', valor: (day) => (Number.isFinite(day.precipitationMm) ? `${day.precipitationMm.toFixed(1)} mm` : null) },
+  { key: 'probability', label: 'Prob. máxima', valor: (day) => (Number.isFinite(day.precipitationProbabilityMaxPercent) ? `${Math.round(day.precipitationProbabilityMaxPercent)}%` : null) },
+  { key: 'temperature', label: 'T. mín. / máx.', valor: (day) => (Number.isFinite(day.temperatureMinC) && Number.isFinite(day.temperatureMaxC)
+    ? `${day.temperatureMinC.toFixed(0)}° / ${day.temperatureMaxC.toFixed(0)}°`
+    : null) },
+  { key: 'moisture', label: 'Humedad de suelo', valor: (day) => {
+    const meanMoisture = promedio(Object.values(day.soilMoistureHourly ?? {}).flat());
+    return meanMoisture === null ? null : `${meanMoisture.toFixed(3)} m³/m³ · modelo`;
+  } },
+];
+
 export function ForecastTable({ days }) {
+  const columns = columnasConDatos(days, FORECAST_COLUMNS);
   return (
     <div className="table-scroll">
       <table className="forecast-table">
         <thead>
-          <tr><th>Fecha</th><th>Lluvia pronosticada</th><th>Prob. máxima</th><th>T. mín. / máx.</th><th>Humedad de suelo</th><th>Tránsito</th></tr>
+          <tr>{columns.map(({ key, label }) => <th key={key}>{label}</th>)}</tr>
         </thead>
         <tbody>
-          {days.map((day) => {
-            const moisture = Object.values(day.soilMoistureHourly ?? {}).flat();
-            const meanMoisture = promedio(moisture);
-            return (
-              <tr key={day.date}>
-                <td>{compactDate(day.date)}</td>
-                <td>{Number.isFinite(day.precipitationMm) ? `${day.precipitationMm.toFixed(1)} mm` : 'Sin dato'}</td>
-                <td>{Number.isFinite(day.precipitationProbabilityMaxPercent) ? `${Math.round(day.precipitationProbabilityMaxPercent)}%` : 'Sin dato'}</td>
-                <td>{Number.isFinite(day.temperatureMinC) && Number.isFinite(day.temperatureMaxC)
-                  ? `${day.temperatureMinC.toFixed(0)}° / ${day.temperatureMaxC.toFixed(0)}°`
-                  : 'Sin dato'}</td>
-                <td>{meanMoisture === null ? 'Sin dato' : `${meanMoisture.toFixed(3)} m³/m³ · modelo`}</td>
-                <td><span className="status-pill status-pill--muted">Sin evaluación</span></td>
-              </tr>
-            );
-          })}
+          {days.map((day) => (
+            <tr key={day.date}>
+              {columns.map(({ key, valor }) => <td key={key}>{valor(day) ?? 'Sin dato'}</td>)}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   crearLote,
+  columnasConDatos,
   diasEnVentana,
   editarLote,
   estimarCiclo,
@@ -103,4 +104,18 @@ test('filtra pronóstico a los días que cubre la ventana', () => {
     diasEnVentana(days, { inicio: '2026-01-14', fin: '2026-02-13' }).map(({ date }) => date),
     ['2026-01-14', '2026-02-13'],
   );
+});
+
+test('oculta columnas de pronóstico sin dato en todas las filas', () => {
+  const columns = [
+    { key: 'date', valor: (day) => day.date },
+    { key: 'probability', valor: (day) => day.probability ?? null },
+    { key: 'moisture', valor: () => null },
+  ];
+  const days = [
+    { date: '2026-01-13', probability: null },
+    { date: '2026-01-14', probability: 40 },
+  ];
+  assert.deepEqual(columnasConDatos(days, columns).map(({ key }) => key), ['date', 'probability']);
+  assert.deepEqual(columnasConDatos([{ date: '2026-01-13', probability: null }], columns).map(({ key }) => key), ['date']);
 });
