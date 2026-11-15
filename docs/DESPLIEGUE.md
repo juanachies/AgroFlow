@@ -8,10 +8,10 @@ Requisitos: Node 22.23.5 (fijada en `package.json`, `.nvmrc` y el `Dockerfile`).
 
 1. Clonar el repo e instalar dependencias:
    ```bash
-   git clone https://github.com/juanachies/marcianos.git
+   git clone https://github.com/juanachies/AgroFlow.git
    ```
    ```bash
-   cd marcianos
+   cd AgroFlow
    ```
    ```bash
    npm install

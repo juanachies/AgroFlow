@@ -43,11 +43,11 @@ Estado de cada fuente en [docs/DATOS.md](docs/DATOS.md) y [docs/FUENTES.md](docs
 Requisitos: Node 22.23.5, la versión fijada en `package.json` y `.nvmrc`. Para actualizar el flete desde el PDF de CATAC hace falta `pdftotext` (paquete `poppler-utils`).
 
 ```bash
-git clone https://github.com/juanachies/marcianos.git
+git clone https://github.com/juanachies/AgroFlow.git
 ```
 
 ```bash
-cd marcianos
+cd AgroFlow
 ```
 
 ```bash
