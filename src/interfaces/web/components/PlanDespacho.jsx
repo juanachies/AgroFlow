@@ -17,7 +17,7 @@ const ESCENARIOS = [
   { tipo: 'saturacion', valor: 30, etiqueta: '+30% camiones al puerto' },
 ];
 
-function formularioInicial(lot) {
+export function formularioInicial(lot) {
   const ref = REFERENCIAS[lot.crop] ?? REFERENCIAS.soja;
   return {
     hoy: hoyIso(),
@@ -94,7 +94,7 @@ function Formulario({ f, set, onSubmit, cargando }) {
   );
 }
 
-function Avisos({ avisos }) {
+export function Avisos({ avisos }) {
   if (!avisos?.length) return null;
   return (
     <section className="pd-avisos">
@@ -103,7 +103,7 @@ function Avisos({ avisos }) {
   );
 }
 
-function Destinos({ plan }) {
+export function Destinos({ plan }) {
   const rec = plan.recomendado;
   const opciones = [...plan.alternativas].sort((a, b) => (b.margen_usd ?? -Infinity) - (a.margen_usd ?? -Infinity));
   return (
@@ -121,7 +121,7 @@ function Destinos({ plan }) {
   );
 }
 
-function Saturacion({ saturacion, ventana, puerto }) {
+export function Saturacion({ saturacion, ventana, puerto }) {
   if (!saturacion) return null;
   const dentro = (d) => ventana && d >= ventana.inicio && d <= ventana.fin;
   const dias = saturacion.dias.slice(0, 45);
@@ -149,7 +149,7 @@ function Saturacion({ saturacion, ventana, puerto }) {
   );
 }
 
-function Pedido({ pedidos, asignacion }) {
+export function Pedido({ pedidos, asignacion }) {
   return (
     <section className="panel pd-panel">
       <div className="section-heading"><div><span className="eyebrow">MARKETPLACE DE CADETES</span><h3>Qué contratar y con quién</h3></div><span className={`status-pill${asignacion.completa ? '' : ' status-pill--muted'}`}>Cobertura {asignacion.coberturaPct}% · {usd(asignacion.costoUsd)}</span></div>

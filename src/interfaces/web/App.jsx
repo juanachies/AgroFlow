@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Activity, ChartNoAxesCombined, CloudSun, House, Map as MapIcon, Moon, Package, Plus, Route,
+  Activity, ChartNoAxesCombined, CloudSun, House, LayoutDashboard, Map as MapIcon, Moon, Package, Plus, Route,
   Sprout, Store, Sun, UserRound, Wheat,
 } from 'lucide-react';
 import ChatBubble from './components/ChatBubble.jsx';
@@ -35,9 +35,11 @@ import SilobolsasPage from './pages/SilobolsasPage.jsx';
 
 const MapView = lazy(() => import('./components/MapView.jsx'));
 const PlanDespacho = lazy(() => import('./components/PlanDespacho.jsx'));
+const CentroLogistico = lazy(() => import('./components/CentroLogistico.jsx'));
 
 const SECTIONS = [
   { id: 'inicio', label: 'Inicio', icon: House, pages: [{ id: 'summary', label: 'Resumen' }] },
+  { id: 'centro', label: 'Centro logístico', icon: LayoutDashboard, pages: [{ id: 'centro', label: 'Centro logístico' }] },
   {
     id: 'lotes', label: 'Gestionar lotes', icon: MapIcon,
     pages: [
@@ -59,7 +61,7 @@ const SECTIONS = [
 
 const PAGES = SECTIONS.flatMap(({ pages }) => pages);
 const sectionOf = (pageId) => SECTIONS.find(({ pages }) => pages.some(({ id }) => id === pageId));
-const PAGES_WITH_LOT_SELECTOR = new Set(['summary', 'lots', 'planning', 'technical', 'despacho', 'marketplace']);
+const PAGES_WITH_LOT_SELECTOR = new Set(['summary', 'centro', 'lots', 'planning', 'technical', 'despacho', 'marketplace']);
 
 function BrandMark() {
   return (
@@ -715,6 +717,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
               {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onBoundary={saveBoundary} onSnapshot={saveSnapshot} onEdit={(lot) => setDialog({ type: 'lot', lot })} onSow={(lot) => setDialog({ type: 'sow', lot })} onClearSowing={(lot) => setDialog({ type: 'clear', lot })} onDelete={(lot) => setDialog({ type: 'delete', lot })} onCreate={openCreate} onDrawnBoundary={saveDrawnBoundary} onCreateFromDrawing={createFromDrawing} theme={theme} />}
               {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSnapshot={saveSnapshot} onSow={() => setDialog({ type: 'sow', lot: selectedLot })} />}
               {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
+              {page === 'centro' && <CentroLogistico lots={lots} selectedLot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} theme={theme} onSelectLot={setSelectedLotId} onNavigate={navigate} />}
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
               {page === 'marketplace' && <MarketplacePage lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
               {page === 'silobolsas' && <SilobolsasPage lots={lots} />}
