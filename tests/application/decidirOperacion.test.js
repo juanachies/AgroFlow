@@ -109,7 +109,7 @@ test('el adaptador histórico pide 10 años completos, resume y guarda en caché
   assert.equal(pedidos[0].searchParams.get('start_date'), '2017-01-01');
   assert.equal(pedidos[0].searchParams.get('end_date'), '2026-12-31');
   assert.equal(pedidos[0].searchParams.get('latitude'), '-33.9');
-  assert.equal(pedidos[0].searchParams.get('daily'), 'precipitation_sum');
+  assert.equal(pedidos[0].searchParams.get('daily'), 'precipitation_sum,wind_gusts_10m_max,relative_humidity_2m_mean');
   assert.equal(resultado.resumen['04-10'].probFuerte, 0.5);
 
   await adaptador.climatologiaDiaria({ latitude: -33.9, longitude: -60.6 });

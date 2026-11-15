@@ -5,6 +5,7 @@
 // Todo en USD. Los supuestos son editables y están rotulados: no son cotizaciones ni mediciones.
 
 import { diasEntre, redondear, sumarDias } from '../shared/util.js';
+import { condicionesDe, costoDeSecado, riesgoSilobolsaPorHumedad } from '../cosecha/condicionesCosecha.js';
 import { perdidasPorDemora } from '../cosecha/perdidasPorDemora.js';
 import { diasViaje } from '../maquinaria/logistica.js';
 import { precioEsperado } from '../venta/precios.js';
@@ -16,7 +17,7 @@ const TOLERANCIA_USD = 1;
 export const SUPUESTOS_ECONOMIA = {
   tasaAnual: 0.08, // costo financiero de cobrar más tarde
   mermaManipuleoPct: 0.2, // por carga y descarga (supuesto; no hay fuente abierta con un valor único)
-  mermaSilobolsaMensualPct: 0.5, // riesgo medio de tarifas.silobolsa.merma_pct_por_mes
+  mermaSilobolsaMensualPct: 0.5, // sin dato de humedad: riesgo medio de tarifas.silobolsa.merma_pct_por_mes
   costoEsperaUSDtDia: SUPUESTOS_VENTA.costoEsperaUSDtDia,
   costoGuardarCortoUSDtDia: SUPUESTOS_VENTA.costoGuardarCortoUSDtDia,
   fleteUSDtKm: SUPUESTOS_VENTA.fleteUSDtKm, // para llevar la silobolsa al destino cuando se vende
@@ -51,12 +52,12 @@ function factorPrecioSilobolsa({ curva, cultivo, fecha, meses }) {
 }
 
 function fila({ alternativa, destino, fechaLlegada, fechaCobro, hoy, toneladas, mermas, precioUSDt, costos, probLlegar, extra = {} }) {
-  const mermaTotalPct = mermas.cosechaPct + mermas.manipuleoPct + mermas.almacenajePct;
+  const mermaTotalPct = mermas.cosechaPct + mermas.manipuleoPct + mermas.almacenajePct + (mermas.secadoPct ?? 0);
   const toneladasVendidas = toneladas.cosechadas * (1 - mermaTotalPct / 100);
   const ingreso = toneladasVendidas * precioUSDt;
   const financiero = ingreso * (SUPUESTOS_ECONOMIA.tasaAnual / 365) * Math.max(0, diasEntre(hoy, fechaCobro));
   const todos = { ...costos, financiero };
-  const operativos = costos.cosecha + costos.transporte + costos.almacenaje + costos.otros;
+  const operativos = costos.cosecha + costos.transporte + costos.almacenaje + costos.otros + (costos.secado ?? 0);
   const netos = ingreso - sumar(todos);
   const qqCosechados = toneladas.cosechadas * QQ_POR_TONELADA;
   const mermaUSD = toneladas.cosechadas * (mermaTotalPct / 100) * precioUSDt;
@@ -87,6 +88,11 @@ function fila({ alternativa, destino, fechaLlegada, fechaCobro, hoy, toneladas, 
   };
 }
 
+function resumenHumedad(ctx, secado) {
+  if (ctx.humedadGranoPct == null) return null;
+  return { granoPct: ctx.humedadGranoPct, objetivoPct: secado.objetivoPct ?? null, puntosASecar: secado.puntos, mermaSecadoPct: Math.round(secado.mermaPct * 100) / 100 };
+}
+
 function costosBase(alternativa, toneladas) {
   const servicios = alternativa.costos_por_servicio ?? {};
   const extraccion = alternativa.costo_extraccion_usd ?? 0;
@@ -102,6 +108,7 @@ function evaluarPuerto({ alternativa, destino, ctx }) {
   const base = costosBase(alternativa, toneladas.cosechadas);
   const viaje = diasViaje(destino?.distanciaKm ?? 0);
   const llegadaBase = sumarDias(cosecha.fin, viaje);
+  const secado = ctx.secar(ctx.condiciones?.humedadBaseRecibo);
   const candidatos = [];
   for (let desplazamiento = 0; desplazamiento <= s.margenLlegadaDias; desplazamiento += 1) {
     const fecha = sumarDias(llegadaBase, desplazamiento);
@@ -112,9 +119,10 @@ function evaluarPuerto({ alternativa, destino, ctx }) {
     const guardarEnCampo = toneladas.cosechadas * desplazamiento * s.costoGuardarCortoUSDtDia;
     const candidata = fila({
       alternativa, destino, fechaLlegada: fecha, fechaCobro: fecha, hoy, toneladas,
-      mermas: ctx.mermas(1), precioUSDt: ctx.precioBase(alternativa),
-      costos: { cosecha: base.cosecha, transporte: base.transporte, almacenaje: base.almacenaje, otros: base.otros, espera, guardarEnCampo, riesgoBarco },
+      mermas: { ...ctx.mermas(1), secadoPct: secado.mermaPct }, precioUSDt: ctx.precioBase(alternativa),
+      costos: { cosecha: base.cosecha, transporte: base.transporte, almacenaje: base.almacenaje, otros: base.otros, secado: secado.usd, espera, guardarEnCampo, riesgoBarco },
       probLlegar,
+      extra: { humedad: resumenHumedad(ctx, secado) },
     });
     candidatos.push(candidata);
     if (modo === 'rapida' && (probLlegar == null || probLlegar >= s.probLlegarRapida)) return conAhorroDeFecha(candidata, candidatos[0]);
@@ -138,11 +146,13 @@ function evaluarAcopio({ alternativa, destino, ctx }) {
   const { hoy, cosecha, toneladas } = ctx;
   const base = costosBase(alternativa, toneladas.cosechadas);
   const fecha = sumarDias(cosecha.fin, diasViaje(destino?.distanciaKm ?? 0));
+  const secado = ctx.secar(ctx.condiciones?.humedadBaseRecibo);
   return fila({
     alternativa, destino, fechaLlegada: fecha, fechaCobro: fecha, hoy, toneladas,
-    mermas: ctx.mermas(1), precioUSDt: ctx.precioBase(alternativa),
-    costos: { cosecha: base.cosecha, transporte: base.transporte, almacenaje: base.almacenaje, otros: base.otros, espera: 0, guardarEnCampo: 0, riesgoBarco: 0 },
+    mermas: { ...ctx.mermas(1), secadoPct: secado.mermaPct }, precioUSDt: ctx.precioBase(alternativa),
+    costos: { cosecha: base.cosecha, transporte: base.transporte, almacenaje: base.almacenaje, otros: base.otros, secado: secado.usd, espera: 0, guardarEnCampo: 0, riesgoBarco: 0 },
     probLlegar: null,
+    extra: { humedad: resumenHumedad(ctx, secado) },
   });
 }
 
@@ -158,21 +168,38 @@ function evaluarSilobolsa({ alternativa, ctx, alternativas, destinos }) {
   const transporteDiferido = alternativaDeVenta === alternativa ? 0 : (alternativaDeVenta.costos_por_servicio?.transporte ?? 0);
   const precioSpot = ctx.precioBase(alternativaDeVenta);
   const opciones = [];
+  const maximo = ctx.condiciones?.humedadMaximaSilobolsa;
+  const humedad = ctx.humedadGranoPct;
+  const hayExceso = humedad != null && maximo != null && humedad > maximo;
+  // Con grano más húmedo que el máximo de bajo riesgo hay dos caminos: embolsar así (más merma por mes)
+  // o secar antes de embolsar (merma y tarifa de secado, pero riesgo bajo).
+  const variantes = hayExceso ? [false, true] : [false];
   for (let meses = 1; meses <= s.mesesMaxSilobolsa; meses += 1) {
     const fechaCobro = sumarDias(cosecha.fin, 30 * meses);
     const precio = precioSpot * factorPrecioSilobolsa({ curva, cultivo, fecha: fechaCobro, meses });
-    const mermas = { ...ctx.mermas(2), almacenajePct: s.mermaSilobolsaMensualPct * meses };
-    opciones.push(fila({
-      alternativa, destino: destinoDeVenta, fechaLlegada: cosecha.fin, fechaCobro, hoy, toneladas, mermas, precioUSDt: precio,
-      costos: { cosecha: base.cosecha, transporte: base.transporte + transporteDiferido, almacenaje: base.almacenaje, otros: base.otros, espera: 0, guardarEnCampo: 0, riesgoBarco: 0 },
-      probLlegar: null,
-      extra: { mesesGuardado: meses },
-    }));
+    const variantesDelMes = variantes.map((secarAntes) => {
+      const secado = secarAntes ? ctx.secar(maximo) : ctx.secar(undefined);
+      const humedadAlEmbolsar = secarAntes ? maximo : humedad;
+      const riesgoHumedad = humedadAlEmbolsar == null ? null : riesgoSilobolsaPorHumedad(cultivo, humedadAlEmbolsar);
+      const mermaMensual = riesgoHumedad && riesgoHumedad.nivel !== 'sin-dato' ? riesgoHumedad.mermaMensualPct : s.mermaSilobolsaMensualPct;
+      const mermas = { ...ctx.mermas(2), almacenajePct: mermaMensual * meses, secadoPct: secado.mermaPct };
+      return fila({
+        alternativa, destino: destinoDeVenta, fechaLlegada: cosecha.fin, fechaCobro, hoy, toneladas, mermas, precioUSDt: precio,
+        costos: { cosecha: base.cosecha, transporte: base.transporte + transporteDiferido, almacenaje: base.almacenaje, otros: base.otros, secado: secado.usd, espera: 0, guardarEnCampo: 0, riesgoBarco: 0 },
+        probLlegar: null,
+        extra: {
+          mesesGuardado: meses,
+          riesgo: { probLlegar: null, nivel: riesgoHumedad?.nivel ?? 'sin-dato', motivo: 'humedad del grano' },
+          humedad: { granoPct: humedad, objetivoPct: maximo ?? null, puntosASecar: secarAntes ? secado.puntos : 0, secarAntes, exceso: hayExceso ? Math.round((humedad - maximo) * 10) / 10 : 0, mermaMensualPct: mermaMensual },
+        },
+      });
+    });
+    opciones.push(variantesDelMes.reduce((a, o) => (o.gananciaNetaUSD > a.gananciaNetaUSD ? o : a)));
   }
   const mejor = opciones.reduce((a, o) => (o.gananciaNetaUSD > a.gananciaNetaUSD ? o : a));
   return {
     ...mejor,
-    curvaSilobolsa: opciones.map((o) => ({ meses: o.mesesGuardado, fecha: o.fechaCobro, precioUSDt: o.precioUSDt, mermaPct: o.merma.totalPct, gananciaNetaUSD: o.gananciaNetaUSD })),
+    curvaSilobolsa: opciones.map((o) => ({ meses: o.mesesGuardado, fecha: o.fechaCobro, precioUSDt: o.precioUSDt, mermaPct: o.merma.totalPct, gananciaNetaUSD: o.gananciaNetaUSD, secarAntes: o.humedad?.secarAntes ?? false, riesgo: o.riesgo.nivel })),
   };
 }
 
@@ -181,11 +208,12 @@ function evaluarSilobolsa({ alternativa, ctx, alternativas, destinos }) {
  * @param {{ simulacion: object, modo?: 'rapida'|'grande', hoy: string, cosecha: {inicio:string, fin:string},
  *           curva?: object|null, diasDemora?: number, supuestos?: object }} entrada
  */
-export function evaluarModalidades({ simulacion, modo = 'grande', hoy, cosecha, curva = null, diasDemora = 0, supuestos = {} }) {
+export function evaluarModalidades({ simulacion, modo = 'grande', hoy, cosecha, curva = null, diasDemora = 0, humedadGranoPct = null, supuestos = {} }) {
   const s = { ...SUPUESTOS_ECONOMIA, ...supuestos };
   const entrada = simulacion.entrada ?? {};
   const destinos = entrada.destinos ?? [];
   const cultivo = entrada.cultivo;
+  const condiciones = condicionesDe(cultivo);
   const perdida = perdidasPorDemora({ diasDemora, cultivo, rendimientoEsperadoKgha: Number(entrada.qqHa) * 100 });
   const toneladas = { cosechadas: simulacion.plan.toneladas };
   const saturacionPorFecha = new Map((simulacion.saturacion?.dias ?? []).map((dia) => [dia.fecha, dia]));
@@ -193,6 +221,13 @@ export function evaluarModalidades({ simulacion, modo = 'grande', hoy, cosecha, 
     s, hoy, cosecha, modo, toneladas, curva, cultivo, saturacionPorFecha,
     precioBase: (alternativa) => (alternativa.ingreso_usd ?? 0) / toneladas.cosechadas,
     mermas: (tramos) => ({ cosechaPct: perdida.porcentaje, manipuleoPct: s.mermaManipuleoPct * tramos, almacenajePct: 0 }),
+    condiciones,
+    humedadGranoPct: Number.isFinite(humedadGranoPct) ? humedadGranoPct : null,
+    // Secar el grano hasta `objetivoPct`: merma de peso y tarifa de secado por tonelada.
+    secar: (objetivoPct) => {
+      const secado = costoDeSecado({ humedadPct: Number.isFinite(humedadGranoPct) ? humedadGranoPct : null, objetivoPct });
+      return { ...secado, usd: secado.usdPorTonelada * toneladas.cosechadas, objetivoPct };
+    },
   };
 
   return simulacion.plan.alternativas
@@ -244,8 +279,8 @@ function resumenModalidades(modalidades, elegida) {
 /**
  * Arma una estrategia: evalúa las modalidades del plan simulado y elige la que corresponde al modo.
  */
-export function armarEstrategia({ modo, simulacion, hoy, cosecha, curva, diasDemora, supuestos }) {
-  const modalidades = evaluarModalidades({ simulacion, modo, hoy, cosecha, curva, diasDemora, supuestos });
+export function armarEstrategia({ modo, simulacion, hoy, cosecha, curva, diasDemora, humedadGranoPct, supuestos }) {
+  const modalidades = evaluarModalidades({ simulacion, modo, hoy, cosecha, curva, diasDemora, humedadGranoPct, supuestos });
   const elegida = elegirModalidad(modalidades, modo, supuestos);
   if (!elegida) return null;
   return { modo, cosecha, urgencia: simulacion.plan.urgencia, elegida, modalidades: resumenModalidades(modalidades, elegida) };

@@ -27,6 +27,11 @@ async function curvaDePrecios({ precios, cultivo, hoy }) {
   }
 }
 
+const humedadGranoEn = (almanaque, { inicio, fin }) => {
+  const valores = almanaque.filter((dia) => dia.fecha >= inicio && dia.fecha <= fin).map((dia) => dia.clima.humedadGranoPct).filter(Number.isFinite);
+  return valores.length ? valores.reduce((a, b) => a + b, 0) / valores.length : null;
+};
+
 const diasMalosEn = (almanaque, { inicio, fin }) => almanaque
   .filter((dia) => dia.fecha >= inicio && dia.fecha <= fin && dia.clima.apto === 'malo').length;
 
@@ -54,7 +59,7 @@ async function calcularEconomia({ entrada, simulacion, decision, hoy, simularPla
   const estrategia = (modo, c) => {
     const cosecha = fechasDeCosecha(c.simulacion);
     const diasDemora = Math.max(0, diasEntre(inicioPlan, c.inicio)) + diasMalosEn(decision.almanaque, cosecha);
-    return { ...armarEstrategia({ modo, simulacion: c.simulacion, hoy, cosecha, curva, diasDemora }), origen: c };
+    return { ...armarEstrategia({ modo, simulacion: c.simulacion, hoy, cosecha, curva, diasDemora, humedadGranoPct: humedadGranoEn(decision.almanaque, cosecha) }), origen: c };
   };
   const rapida = estrategia('rapida', simuladas[0]);
   const exploradas = simuladas.map((c) => estrategia('grande', c)).filter((e) => e.elegida);
@@ -93,7 +98,7 @@ export function crearDecidirOperacion({ simularPlan, clima = null, climatologia 
 
     const climaDiario = fuentesExternas
       // El horizonte del pronóstico se cuenta desde el día real, aunque el plan simule otra fecha de "hoy".
-      ? await obtenerDiasDeClima({ latitude: lote.lat, longitude: lote.lon, desde, hasta, hoy: hoyIso(ahora), clima, climatologia })
+      ? await obtenerDiasDeClima({ latitude: lote.lat, longitude: lote.lon, desde, hasta, hoy: hoyIso(ahora), clima, climatologia, cultivo: entrada.cultivo })
       : { dias: [], fuentes: { pronostico: false, climatologia: false }, errores: [] };
 
     const decision = decidirOperacion({ simulacion, dias: climaDiario.dias, hoy });
@@ -121,7 +126,7 @@ export function crearDecidirOperacion({ simularPlan, clima = null, climatologia 
  * Clima público del punto: pronóstico a 16 días y, para fechas más lejanas, probabilidad histórica de lluvia.
  */
 export function crearConsultarClima({ clima = null, climatologia = null, ahora = () => new Date() }) {
-  return async function consultarClima({ latitude, longitude, desde, hasta }) {
+  return async function consultarClima({ latitude, longitude, desde, hasta, cultivo = null }) {
     const hoy = hoyIso(ahora);
     const inicio = desde ?? hoy;
     const fin = hasta ?? sumarDias(inicio, 90);
@@ -129,7 +134,7 @@ export function crearConsultarClima({ clima = null, climatologia = null, ahora =
     if (Date.parse(`${fin}T00:00:00Z`) - Date.parse(`${inicio}T00:00:00Z`) > MAX_DIAS_CONSULTA_CLIMA * 86400000) {
       throw new RangeError(`el rango máximo es de ${MAX_DIAS_CONSULTA_CLIMA} días`);
     }
-    const { dias, fuentes, errores } = await obtenerDiasDeClima({ latitude, longitude, desde: inicio, hasta: fin, hoy, clima, climatologia });
+    const { dias, fuentes, errores } = await obtenerDiasDeClima({ latitude, longitude, desde: inicio, hasta: fin, hoy, clima, climatologia, cultivo });
     return {
       coordenadas: { latitude: Number(latitude), longitude: Number(longitude) },
       desde: inicio,

@@ -101,7 +101,7 @@ export function crearApi({ contenedor, servirEstatico = null, origenCors = '*', 
       const latitude = coordenadaParam(url, 'lat', 90);
       const longitude = coordenadaParam(url, 'lon', 180);
       try {
-        return [200, await consultarClima({ latitude, longitude, desde: fechaParam(url, 'desde'), hasta: fechaParam(url, 'hasta') })];
+        return [200, await consultarClima({ latitude, longitude, desde: fechaParam(url, 'desde'), hasta: fechaParam(url, 'hasta'), cultivo: url.searchParams.get('cultivo') || null })];
       } catch (error) {
         if (error instanceof RangeError) throw new ErrorHttp(400, error.message);
         throw error;

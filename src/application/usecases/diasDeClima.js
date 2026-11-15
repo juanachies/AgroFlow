@@ -9,7 +9,7 @@ const mensaje = (reason) => (reason instanceof Error ? reason.message : String(r
  * Serie diaria apta para decidir: pronóstico para los días cercanos y climatología para el resto.
  * Si una fuente falla, el resultado sigue siendo válido con la otra y deja constancia del error.
  */
-export async function obtenerDiasDeClima({ latitude, longitude, desde, hasta, hoy, clima = null, climatologia = null }) {
+export async function obtenerDiasDeClima({ latitude, longitude, desde, hasta, hoy, clima = null, climatologia = null, cultivo = null }) {
   const errores = [];
   const fuentes = { pronostico: false, climatologia: false };
   const coordenadasValidas = Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
@@ -22,13 +22,16 @@ export async function obtenerDiasDeClima({ latitude, longitude, desde, hasta, ho
     if (diasEntre(inicio, fin) >= 0) {
       try {
         const p = await clima.obtenerPronostico({
-          latitude: Number(latitude), longitude: Number(longitude), startDate: inicio, endDate: fin, daily: ['precipitation_sum', 'temperature_2m_max', 'temperature_2m_min'], hourly: ['precipitation'],
+          latitude: Number(latitude), longitude: Number(longitude), startDate: inicio, endDate: fin, daily: ['precipitation_sum', 'temperature_2m_max', 'temperature_2m_min', 'wind_gusts_10m_max', 'wind_speed_10m_max', 'relative_humidity_2m_mean'], hourly: ['precipitation'],
         });
         pronostico = (p.daily?.time ?? []).map((fecha, i) => ({
           fecha,
           lluviaMm: p.daily.precipitation_sum?.[i],
           tempMaxC: p.daily.temperature_2m_max?.[i] ?? null,
           tempMinC: p.daily.temperature_2m_min?.[i] ?? null,
+          rafagaKmh: p.daily.wind_gusts_10m_max?.[i] ?? null,
+          vientoKmh: p.daily.wind_speed_10m_max?.[i] ?? null,
+          humedadRelPct: p.daily.relative_humidity_2m_mean?.[i] ?? null,
         }));
         fuentes.pronostico = pronostico.length > 0;
       } catch (reason) {
@@ -44,5 +47,5 @@ export async function obtenerDiasDeClima({ latitude, longitude, desde, hasta, ho
       errores.push(`climatología no disponible (${mensaje(reason)})`);
     }
   }
-  return { dias: combinarPronostico({ desde, hasta, pronostico, climatologia: resumen }), fuentes, errores };
+  return { dias: combinarPronostico({ desde, hasta, pronostico, climatologia: resumen, cultivo }), fuentes, errores };
 }

@@ -1007,3 +1007,5 @@ input[type='checkbox'] { width: 18px; min-height: 18px; height: 18px; accent-col
 .eco-curva-linea { fill: none; stroke: #0d9488; stroke-width: 2; }
 .eco-curva-ref { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 4 3; }
 .eco-curva circle { fill: #0d9488; }
+
+.eco-humedad { margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); color: var(--text-2); font-size: 12px; line-height: 1.45; }

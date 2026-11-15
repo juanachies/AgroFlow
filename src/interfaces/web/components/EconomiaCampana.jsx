@@ -22,6 +22,7 @@ function segmentos(modalidad) {
     { clave: 'cosecha', etiqueta: 'Cosecha', valor: costos.cosecha, color: '#d97706' },
     { clave: 'transporte', etiqueta: 'Transporte', valor: costos.transporte, color: '#2563eb' },
     { clave: 'almacenaje', etiqueta: 'Almacenaje y servicios', valor: costos.almacenaje + costos.otros, color: '#0d9488' },
+    { clave: 'secado', etiqueta: 'Secado del grano', valor: costos.secado ?? 0, color: '#ca8a04' },
     { clave: 'espera', etiqueta: 'Espera y riesgo de perder el barco', valor: costos.espera + costos.riesgoBarco + costos.guardarEnCampo, color: '#7c3aed' },
     { clave: 'financiero', etiqueta: 'Costo financiero', valor: costos.financiero, color: '#64748b' },
     { clave: 'merma', etiqueta: 'Merma y desperdicio', valor: merma.usd, color: '#dc2626' },
@@ -126,6 +127,14 @@ function ColumnaModalidad({ modalidad }) {
         <li><span>Riesgo</span><b><Riesgo riesgo={modalidad.riesgo} /></b></li>
         <li><span>Frente a la peor opción</span><b className="eco-pos">{modalidad.ahorroVsPeorUSD > 0 ? `+${usd(modalidad.ahorroVsPeorUSD)}` : 'Es la peor'}</b></li>
       </ul>
+      {modalidad.humedad?.granoPct != null && (
+        <p className="eco-humedad">
+          Grano ~{numero(modalidad.humedad.granoPct, 1)} % de humedad
+          {modalidad.humedad.objetivoPct != null ? ` (base ${numero(modalidad.humedad.objetivoPct, 1)} %)` : ''}
+          {modalidad.humedad.puntosASecar > 0 ? `: hay que sacar ${numero(modalidad.humedad.puntosASecar, 1)} puntos` : ': no necesita secado'}.
+          {modalidad.tipo === 'silobolsa' && modalidad.humedad.exceso > 0 && !modalidad.humedad.secarAntes ? ' Embolsarlo así sube el riesgo y la merma mensual.' : ''}
+        </p>
+      )}
       {silo && (
         <div className="eco-silo">
           <CurvaSilobolsa curva={modalidad.curvaSilobolsa} referencia={modalidad.gananciaNetaUSD - silo.extraVsVenderYaUSD} />

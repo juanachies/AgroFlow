@@ -38,7 +38,7 @@ export class OpenMeteoClimatologiaAdapter {
       longitude: String(lon),
       start_date: desde,
       end_date: hasta,
-      daily: 'precipitation_sum',
+      daily: 'precipitation_sum,wind_gusts_10m_max,relative_humidity_2m_mean',
       timezone: this.timezone,
     });
     const cacheKey = `open-meteo-archive:${params}`;
@@ -55,7 +55,12 @@ export class OpenMeteoClimatologiaAdapter {
       desde,
       hasta,
       coordinates: { latitude: lat, longitude: lon },
-      resumen: resumirClimatologia({ fechas: payload.daily.time, lluviaMm: payload.daily.precipitation_sum }),
+      resumen: resumirClimatologia({
+        fechas: payload.daily.time,
+        lluviaMm: payload.daily.precipitation_sum,
+        rafagaKmh: payload.daily.wind_gusts_10m_max ?? [],
+        humedadRelPct: payload.daily.relative_humidity_2m_mean ?? [],
+      }),
     };
     await this.cache?.set(cacheKey, resultado, this.cacheTtlMs);
     return resultado;

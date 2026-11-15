@@ -10,8 +10,8 @@ const dosDigitos = (n) => String(n).padStart(2, '0');
 
 const ESTADO_CLIMA = {
   bueno: 'Día favorable',
-  regular: 'Lluvia leve',
-  malo: 'Lluvia fuerte esperable',
+  regular: 'Condiciones regulares',
+  malo: 'Condiciones adversas',
   desconocido: 'Sin dato de clima',
 };
 const FUENTE_CLIMA = { pronostico: 'pronóstico', climatologia: 'frecuencia histórica', 'sin-dato': 'sin dato' };
@@ -41,6 +41,10 @@ function descripcionDelDia(dia) {
   const partes = [fecha(dia.fecha), `${ESTADO_CLIMA[dia.clima.apto]} (${FUENTE_CLIMA[dia.clima.fuente]})`];
   if (dia.clima.fuente === 'pronostico' && dia.clima.lluviaMm != null) partes.push(`${dia.clima.lluviaMm} mm`);
   if (dia.clima.fuente === 'climatologia' && dia.clima.probFuerte != null) partes.push(`${Math.round(dia.clima.probFuerte * 100)}% de probabilidad de lluvia fuerte`);
+  if (dia.clima.rafagaKmh != null) partes.push(`ráfagas ${Math.round(dia.clima.rafagaKmh)} km/h`);
+  if (dia.clima.probRafaga != null) partes.push(`${Math.round(dia.clima.probRafaga * 100)}% de probabilidad de viento fuerte`);
+  if (dia.clima.humedadGranoPct != null) partes.push(`grano ~${dia.clima.humedadGranoPct} % de humedad`);
+  if (dia.clima.motivos?.length) partes.push(dia.clima.motivos.join(', '));
   if (dia.cosecha) partes.push('cosecha');
   if (dia.transporte) partes.push('transporte');
   if (dia.pedir) partes.push('último día para reservar');
@@ -99,7 +103,7 @@ function Rangos({ decision }) {
     <div className="alm-rangos">
       <div className="alm-rango alm-rango--cosecha">
         <Wheat size={18} aria-hidden="true" />
-        <div><span>Cosecha</span><strong>{fecha(cosecha.inicio)} → {fecha(cosecha.fin)}</strong><small>{cosecha.dias} días · {cosecha.diasBuenos} favorables, {cosecha.diasRegulares} con lluvia leve, {cosecha.diasMalos} con lluvia fuerte</small></div>
+        <div><span>Cosecha</span><strong>{fecha(cosecha.inicio)} → {fecha(cosecha.fin)}</strong><small>{cosecha.dias} días · {cosecha.diasBuenos} favorables, {cosecha.diasRegulares} regulares, {cosecha.diasMalos} adversos{cosecha.humedadGranoPct != null ? ` · grano ~${cosecha.humedadGranoPct} %` : ''}</small></div>
       </div>
       {transporte && (
         <div className="alm-rango alm-rango--transporte">
@@ -149,8 +153,8 @@ export default function Almanaque({ decision, nombreLote }) {
           <DiasClave diasClave={decision.diasClave} />
           <div className="alm-leyenda" aria-label="Referencias">
             <span><i className="alm-chip alm-chip--bueno" />Día favorable</span>
-            <span><i className="alm-chip alm-chip--regular" />Lluvia leve</span>
-            <span><i className="alm-chip alm-chip--malo" />Lluvia fuerte esperable</span>
+            <span><i className="alm-chip alm-chip--regular" />Regular (lluvia leve, viento o humedad)</span>
+            <span><i className="alm-chip alm-chip--malo" />Adverso (lluvia o viento fuerte, grano húmedo)</span>
             <span><i className="alm-chip alm-chip--desconocido" />Sin dato</span>
             <span><i className="alm-chip alm-chip--cosecha" />Rango de cosecha</span>
             <span><i className="alm-chip alm-chip--transporte" />Rango de transporte</span>

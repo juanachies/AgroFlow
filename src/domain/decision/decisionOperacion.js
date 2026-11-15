@@ -3,6 +3,7 @@
 // saturación del puerto) y la ajusta con el clima para elegir los mejores días de cosecha.
 
 import { sumarDias, diasEntre } from '../shared/util.js';
+import { condicionesDe } from '../cosecha/condicionesCosecha.js';
 
 export const MARGEN_BUSQUEDA_DIAS = 10;
 const MARGEN_ALMANAQUE_DIAS = 7;
@@ -49,6 +50,17 @@ function elegirInicioRapido({ diasPorFecha, inicioPlan, duracion, hoy }) {
     if (!mejor || malos < mejor.malos) mejor = { inicio, malos };
   }
   return mejor?.inicio ?? inicioPlan;
+}
+
+const promedio = (valores) => (valores.length ? Math.round((valores.reduce((a, b) => a + b, 0) / valores.length) * 10) / 10 : null);
+
+function diasDelTramo(diasPorFecha, desde, hasta) {
+  const dias = [];
+  for (let fecha = desde; fecha <= hasta; fecha = sumarDias(fecha, 1)) {
+    const dia = diasPorFecha.get(fecha);
+    if (dia) dias.push(dia);
+  }
+  return dias;
 }
 
 function contarCalidad(diasPorFecha, desde, hasta) {
@@ -100,8 +112,12 @@ function armarAlmanaque({ desde, hasta, diasPorFecha, cosecha, transporte, pedir
     almanaque.push({
       fecha,
       clima: clima
-        ? { apto: clima.apto, fuente: clima.fuente, lluviaMm: clima.lluviaMm, probFuerte: clima.probFuerte }
-        : { apto: 'desconocido', fuente: 'sin-dato', lluviaMm: null, probFuerte: null },
+        ? {
+          apto: clima.apto, fuente: clima.fuente, lluviaMm: clima.lluviaMm, probFuerte: clima.probFuerte,
+          rafagaKmh: clima.rafagaKmh ?? null, humedadRelPct: clima.humedadRelPct ?? null, humedadGranoPct: clima.humedadGranoPct ?? null,
+          probRafaga: clima.probRafaga ?? null, motivos: clima.motivos ?? [], calificaciones: clima.calificaciones ?? null,
+        }
+        : { apto: 'desconocido', fuente: 'sin-dato', lluviaMm: null, probFuerte: null, motivos: [] },
       cosecha: enRango(fecha, cosecha.inicio, cosecha.fin),
       transporte: enRango(fecha, transporte?.desde, transporte?.hasta),
       pedir: mismoDia(fecha, pedirAntesDel),
@@ -131,12 +147,15 @@ export function decidirOperacion({ simulacion, dias = [], hoy = null }) {
   const inicio = eleccion.inicio;
   const fin = sumarDias(inicio, duracion - 1);
   const calidad = contarCalidad(diasPorFecha, inicio, fin);
+  const diasDeCosecha = diasDelTramo(diasPorFecha, inicio, fin);
   const cosecha = {
     inicio, fin, dias: duracion,
     corrimientoDias: eleccion.corrimiento,
     inicioMasRapido: elegirInicioRapido({ diasPorFecha, inicioPlan, duracion, hoy }),
     diasBuenos: calidad.bueno, diasRegulares: calidad.regular, diasMalos: calidad.malo, diasSinDato: calidad.desconocido,
     fuenteClima: calidad.fuente,
+    humedadGranoPct: promedio(diasDeCosecha.map((dia) => dia.humedadGranoPct).filter(Number.isFinite)),
+    diasConVientoFuerte: diasDeCosecha.filter((dia) => dia.calificaciones?.viento === 'malo').length,
     recursos: deCosecha.map((p) => ({ recurso: p.recurso, cantidad: p.cantidad, pedirAntesDel: sumarDias(p.pedir_antes_del, eleccion.corrimiento) })),
   };
 
@@ -191,7 +210,22 @@ export function decidirOperacion({ simulacion, dias = [], hoy = null }) {
     alertas.push({ nivel: 'critico', mensaje: `El plazo para reservar (${pedirAntesDel}) ya pasó: confirmá hoy las reservas.` });
   }
   if (cosecha.diasMalos > 0) {
-    alertas.push({ nivel: 'alerta', mensaje: `${cosecha.diasMalos} día(s) del rango de cosecha tienen lluvia fuerte esperable (5 mm o más o alta probabilidad histórica). Conviene tener margen.` });
+    const motivos = [...new Set(diasDeCosecha.flatMap((dia) => dia.motivos ?? []).filter((m) => ['lluvia fuerte', 'viento fuerte', 'grano húmedo'].includes(m)))];
+    alertas.push({ nivel: 'alerta', mensaje: `${cosecha.diasMalos} día(s) del rango de cosecha tienen condiciones adversas (${motivos.length ? motivos.join(', ') : 'lluvia fuerte esperable'}). Conviene tener margen.` });
+  }
+  const condiciones = condicionesDe(simulacion.entrada?.cultivo);
+  if (condiciones && cosecha.humedadGranoPct != null) {
+    const { minPct, maxPct } = condiciones.cosechaOptima;
+    if (cosecha.humedadGranoPct > condiciones.humedadBaseRecibo) {
+      alertas.push({ nivel: 'alerta', mensaje: `Humedad estimada del grano ${cosecha.humedadGranoPct} %: supera la base de recibo (${condiciones.humedadBaseRecibo} %). Habrá merma y costo de secado al entregar, y la silobolsa pide secar antes de embolsar.` });
+    } else if (cosecha.humedadGranoPct < minPct) {
+      alertas.push({ nivel: 'info', mensaje: `Humedad estimada del grano ${cosecha.humedadGranoPct} %: por debajo de ${minPct} % crece el desgrane. ${condiciones.nota}` });
+    } else if (cosecha.humedadGranoPct <= maxPct) {
+      alertas.push({ nivel: 'info', mensaje: `Humedad estimada del grano ${cosecha.humedadGranoPct} %: dentro del rango de cosecha (${minPct}–${maxPct} %).` });
+    }
+  }
+  if (condiciones && cosecha.diasConVientoFuerte > 0) {
+    alertas.push({ nivel: 'alerta', mensaje: `${cosecha.diasConVientoFuerte} día(s) con ráfagas de ${condiciones.viento.maloKmh} km/h o más. ${condiciones.nota}` });
   }
   if (eleccion.corrimiento !== 0) {
     const sentido = eleccion.corrimiento > 0 ? 'atrasó' : 'adelantó';

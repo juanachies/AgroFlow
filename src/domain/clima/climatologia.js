@@ -2,6 +2,7 @@
 // Sirve para estimar, más allá de los 16 días que cubre el pronóstico, qué tan probable es
 // que llueva en cada fecha. No es un pronóstico: es la frecuencia histórica de esa época.
 
+import { UMBRALES_RAFAGA_KMH } from '../cosecha/condicionesCosecha.js';
 import { UMBRAL_LLUVIA_COSECHA_MM } from './ajusteLluvia.js';
 
 export const UMBRAL_LLUVIA_APRECIABLE_MM = 1;
@@ -19,32 +20,45 @@ function clavesDelAnio() {
 }
 
 /**
- * @param {{ fechas: string[], lluviaMm: (number|null)[] }} serie  serie diaria de años anteriores
- * @returns {Record<string, { muestras:number, probLluvia:number, probFuerte:number, mmMedio:number }>}
+ * @param {{ fechas: string[], lluviaMm: (number|null)[], rafagaKmh?: (number|null)[], humedadRelPct?: (number|null)[] }} serie
+ *   serie diaria de años anteriores
+ * @returns {Record<string, { muestras:number, probLluvia:number, probFuerte:number, mmMedio:number,
+ *   probRafaga:Record<number, number>|null, humedadRelMedia:number|null }>}
  */
-export function resumirClimatologia({ fechas, lluviaMm }, { radio = RADIO_SUAVIZADO_DIAS } = {}) {
+export function resumirClimatologia({ fechas, lluviaMm, rafagaKmh = [], humedadRelPct = [] }, { radio = RADIO_SUAVIZADO_DIAS } = {}) {
   const claves = clavesDelAnio();
   const posicion = new Map(claves.map((clave, i) => [clave, i]));
-  const muestras = claves.map(() => []);
+  const lluvias = claves.map(() => []);
+  const rafagas = claves.map(() => []);
+  const humedades = claves.map(() => []);
   fechas.forEach((fecha, i) => {
-    const mm = lluviaMm[i];
     const indice = posicion.get(claveDe(fecha));
-    if (Number.isFinite(mm) && indice !== undefined) muestras[indice].push(mm);
+    if (indice === undefined) return;
+    if (Number.isFinite(lluviaMm[i])) lluvias[indice].push(lluviaMm[i]);
+    if (Number.isFinite(rafagaKmh[i])) rafagas[indice].push(rafagaKmh[i]);
+    if (Number.isFinite(humedadRelPct[i])) humedades[indice].push(humedadRelPct[i]);
   });
+
+  const juntar = (series, indice) => {
+    const juntas = [];
+    for (let delta = -radio; delta <= radio; delta += 1) juntas.push(...series[(indice + delta + DIAS_DEL_ANIO) % DIAS_DEL_ANIO]);
+    return juntas;
+  };
+  const fraccion = (valores, condicion) => valores.filter(condicion).length / valores.length;
 
   const resumen = {};
   claves.forEach((clave, indice) => {
-    const juntas = [];
-    for (let delta = -radio; delta <= radio; delta += 1) {
-      juntas.push(...muestras[(indice + delta + DIAS_DEL_ANIO) % DIAS_DEL_ANIO]);
-    }
+    const juntas = juntar(lluvias, indice);
     if (!juntas.length) return;
-    const fraccion = (condicion) => juntas.filter(condicion).length / juntas.length;
+    const viento = juntar(rafagas, indice);
+    const humedad = juntar(humedades, indice);
     resumen[clave] = {
       muestras: juntas.length,
-      probLluvia: redondear(fraccion((mm) => mm >= UMBRAL_LLUVIA_APRECIABLE_MM)),
-      probFuerte: redondear(fraccion((mm) => mm >= UMBRAL_LLUVIA_COSECHA_MM)),
+      probLluvia: redondear(fraccion(juntas, (mm) => mm >= UMBRAL_LLUVIA_APRECIABLE_MM)),
+      probFuerte: redondear(fraccion(juntas, (mm) => mm >= UMBRAL_LLUVIA_COSECHA_MM)),
       mmMedio: redondear(juntas.reduce((suma, mm) => suma + mm, 0) / juntas.length),
+      probRafaga: viento.length ? Object.fromEntries(UMBRALES_RAFAGA_KMH.map((umbral) => [umbral, redondear(fraccion(viento, (kmh) => kmh >= umbral))])) : null,
+      humedadRelMedia: humedad.length ? Math.round(humedad.reduce((suma, rh) => suma + rh, 0) / humedad.length) : null,
     };
   });
   return resumen;
