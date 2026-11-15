@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, CircleDollarSign, Compass, Minus, Package, Sprout, TrendingDown, TrendingUp, Truck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CircleDollarSign, Compass, Package, Sprout, Truck } from 'lucide-react';
 import { api } from '../lib/api.js';
 
 const numero = (valor) => new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(valor);
@@ -15,16 +15,10 @@ const fechaCorta = (iso) => {
     .format(new Date(`${iso.slice(0, 10)}T12:00:00Z`));
 };
 const diferencia = (valor) => (valor == null || valor >= 0 ? 'Es la mejor' : `−${usd(Math.abs(valor))}`);
-const valorTexto = (valor) => (valor == null || valor === '' ? 'Sin dato' : String(valor));
+const conFechasCortas = (texto) => (texto ? texto.replace(/\d{4}-\d{2}-\d{2}/g, (iso) => fechaCorta(iso)) : texto);
 
 const TEXTO_CONFIANZA = { alta: 'Alta', media: 'Media', baja: 'Baja' };
 const ICONO_ETAPA = { cosecha: Sprout, transporte: Truck, almacenaje: Package, venta: CircleDollarSign };
-
-function IconoEfecto({ efecto }) {
-  if (efecto === 'favorable') return <TrendingUp size={14} aria-hidden="true" />;
-  if (efecto === 'desfavorable') return <TrendingDown size={14} aria-hidden="true" />;
-  return <Minus size={14} aria-hidden="true" />;
-}
 
 function Aviso({ aviso }) {
   const texto = aviso ? `${aviso} ` : '';
@@ -36,21 +30,16 @@ function Aviso({ aviso }) {
 }
 
 function cadenaEtapas(etapas = []) {
-  const [cosecha, transporte, , venta] = etapas;
+  const [cosecha, transporte, almacenaje] = etapas;
   const partes = [];
   const fC = fechaCorta(cosecha?.fecha);
   if (fC) partes.push({ icono: Sprout, texto: `Cosecha ${fC}` });
-  if (transporte) {
+  const destino = /llevar a ([^ ]+)/i.exec(transporte?.decision || '')?.[1];
+  if (destino) {
     const fT = fechaCorta(transporte.fecha);
-    const dif = (transporte.decision || '').toLowerCase().includes('sin transporte');
-    if (!dif) {
-      const dest = /llevar a ([^ ]+)/i.exec(transporte.decision || '')?.[1];
-      if (dest && fT) partes.push({ icono: Truck, texto: `${dest} ${fT}` });
-      else if (dest) partes.push({ icono: Truck, texto: dest });
-    }
+    partes.push({ icono: Truck, texto: fT ? `${destino} ${fT}` : destino });
   }
-  const fV = fechaCorta(venta?.fecha);
-  if (fV) partes.push({ icono: CircleDollarSign, texto: `Cobro ${fV}` });
+  if (/^silobolsa/i.test(almacenaje?.decision || '')) partes.push({ icono: Package, texto: almacenaje.decision });
   return partes;
 }
 
@@ -86,51 +75,65 @@ function TarjetaEstrategia({ estrategia, onElegir }) {
 }
 
 function FilaFactor({ factor }) {
+  const resta = factor.impacto < 0;
   return (
-    <li className={`estrategia-factor estrategia-factor--${factor.efecto}`}>
-      <div className="estrategia-factor-linea">
-        <span className="estrategia-factor-icono"><IconoEfecto efecto={factor.efecto} /></span>
-        <span className="estrategia-factor-nombre">{factor.nombre}</span>
-        <span className="estrategia-factor-valor">{valorTexto(factor.valor)}</span>
-        <span className={`estrategia-factor-impacto estrategia-factor-impacto--${factor.impacto < 0 ? 'negativo' : 'neutro'}`}>{factor.impacto} pts</span>
+    <li className={`estrategia-factor estrategia-factor--${resta ? 'resta' : 'neutro'}`}>
+      <span className="estrategia-factor-nombre">
+        {factor.nombre}
+        {factor.valor != null && factor.valor !== '' && <em>{factor.valor}</em>}
+      </span>
+      <span className="estrategia-factor-puntos">{resta ? `−${Math.abs(factor.impacto)} pts` : '0 pts'}</span>
+      <p className="estrategia-factor-detalle">{factor.detalle}</p>
+    </li>
+  );
+}
+
+function PasoEstrategia({ etapa }) {
+  const Icono = ICONO_ETAPA[etapa.id] ?? Sprout;
+  return (
+    <li className="estrategia-paso">
+      <div className="estrategia-paso-marca">
+        <span className="estrategia-paso-icono"><Icono size={17} aria-hidden="true" /></span>
+        <span className="estrategia-paso-linea" aria-hidden="true" />
       </div>
-      <div className="estrategia-factor-extra">
-        <small>{factor.detalle}</small>
-        <small className="estrategia-factor-fuente">Fuente: {factor.fuente}</small>
+      <div className="estrategia-paso-cuerpo">
+        <span className="estrategia-paso-etapa">{etapa.titulo}</span>
+        <strong className="estrategia-paso-decision">{conFechasCortas(etapa.decision)}</strong>
+        {etapa.detalle && <p className="estrategia-paso-detalle">{conFechasCortas(etapa.detalle)}</p>}
       </div>
     </li>
   );
 }
 
-function PanelEtapa({ etapa, factores }) {
-  const deEtapa = (etapa.factores || []).map((id) => factores.find((f) => f.id === id)).filter(Boolean);
-  const conEfecto = deEtapa.filter((f) => f.impacto !== 0);
-  const sinEfecto = deEtapa.filter((f) => f.impacto === 0);
+function ConfianzaEstrategia({ confianza, factores }) {
+  const { indice, nivel, explicacion } = confianza;
+  const restan = factores.filter((f) => f.impacto < 0).sort((a, b) => a.impacto - b.impacto);
+  const sinEfecto = factores.filter((f) => f.impacto >= 0);
+  const totalRestado = restan.reduce((suma, f) => suma + Math.abs(f.impacto), 0);
+  const fuentes = [...new Set(factores.map((f) => f.fuente).filter(Boolean))];
   return (
-    <div className="estrategia-etapa-panel">
-      <div className="estrategia-etapa-panel-head">
-        <strong>{etapa.decision}</strong>
-        {etapa.fecha && <span>{fecha(etapa.fecha)}</span>}
+    <section className="estrategia-bloque" aria-label="Por qué esta confianza">
+      <h4>Por qué esta confianza</h4>
+      <div className="estrategia-cuenta">
+        <span>Restan <strong>−{totalRestado} pts</strong></span>
+        <span className={`estrategia-confianza estrategia-confianza--${nivel}`}>{indice}% · {TEXTO_CONFIANZA[nivel] ?? nivel}</span>
       </div>
-      {etapa.detalle && <p className="estrategia-etapa-detalle">{etapa.detalle}</p>}
-      {conEfecto.length > 0 && <ul className="estrategia-factores">{conEfecto.map((f) => <FilaFactor key={f.id} factor={f} />)}</ul>}
+      {explicacion && <p className="estrategia-bloque-ayuda">{explicacion}</p>}
+      {restan.length > 0 && <ul className="estrategia-factores">{restan.map((f) => <FilaFactor key={f.id} factor={f} />)}</ul>}
       {sinEfecto.length > 0 && (
         <details className="estrategia-sin-efecto">
           <summary>{sinEfecto.length} {sinEfecto.length === 1 ? 'factor sin efecto' : 'factores sin efecto'}</summary>
           <ul className="estrategia-factores">{sinEfecto.map((f) => <FilaFactor key={f.id} factor={f} />)}</ul>
         </details>
       )}
-      {!deEtapa.length && <p className="estrategia-etapa-detalle">Sin factores para esta etapa.</p>}
-    </div>
+      {fuentes.length > 0 && <p className="estrategia-fuentes">Fuentes: {fuentes.join(' · ')}.</p>}
+    </section>
   );
 }
 
 function DetalleEstrategia({ estrategia, onVolver }) {
-  const { indice, nivel, explicacion } = estrategia.confianza;
+  const { indice, nivel } = estrategia.confianza;
   const etapas = estrategia.etapas ?? [];
-  const [activa, setActiva] = useState(etapas[0]?.id ?? null);
-  useEffect(() => { setActiva(etapas[0]?.id ?? null); }, [estrategia.id]);
-  const etapaActiva = etapas.find((e) => e.id === activa) ?? etapas[0];
 
   return (
     <>
@@ -140,54 +143,29 @@ function DetalleEstrategia({ estrategia, onVolver }) {
 
       <section className="panel estrategia-detalle">
         <div className="estrategia-detalle-head">
-          <h3>{estrategia.titulo}</h3>
-          {estrategia.recomendadaPorModelo && <span className="estrategia-tag">Sugerida</span>}
+          <div className="estrategia-titulo-fila">
+            <h3>{estrategia.titulo}</h3>
+            {estrategia.recomendadaPorModelo && <span className="estrategia-tag">Sugerida</span>}
+          </div>
+          {estrategia.accion && <p>{estrategia.accion}</p>}
         </div>
 
         <div className="estrategia-kpis" role="group" aria-label="Resumen">
-          <span className="estrategia-kpi"><span>Ganancia</span><strong>{usd(estrategia.gananciaNetaUSD)}</strong></span>
-          <span className="estrategia-kpi"><span>Diferencia</span><strong>{diferencia(estrategia.diferenciaVsMejorUSD)}</strong></span>
-          <span className="estrategia-kpi"><span>Cobro</span><strong>{fecha(estrategia.fechaCobro)}</strong></span>
+          <span className="estrategia-kpi"><span>Ganancia neta</span><strong>{usd(estrategia.gananciaNetaUSD)}</strong></span>
+          <span className="estrategia-kpi"><span>Frente a la mejor</span><strong>{diferencia(estrategia.diferenciaVsMejorUSD)}</strong></span>
           <span className={`estrategia-kpi estrategia-kpi--conf estrategia-confianza--${nivel}`}>
-            <span>Confianza</span><strong>{indice}% {TEXTO_CONFIANZA[nivel] ?? nivel}</strong>
+            <span>Confianza</span><strong>{indice}% · {TEXTO_CONFIANZA[nivel] ?? nivel}</strong>
           </span>
         </div>
 
-        <nav className="estrategia-stepper" aria-label="Etapas">
-          {etapas.map((etapa, i) => {
-            const Icono = ICONO_ETAPA[etapa.id] ?? Sprout;
-            const esActiva = etapa.id === etapaActiva?.id;
-            return (
-              <div key={etapa.id} className="estrategia-step-wrap">
-                <button
-                  type="button"
-                  className={`estrategia-step${esActiva ? ' is-activa' : ''}`}
-                  aria-current={esActiva ? 'step' : undefined}
-                  onClick={() => setActiva(etapa.id)}
-                >
-                  <span className="estrategia-step-icono"><Icono size={16} aria-hidden="true" /></span>
-                  <span className="estrategia-step-texto">
-                    <span className="estrategia-step-titulo">{etapa.titulo}</span>
-                    <span className="estrategia-step-decision">{etapa.decision}</span>
-                    {etapa.fecha && <span className="estrategia-step-fecha">{fecha(etapa.fecha)}</span>}
-                  </span>
-                </button>
-                {i < etapas.length - 1 && <span className="estrategia-step-conector" aria-hidden="true" />}
-              </div>
-            );
-          })}
-        </nav>
+        <section className="estrategia-bloque" aria-label="Paso a paso">
+          <h4>Paso a paso</h4>
+          <ol className="estrategia-pasos">
+            {etapas.map((etapa) => <PasoEstrategia key={etapa.id} etapa={etapa} />)}
+          </ol>
+        </section>
 
-        {etapaActiva && <PanelEtapa etapa={etapaActiva} factores={estrategia.factores ?? []} />}
-
-        <details className="estrategia-supuestos-det">
-          <summary>Supuestos del cálculo</summary>
-          <ul className="estrategia-supuestos">
-            {(estrategia.supuestos ?? []).map((supuesto) => <li key={supuesto}>{supuesto}</li>)}
-          </ul>
-        </details>
-
-        {explicacion && <p className="estrategia-explicacion">{explicacion}</p>}
+        <ConfianzaEstrategia confianza={estrategia.confianza} factores={estrategia.factores ?? []} />
       </section>
     </>
   );
