@@ -3,7 +3,7 @@ import AccountDetailsForm from '../components/AccountDetailsForm.jsx';
 import { authClient } from '../lib/auth.js';
 import { accountApi } from '../lib/accountApi.js';
 
-export default function AuthPage({ onAuthenticated }) {
+export default function AuthPage({ onAuthenticated, onGuest = null }) {
   const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -140,6 +140,12 @@ export default function AuthPage({ onAuthenticated }) {
               {mode === 'signup' ? 'Iniciar sesión' : 'Crear una cuenta'}
             </button>
           </p>
+          {onGuest && (
+            <div className="auth-guest">
+              <button type="button" className="button button--secondary auth-submit" onClick={onGuest}>Entrar como visitante</button>
+              <small>Probá AgroFlow con un productor de ejemplo. Los datos son ficticios y quedan solo en este navegador.</small>
+            </div>
+          )}
           <small className="auth-privacy-note">La contraseña se administra con Neon Auth; AgroFlow no la almacena.</small>
         </div>
       </section>

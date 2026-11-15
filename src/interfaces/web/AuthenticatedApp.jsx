@@ -120,6 +120,7 @@ export default function AuthenticatedApp() {
   const [loading, setLoading] = useState(true);
   const [signOutError, setSignOutError] = useState('');
   const [authError, setAuthError] = useState('');
+  const [visitante, setVisitante] = useState(false);
 
   useEffect(() => {
     if (!authClient) {
@@ -154,12 +155,12 @@ export default function AuthenticatedApp() {
   }
 
   if (loading) return <Loading message="Verificando sesión…" />;
-  if (!authClient) {
+  if (!authClient || visitante) {
     return (
       <SignedInApp
         user={USUARIO_INVITADO}
         guest
-        onSignOut={() => {}}
+        onSignOut={authClient ? () => setVisitante(false) : () => {}}
         signOutError=""
         onClearSignOutError={() => {}}
       />
@@ -176,7 +177,7 @@ export default function AuthenticatedApp() {
       </main>
     );
   }
-  if (!session) return <AuthPage onAuthenticated={setSession} />;
+  if (!session) return <AuthPage onAuthenticated={setSession} onGuest={() => setVisitante(true)} />;
   return (
     <SignedInApp
       user={session.user}
