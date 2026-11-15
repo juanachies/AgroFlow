@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react';
 import Modal from './Modal.jsx';
-import { CULTIVOS, sembrarLote, variedadesDe, ventanaDelLote } from '../lib/data.js';
+import { CULTIVOS, estimarCiclo, sembrarLote, variedadesDe, ventanaDelLote } from '../lib/data.js';
+
+function describirEstimacion({ base, ajusteZona, ajusteFecha }) {
+  const ajustes = [
+    ajusteZona && `${ajusteZona > 0 ? '+' : '−'}${Math.abs(ajusteZona)} por la zona (latitud del lote)`,
+    ajusteFecha && `${ajusteFecha > 0 ? '+' : '−'}${Math.abs(ajusteFecha)} por la fecha de siembra`,
+  ].filter(Boolean);
+  return ajustes.length ? `${base} días del ciclo elegido, ${ajustes.join(', ')}` : `${base} días del ciclo elegido`;
+}
 
 function formatDate(value) {
   return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
@@ -14,35 +22,38 @@ export default function SowingDialog({ lot, onClose, onSave }) {
     sowingDate: lot.sowingDate ?? '',
     cycleDays: lot.cycleDays ? String(lot.cycleDays) : '',
   });
+  const [cycleEdited, setCycleEdited] = useState(Boolean(lot.cycleDays));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const varieties = variedadesDe(values.crop);
 
+  const estimate = useMemo(
+    () => estimarCiclo({ crop: values.crop, variety: values.variety, latitude: lot.latitude, sowingDate: values.sowingDate }),
+    [values.crop, values.variety, values.sowingDate, lot.latitude],
+  );
+  const finalValues = { ...values, cycleDays: cycleEdited ? values.cycleDays : String(estimate?.dias ?? '') };
+
   function update({ target: { name, value } }) {
-    setValues((current) => {
-      if (name === 'crop') return { ...current, crop: value, variety: '', cycleDays: '' };
-      if (name === 'variety') {
-        const picked = variedadesDe(current.crop).find((item) => item.value === value);
-        return { ...current, variety: value, cycleDays: picked ? String(picked.cycleDays) : '' };
-      }
-      return { ...current, [name]: value };
-    });
+    if (name === 'cycleDays') setCycleEdited(true);
+    setValues((current) => (name === 'crop'
+      ? { ...current, crop: value, variety: '' }
+      : { ...current, [name]: value }));
   }
 
   const preview = useMemo(() => {
     try {
-      return ventanaDelLote(sembrarLote(lot, values));
+      return ventanaDelLote(sembrarLote(lot, finalValues));
     } catch {
       return null;
     }
-  }, [lot, values]);
+  }, [lot, finalValues.crop, finalValues.variety, finalValues.sowingDate, finalValues.cycleDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submit(event) {
     event.preventDefault();
     setError('');
     setSaving(true);
     try {
-      await onSave(sembrarLote(lot, values));
+      await onSave(sembrarLote(lot, finalValues));
       onClose();
     } catch (reason) {
       setError(reason.message || 'No se pudo guardar la siembra.');
@@ -75,8 +86,13 @@ export default function SowingDialog({ lot, onClose, onSave }) {
         </label>
         <label>
           Ciclo estimado (días)
-          <input name="cycleDays" type="number" min="1" step="1" value={values.cycleDays} onChange={update} required />
-          <small>Valor orientativo según el tipo de ciclo; ajustalo según el cultivar y la zona.</small>
+          <input name="cycleDays" type="number" min="1" step="1" value={finalValues.cycleDays} onChange={update} required />
+          {estimate ? (
+            <small>
+              Estimado: {describirEstimacion(estimate)}. Es una aproximación: corregila con los datos de tu semilla.
+              {cycleEdited && <> <button type="button" className="text-button" onClick={() => setCycleEdited(false)}>Volver a la estimación ({estimate.dias} días)</button></>}
+            </small>
+          ) : <small>Elegí el tipo de ciclo para estimar los días hasta la cosecha.</small>}
         </label>
         {preview && <p className="inline-note">Cosecha estimada: {formatDate(preview.inicio)} a {formatDate(preview.fin)} (centro {formatDate(preview.optimo)}).</p>}
         {error && <div className="form-error" role="alert">{error}</div>}

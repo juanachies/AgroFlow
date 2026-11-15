@@ -5,6 +5,7 @@ import {
   crearLote,
   diasEnVentana,
   editarLote,
+  estimarCiclo,
   leerSnapshotClimatico,
   parsearGeoJSON,
   quitarSiembra,
@@ -69,6 +70,17 @@ test('el catálogo ofrece ciclos para soja, maíz, trigo y sorgo', () => {
   for (const cultivo of ['soja', 'maiz', 'trigo', 'sorgo']) {
     assert.ok(variedadesDe(cultivo).length >= 3, cultivo);
   }
+});
+
+test('estima el ciclo según semilla, zona y fecha de siembra', () => {
+  const base = { crop: 'soja', variety: 'soja-medio', latitude: -33, sowingDate: '2025-11-10' };
+  assert.deepEqual(estimarCiclo(base), { dias: 165, base: 165, ajusteZona: 0, ajusteFecha: 0 });
+  assert.ok(estimarCiclo({ ...base, latitude: -38 }).dias > 165, 'más al sur, ciclo más largo');
+  assert.ok(estimarCiclo({ ...base, latitude: -27 }).dias < 165, 'más al norte, ciclo más corto');
+  assert.ok(estimarCiclo({ ...base, sowingDate: '2025-12-20' }).dias < 165, 'siembra tardía acorta');
+  assert.ok(estimarCiclo({ ...base, sowingDate: '2025-10-20' }).dias > 165, 'siembra temprana alarga');
+  assert.ok(estimarCiclo({ ...base, sowingDate: '2025-03-01' }).ajusteFecha >= -25, 'el ajuste tiene tope');
+  assert.equal(estimarCiclo({ ...base, variety: 'x' }), null);
 });
 
 test('edita nombre, superficie y ubicación sin tocar la siembra', () => {
