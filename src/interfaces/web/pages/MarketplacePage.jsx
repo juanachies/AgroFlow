@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { distanciaKm } from '../lib/data.js';
+import ServiceMarketplace from '../components/ServiceMarketplace.jsx';
 
 export const ACTORES = [
   { id: '', label: 'Todos', icon: Users },
@@ -158,7 +159,7 @@ export function ApiOffline({ error, onRetry }) {
   );
 }
 
-export default function MarketplacePage({ role, lot, onToast, onNavigate }) {
+export default function MarketplacePage({ role, fields = [], guest = false, lot, onToast, onNavigate }) {
   const isProvider = role === 'prestador';
   const [offers, setOffers] = useState([]);
   const [reservations, setReservations] = useState([]);
@@ -211,6 +212,8 @@ export default function MarketplacePage({ role, lot, onToast, onNavigate }) {
         </div>
         {isProvider && <button type="button" className="button button--primary" onClick={() => setPublishing(true)} disabled={!!error}><Plus size={16} /> Publicar disponibilidad</button>}
       </div>
+
+      {role === 'productor' && !guest && <ServiceMarketplace fields={fields} onNavigate={onNavigate} onToast={onToast} />}
 
       <section className="actors-flow" aria-label="Cómo funciona el marketplace">
         <div className="actor-step"><span className="actor-step-icon"><Sprout size={18} /></span><div><strong>Productor</strong><small>Simula su plan y publica la demanda de servicios</small></div></div>

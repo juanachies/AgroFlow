@@ -757,7 +757,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
               {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
               {page === 'centro' && <CentroLogistico lots={lots} selectedLot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} theme={theme} onSelectLot={setSelectedLotId} onNavigate={navigate} />}
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
-              {page === 'marketplace' && <MarketplacePage lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
+              {page === 'marketplace' && <MarketplacePage role={role} fields={account?.fields ?? []} guest={guest} lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
               {page === 'silobolsas' && <SilobolsasPage lots={lots} />}
               {page === 'services' && <ServicesPage account={account} onNavigate={navigate} />}
               {page === 'account' && <AccountPage user={user} account={account} onAccountChange={onAccountChange} onSignOut={onSignOut} guest={guest} lots={lots} onResetExample={resetExample} />}

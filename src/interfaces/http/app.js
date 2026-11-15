@@ -46,8 +46,8 @@ export const ENTRADA_EJEMPLO = {
 function cors(origen) {
   return {
     'access-control-allow-origin': origen,
-    'access-control-allow-methods': 'GET, POST, OPTIONS',
-    'access-control-allow-headers': 'content-type',
+    'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'access-control-allow-headers': 'content-type, authorization',
     'access-control-max-age': '600',
   };
 }
@@ -266,9 +266,11 @@ export function crearApi({ contenedor, servirEstatico = null, origenCors = '*', 
         return res.end();
       }
       const camino = url.pathname.replace(/\/$/, '') || '/';
-      if (camino === '/api/account') return manejarCuenta(req, res, 'account');
-      if (camino === '/api/fields') return manejarCuenta(req, res, 'fields');
-      if (camino === '/api/offering') return manejarCuenta(req, res, 'offering');
+      if (camino === '/api/account') return manejarCuenta(req, res, 'account', { headers: encabezados });
+      if (camino === '/api/fields') return manejarCuenta(req, res, 'fields', { headers: encabezados });
+      if (camino === '/api/offering') return manejarCuenta(req, res, 'offering', { headers: encabezados });
+      if (camino === '/api/service-offerings') return manejarCuenta(req, res, 'service-offerings', { headers: encabezados });
+      if (camino === '/api/service-requests') return manejarCuenta(req, res, 'service-requests', { headers: encabezados });
       const ruta = rutas[`${req.method} ${camino}`];
       if (ruta) {
         const [estado, cuerpo] = await ruta(req, url);
@@ -290,7 +292,7 @@ export function crearApi({ contenedor, servirEstatico = null, origenCors = '*', 
     } catch (error) {
       if (res.headersSent) return res.end();
       for (const [k, v] of Object.entries(encabezados)) res.setHeader(k, v);
-      return responderError(res, error);
+      return responderError(res, error, encabezados);
     }
   };
 }

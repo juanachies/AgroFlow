@@ -92,7 +92,7 @@ export default function AuthPage({ onAuthenticated }) {
           <div className="auth-mobile-brand"><span className="brand-mark">A</span><strong>AgroFlow</strong></div>
           <span className="eyebrow">{mode === 'signup' ? 'CREAR CUENTA' : 'BIENVENIDA/O'}</span>
           <h2>{mode === 'signup' ? 'Empezá con AgroFlow' : 'Iniciá sesión'}</h2>
-          <p className="auth-subtitle">{mode === 'signup' ? 'Elegí el tipo de cuenta y cargá tus datos.' : 'Ingresá con el correo y la contraseña de tu cuenta.'}</p>
+          <p className="auth-subtitle">{mode === 'signup' ? 'Creá tu perfil básico; después podrás completar los datos del campo o servicio.' : 'Ingresá con el correo y la contraseña de tu cuenta.'}</p>
 
           {mode === 'signup' ? (
             <>
@@ -110,6 +110,7 @@ export default function AuthPage({ onAuthenticated }) {
               <div className="auth-details-block">
                 <AccountDetailsForm
                   allowRoleChange
+                  profileOnly
                   submitLabel={busy ? 'Creando cuenta…' : 'Crear cuenta'}
                   onSubmit={submitSignUp}
                 />

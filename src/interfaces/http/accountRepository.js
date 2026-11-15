@@ -19,9 +19,11 @@ function campoDesdeFila(row) {
   return {
     id: row.id,
     name: row.name,
+    city: row.city,
     areaHa: Number(row.area_ha),
     latitude: Number(row.latitude),
     longitude: Number(row.longitude),
+    boundary: row.boundary ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -43,10 +45,128 @@ function ofertaDesdeFila(row) {
     serviceRadiusKm: Number(row.service_radius_km),
     availableFrom: row.available_from,
     availableUntil: row.available_until,
+    city: row.city,
+    baseAddress: row.base_address,
+    details: row.details ?? {},
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function solicitudDesdeFila(row) {
+  return {
+    id: row.id,
+    providerId: row.provider_user_id,
+    requesterId: row.requester_user_id,
+    field: {
+      id: row.field_id,
+      name: row.field_name,
+      city: row.field_city,
+    },
+    provider: {
+      displayName: row.provider_name,
+      phone: row.provider_phone,
+      address: row.provider_address,
+    },
+    requester: {
+      displayName: row.requester_name,
+      phone: row.requester_phone,
+    },
+    serviceType: row.service_type,
+    subtype: row.subtype,
+    quantity: Number(row.quantity),
+    quantityUnit: row.quantity_unit,
+    neededFrom: row.needed_from,
+    neededUntil: row.needed_until,
+    requestDetails: row.request_details ?? {},
+    message: row.message,
+    status: row.status,
+    quote: row.quote_price == null ? null : {
+      price: Number(row.quote_price),
+      currency: row.quote_currency,
+      priceUnit: row.quote_price_unit,
+      message: row.quote_message,
+      validUntil: row.quote_valid_until,
+    },
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+const SOLICITUD_SELECT = `
+  SELECT request.id, request.provider_user_id, request.requester_user_id, request.field_id,
+    request.service_type, request.quantity, request.quantity_unit, request.needed_from, request.needed_until,
+    request.request_details, request.message, request.status, request.quote_price, request.quote_currency,
+    request.quote_price_unit, request.quote_message, request.quote_valid_until, request.created_at, request.updated_at,
+    field.name AS field_name, field.city AS field_city,
+    provider.display_name AS provider_name,
+    CASE WHEN request.status = 'accepted' THEN provider.phone END AS provider_phone,
+    requester.display_name AS requester_name,
+    CASE WHEN request.status = 'accepted' THEN requester.phone END AS requester_phone,
+    CASE WHEN request.status = 'accepted' THEN offering.base_address END AS provider_address,
+    offering.subtype
+  FROM service_requests request
+  JOIN app_user_profiles provider ON provider.user_id = request.provider_user_id
+  JOIN app_user_profiles requester ON requester.user_id = request.requester_user_id
+  JOIN account_fields field ON field.id = request.field_id
+  JOIN service_offerings offering ON offering.id = request.offering_id
+`;
+
+function distanciaKm(a, b) {
+  const radianes = (grados) => grados * Math.PI / 180;
+  const latDelta = radianes(b.latitude - a.latitude);
+  const lonDelta = radianes(b.longitude - a.longitude);
+  const lat1 = radianes(a.latitude);
+  const lat2 = radianes(b.latitude);
+  const h = Math.sin(latDelta / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(lonDelta / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function exigirCompatibilidadOferta(offering, field, request) {
+  const details = offering.details ?? {};
+  const requestDetails = request.requestDetails;
+  const supported = request.serviceType === 'transporte'
+    ? details.loadTypes
+    : request.serviceType === 'almacenamiento'
+      ? details.storageTypes
+      : details.activities;
+  const requested = request.serviceType === 'transporte'
+    ? requestDetails.loadType
+    : request.serviceType === 'almacenamiento'
+      ? requestDetails.storageType
+      : requestDetails.activity;
+  if (Array.isArray(supported) && supported.length && !supported.includes(requested)) {
+    throw new ErrorHttp(409, 'el servicio no ofrece esa tarea o tipo de carga');
+  }
+  if (request.serviceType === 'almacenamiento' && Array.isArray(details.crops) && details.crops.length && !details.crops.includes(requestDetails.crop)) {
+    throw new ErrorHttp(409, 'el servicio no admite ese cultivo');
+  }
+  if (
+    (request.neededFrom && offering.available_from && request.neededFrom < offering.available_from)
+    || (request.neededUntil && offering.available_until && request.neededUntil > offering.available_until)
+    || (request.neededUntil && offering.available_from && request.neededUntil < offering.available_from)
+    || (request.neededFrom && offering.available_until && request.neededFrom > offering.available_until)
+  ) {
+    throw new ErrorHttp(409, 'la fecha solicitada queda fuera de la disponibilidad del prestador');
+  }
+  const distance = distanciaKm(
+    { latitude: Number(field.latitude), longitude: Number(field.longitude) },
+    { latitude: Number(offering.base_latitude), longitude: Number(offering.base_longitude) },
+  );
+  if (distance > Number(offering.service_radius_km)) {
+    throw new ErrorHttp(409, 'el campo está fuera del radio de cobertura del prestador');
+  }
+}
+
+async function leerSolicitud(client, requestId, viewerId) {
+  const result = await client.query(
+    `${SOLICITUD_SELECT}
+     WHERE request.id = $1 AND (request.provider_user_id = $2 OR request.requester_user_id = $2)`,
+    [requestId, viewerId],
+  );
+  if (!result.rows[0]) throw new ErrorHttp(404, 'no se encontró esa solicitud');
+  return solicitudDesdeFila(result.rows[0]);
 }
 
 async function enTransaccion(work) {
@@ -57,7 +177,11 @@ async function enTransaccion(work) {
     await client.query('COMMIT');
     return result;
   } catch (error) {
-    await client.query('ROLLBACK').catch(() => {});
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('No se pudo revertir la transacción de cuenta.', rollbackError);
+    }
     throw error;
   } finally {
     client.release();
@@ -73,11 +197,11 @@ async function leerCuenta(client, userId) {
   if (!profile) return { profile: null, fields: [], offering: null };
   const [fieldsResult, offeringResult] = await Promise.all([
     client.query(
-      'SELECT id, name, area_ha, latitude, longitude, created_at, updated_at FROM account_fields WHERE user_id = $1 ORDER BY created_at, id',
+      'SELECT id, name, city, area_ha, latitude, longitude, boundary, created_at, updated_at FROM account_fields WHERE user_id = $1 ORDER BY created_at, id',
       [userId],
     ),
     client.query(
-      'SELECT id, service_type, subtype, price, currency, price_unit, capacity, capacity_unit, base_latitude, base_longitude, service_radius_km, available_from, available_until, notes, created_at, updated_at FROM service_offerings WHERE user_id = $1',
+      'SELECT id, service_type, subtype, price, currency, price_unit, capacity, capacity_unit, base_latitude, base_longitude, city, base_address, service_radius_km, available_from, available_until, details, notes, created_at, updated_at FROM service_offerings WHERE user_id = $1',
       [userId],
     ),
   ]);
@@ -103,10 +227,10 @@ async function exigirRol(client, userId, role) {
 
 async function insertarCampo(client, userId, field) {
   const result = await client.query(
-    `INSERT INTO account_fields (user_id, name, area_ha, latitude, longitude)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, name, area_ha, latitude, longitude, created_at, updated_at`,
-    [userId, field.name, field.areaHa, field.latitude, field.longitude],
+    `INSERT INTO account_fields (user_id, name, city, area_ha, latitude, longitude, boundary)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, name, city, area_ha, latitude, longitude, boundary, created_at, updated_at`,
+    [userId, field.name, field.city, field.areaHa, field.latitude, field.longitude, field.boundary],
   );
   return campoDesdeFila(result.rows[0]);
 }
@@ -115,9 +239,9 @@ async function guardarOferta(client, userId, offering) {
   const result = await client.query(
     `INSERT INTO service_offerings (
        user_id, service_type, subtype, price, currency, price_unit, capacity, capacity_unit,
-       base_latitude, base_longitude, service_radius_km, available_from, available_until, notes
+       base_latitude, base_longitude, city, base_address, service_radius_km, available_from, available_until, details, notes
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
      ON CONFLICT (user_id) DO UPDATE SET
        service_type = EXCLUDED.service_type,
        subtype = EXCLUDED.subtype,
@@ -128,13 +252,16 @@ async function guardarOferta(client, userId, offering) {
        capacity_unit = EXCLUDED.capacity_unit,
        base_latitude = EXCLUDED.base_latitude,
        base_longitude = EXCLUDED.base_longitude,
+       city = EXCLUDED.city,
+       base_address = EXCLUDED.base_address,
        service_radius_km = EXCLUDED.service_radius_km,
        available_from = EXCLUDED.available_from,
        available_until = EXCLUDED.available_until,
+       details = EXCLUDED.details,
        notes = EXCLUDED.notes,
        updated_at = now()
      RETURNING id, service_type, subtype, price, currency, price_unit, capacity, capacity_unit,
-       base_latitude, base_longitude, service_radius_km, available_from, available_until, notes,
+       base_latitude, base_longitude, city, base_address, service_radius_km, available_from, available_until, details, notes,
        created_at, updated_at`,
     [
       userId,
@@ -147,9 +274,12 @@ async function guardarOferta(client, userId, offering) {
       offering.capacityUnit,
       offering.baseLatitude,
       offering.baseLongitude,
+      offering.city,
+      offering.baseAddress,
       offering.serviceRadiusKm,
       offering.availableFrom,
       offering.availableUntil,
+      offering.details,
       offering.notes,
     ],
   );
@@ -168,8 +298,8 @@ export const accountRepository = {
       [userId, account.role, account.displayName, account.phone],
     );
     if (!created.rowCount) throw new ErrorHttp(409, 'la cuenta ya tiene un perfil');
-    if (account.role === 'productor') await insertarCampo(client, userId, account.field);
-    if (account.role === 'prestador') await guardarOferta(client, userId, account.offering);
+    if (account.role === 'productor' && account.field) await insertarCampo(client, userId, account.field);
+    if (account.role === 'prestador' && account.offering) await guardarOferta(client, userId, account.offering);
     return leerCuenta(client, userId);
   }),
 
@@ -195,7 +325,7 @@ export const accountRepository = {
   listFields: async (userId) => {
     await exigirRol(obtenerPool(), userId, 'productor');
     const result = await obtenerPool().query(
-      'SELECT id, name, area_ha, latitude, longitude, created_at, updated_at FROM account_fields WHERE user_id = $1 ORDER BY created_at, id',
+      'SELECT id, name, city, area_ha, latitude, longitude, boundary, created_at, updated_at FROM account_fields WHERE user_id = $1 ORDER BY created_at, id',
       [userId],
     );
     return result.rows.map(campoDesdeFila);
@@ -209,10 +339,10 @@ export const accountRepository = {
   updateField: async (userId, fieldId, field) => {
     const result = await obtenerPool().query(
       `UPDATE account_fields
-       SET name = $3, area_ha = $4, latitude = $5, longitude = $6, updated_at = now()
+       SET name = $3, city = $4, area_ha = $5, latitude = $6, longitude = $7, boundary = $8, updated_at = now()
        WHERE id = $1 AND user_id = $2
-       RETURNING id, name, area_ha, latitude, longitude, created_at, updated_at`,
-      [fieldId, userId, field.name, field.areaHa, field.latitude, field.longitude],
+       RETURNING id, name, city, area_ha, latitude, longitude, boundary, created_at, updated_at`,
+      [fieldId, userId, field.name, field.city, field.areaHa, field.latitude, field.longitude, field.boundary],
     );
     if (!result.rowCount) throw new ErrorHttp(404, 'no se encontró ese campo en tu cuenta');
     return campoDesdeFila(result.rows[0]);
@@ -230,7 +360,7 @@ export const accountRepository = {
     await exigirRol(obtenerPool(), userId, 'prestador');
     const result = await obtenerPool().query(
       `SELECT id, service_type, subtype, price, currency, price_unit, capacity, capacity_unit,
-        base_latitude, base_longitude, service_radius_km, available_from, available_until, notes,
+        base_latitude, base_longitude, city, base_address, service_radius_km, available_from, available_until, details, notes,
         created_at, updated_at
        FROM service_offerings WHERE user_id = $1`,
       [userId],
@@ -241,5 +371,158 @@ export const accountRepository = {
   saveOffering: async (userId, offering) => enTransaccion(async (client) => {
     await exigirRol(client, userId, 'prestador');
     return guardarOferta(client, userId, offering);
+  }),
+
+  listServiceOfferings: async (userId, serviceType, fieldId = null) => {
+    await exigirRol(obtenerPool(), userId, 'productor');
+    let field = null;
+    if (fieldId) {
+      const fieldResult = await obtenerPool().query(
+        'SELECT latitude, longitude FROM account_fields WHERE id = $1 AND user_id = $2',
+        [fieldId, userId],
+      );
+      if (!fieldResult.rows[0]) throw new ErrorHttp(404, 'no se encontró ese campo en tu cuenta');
+      field = {
+        latitude: Number(fieldResult.rows[0].latitude),
+        longitude: Number(fieldResult.rows[0].longitude),
+      };
+    }
+    const result = await obtenerPool().query(
+      `SELECT offering.id, offering.user_id, profile.display_name, offering.service_type, offering.subtype,
+        offering.price, offering.currency, offering.price_unit, offering.capacity, offering.capacity_unit,
+        offering.base_latitude, offering.base_longitude, offering.city, offering.base_address,
+        offering.service_radius_km, offering.available_from, offering.available_until, offering.details, offering.notes,
+        offering.created_at, offering.updated_at
+       FROM service_offerings offering
+       JOIN app_user_profiles profile ON profile.user_id = offering.user_id
+       WHERE profile.role = 'prestador' AND ($1::text IS NULL OR offering.service_type = $1)
+       ORDER BY offering.service_type, profile.display_name, offering.updated_at DESC`,
+      [serviceType],
+    );
+    return result.rows.map((row) => {
+      const { baseLatitude, baseLongitude, baseAddress, ...publicOffering } = ofertaDesdeFila(row);
+      const distance = field
+        ? distanciaKm(field, { latitude: baseLatitude, longitude: baseLongitude })
+        : null;
+      return {
+        providerId: row.user_id,
+        providerName: row.display_name,
+        offering: publicOffering,
+        covered: distance == null ? null : distance <= Number(row.service_radius_km),
+      };
+    });
+  },
+
+  listServiceRequests: async (userId) => {
+    const roleResult = await obtenerPool().query('SELECT role FROM app_user_profiles WHERE user_id = $1', [userId]);
+    const role = roleResult.rows[0]?.role;
+    if (!role) throw new ErrorHttp(404, 'completá primero el perfil de tu cuenta');
+    if (!['productor', 'prestador'].includes(role)) throw new ErrorHttp(403, 'esta acción no corresponde al tipo de cuenta');
+    const side = role === 'prestador' ? 'provider_user_id' : 'requester_user_id';
+    const result = await obtenerPool().query(
+      `${SOLICITUD_SELECT}
+       WHERE request.${side} = $1
+       ORDER BY CASE request.status WHEN 'pending' THEN 0 WHEN 'quoted' THEN 1 ELSE 2 END,
+         request.created_at DESC`,
+      [userId],
+    );
+    return result.rows.map(solicitudDesdeFila);
+  },
+
+  createServiceRequest: async (userId, request) => enTransaccion(async (client) => {
+    await exigirRol(client, userId, 'productor');
+    const offeringResult = await client.query(
+      `SELECT id, user_id, service_type, details, base_latitude, base_longitude,
+        service_radius_km, available_from, available_until
+       FROM service_offerings WHERE id = $1 AND user_id = $2 FOR SHARE`,
+      [request.offeringId, request.providerId],
+    );
+    const fieldResult = await client.query(
+      'SELECT id, latitude, longitude FROM account_fields WHERE id = $1 AND user_id = $2 FOR SHARE',
+      [request.fieldId, userId],
+    );
+    const offering = offeringResult.rows[0];
+    const field = fieldResult.rows[0];
+    if (!offering || !field || offering.service_type !== request.serviceType) {
+      throw new ErrorHttp(404, 'no se encontró una oferta compatible con ese campo');
+    }
+    exigirCompatibilidadOferta(offering, field, request);
+    const inserted = await client.query(
+      `INSERT INTO service_requests (
+         offering_id, provider_user_id, requester_user_id, field_id, service_type,
+         quantity, quantity_unit, needed_from, needed_until, request_details, message
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       RETURNING id`,
+      [
+        offering.id,
+        offering.user_id,
+        userId,
+        field.id,
+        request.serviceType,
+        request.quantity,
+        request.quantityUnit,
+        request.neededFrom,
+        request.neededUntil,
+        request.requestDetails,
+        request.message,
+      ],
+    );
+    return leerSolicitud(client, inserted.rows[0].id, userId);
+  }),
+
+  submitServiceQuote: async (userId, requestId, quote) => enTransaccion(async (client) => {
+    await exigirRol(client, userId, 'prestador');
+    const result = await client.query(
+      `UPDATE service_requests request
+       SET status = 'quoted', quote_price = $3, quote_currency = $4, quote_price_unit = offering.price_unit,
+         quote_message = $5, quote_valid_until = $6, updated_at = now()
+       FROM service_offerings offering
+       WHERE request.id = $1 AND request.provider_user_id = $2
+         AND request.offering_id = offering.id AND request.status = 'pending'
+       RETURNING request.id`,
+      [requestId, userId, quote.price, quote.currency, quote.message, quote.validUntil],
+    );
+    if (!result.rowCount) throw new ErrorHttp(409, 'la solicitud ya no está pendiente o no pertenece a tu cuenta');
+    return leerSolicitud(client, requestId, userId);
+  }),
+
+  declineServiceRequest: async (userId, requestId) => enTransaccion(async (client) => {
+    await exigirRol(client, userId, 'prestador');
+    const result = await client.query(
+      `UPDATE service_requests SET status = 'declined', updated_at = now()
+       WHERE id = $1 AND provider_user_id = $2 AND status = 'pending' RETURNING id`,
+      [requestId, userId],
+    );
+    if (!result.rowCount) throw new ErrorHttp(409, 'la solicitud ya no está pendiente o no pertenece a tu cuenta');
+    return leerSolicitud(client, requestId, userId);
+  }),
+
+  respondToServiceQuote: async (userId, requestId, action) => enTransaccion(async (client) => {
+    await exigirRol(client, userId, 'productor');
+    let result;
+    if (action === 'accept_quote') {
+      result = await client.query(
+        `UPDATE service_requests SET status = 'accepted', updated_at = now()
+         WHERE id = $1 AND requester_user_id = $2 AND status = 'quoted'
+           AND (quote_valid_until IS NULL OR quote_valid_until >= CURRENT_DATE)
+         RETURNING id`,
+        [requestId, userId],
+      );
+    } else if (action === 'decline_quote') {
+      result = await client.query(
+        `UPDATE service_requests SET status = 'declined', updated_at = now()
+         WHERE id = $1 AND requester_user_id = $2 AND status = 'quoted' RETURNING id`,
+        [requestId, userId],
+      );
+    } else {
+      result = await client.query(
+        `UPDATE service_requests SET status = 'cancelled', updated_at = now()
+         WHERE id = $1 AND requester_user_id = $2 AND status IN ('pending', 'quoted') RETURNING id`,
+        [requestId, userId],
+      );
+    }
+    if (!result.rowCount) throw new ErrorHttp(409, 'la cotización ya no está disponible para responder');
+    return leerSolicitud(client, requestId, userId);
   }),
 };
