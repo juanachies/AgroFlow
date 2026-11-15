@@ -116,7 +116,7 @@ function Destinos({ plan }) {
           </div>
         ))}
       </div>
-      <p className="inline-note">{Math.round(plan.toneladas).toLocaleString('es-AR')} t · {plan.dias_efectivos} días efectivos de cosecha</p>
+      <p className="inline-note">{Math.round(plan.toneladas * 10).toLocaleString('es-AR')} qq · {plan.dias_efectivos} días efectivos de cosecha</p>
     </section>
   );
 }

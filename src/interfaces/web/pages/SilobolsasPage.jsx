@@ -17,6 +17,8 @@ const DECISIONES = {
   sin_barco_factible: 'Sin barco factible',
 };
 
+const KG_POR_QUINTAL = 100;
+
 const fmt = (value, digits = 0) => new Intl.NumberFormat('es-AR', { maximumFractionDigits: digits }).format(value);
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 const nombreCultivo = (id) => CULTIVOS.find((c) => c.id === id)?.label ?? id;
@@ -53,7 +55,7 @@ function useFormulario(inicial) {
 }
 
 function NuevaSilobolsaDialog({ lots, onClose, onCreated }) {
-  const [alta, cambiar, setAlta] = useFormulario({ cultivo: 'soja', kg: '', fechaCreacion: hoyISO(), loteId: '' });
+  const [alta, cambiar, setAlta] = useFormulario({ cultivo: 'soja', quintales: '', fechaCreacion: hoyISO(), loteId: '' });
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
@@ -62,7 +64,7 @@ function NuevaSilobolsaDialog({ lots, onClose, onCreated }) {
     setGuardando(true);
     setError('');
     try {
-      const datos = { cultivo: alta.cultivo, kg: Number(alta.kg), fechaCreacion: alta.fechaCreacion };
+      const datos = { cultivo: alta.cultivo, kg: Number(alta.quintales) * KG_POR_QUINTAL, fechaCreacion: alta.fechaCreacion };
       if (alta.loteId) datos.loteId = alta.loteId;
       const { silobolsa } = await api.registrarSilobolsa(datos);
       onCreated(silobolsa);
@@ -88,7 +90,7 @@ function NuevaSilobolsaDialog({ lots, onClose, onCreated }) {
           </div>
         </fieldset>
         <div className="form-grid">
-          <label>Kilos embolsados<input name="kg" type="number" min="1" step="1" value={alta.kg} onChange={cambiar} placeholder="Ej. 200000" required autoFocus /></label>
+          <label>Quintales embolsados<input name="quintales" type="number" min="1" step="any" value={alta.quintales} onChange={cambiar} placeholder="Ej. 2000" required autoFocus /></label>
           <label>Fecha de embolsado<input name="fechaCreacion" type="date" value={alta.fechaCreacion} onChange={cambiar} required /></label>
         </div>
         <label>Lote de origen
@@ -281,7 +283,7 @@ function SilobolsaCard({ bolsa, lote }) {
       <div className="section-heading">
         <div>
           <h3>{bolsa.id}</h3>
-          <p>{nombreCultivo(bolsa.cultivo)} · {fmt(bolsa.kg)} kg · {bolsa.fechaCreacion}{lote ? ` · ${lote.name}` : ''}</p>
+          <p>{nombreCultivo(bolsa.cultivo)} · {fmt(bolsa.kg / KG_POR_QUINTAL)} qq · {bolsa.fechaCreacion}{lote ? ` · ${lote.name}` : ''}</p>
         </div>
       </div>
       <div className="action-row">
