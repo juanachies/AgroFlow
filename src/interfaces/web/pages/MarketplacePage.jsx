@@ -158,7 +158,8 @@ export function ApiOffline({ error, onRetry }) {
   );
 }
 
-export default function MarketplacePage({ lot, onToast, onNavigate }) {
+export default function MarketplacePage({ role, lot, onToast, onNavigate }) {
+  const isProvider = role === 'prestador';
   const [offers, setOffers] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [actor, setActor] = useState('');
@@ -205,10 +206,10 @@ export default function MarketplacePage({ lot, onToast, onNavigate }) {
       <div className="page-intro">
         <div>
           <span className="eyebrow">MARKETPLACE DE ACTORES</span>
-          <h2>Productores, contratistas y transportistas en un solo lugar</h2>
-          <p>AgroFlow cruza tu plan de cosecha con la capacidad publicada y reserva la más cercana y conveniente.</p>
+          <h2>Servicios para la cosecha, en un solo lugar</h2>
+          <p>Un espacio para conectar necesidades de cosecha con capacidad y servicios disponibles.</p>
         </div>
-        <button type="button" className="button button--primary" onClick={() => setPublishing(true)} disabled={!!error}><Plus size={16} /> Publicar oferta</button>
+        {isProvider && <button type="button" className="button button--primary" onClick={() => setPublishing(true)} disabled={!!error}><Plus size={16} /> Publicar disponibilidad</button>}
       </div>
 
       <section className="actors-flow" aria-label="Cómo funciona el marketplace">
@@ -217,7 +218,9 @@ export default function MarketplacePage({ lot, onToast, onNavigate }) {
         <div className="actor-step actor-step--brand"><span className="actor-step-icon"><Container size={18} /></span><div><strong>AgroFlow asigna</strong><small>Por distancia, fecha, precio y saturación del puerto</small></div></div>
         <ArrowRight className="actor-arrow" size={18} aria-hidden="true" />
         <div className="actor-step"><span className="actor-step-icon"><Truck size={18} /></span><div><strong>Contratistas y transportistas</strong><small>Reciben la reserva confirmada con fechas</small></div></div>
-        <button type="button" className="text-button" onClick={() => onNavigate('despacho')}>Simular mi plan <ArrowRight size={15} /></button>
+        <button type="button" className="text-button" onClick={() => onNavigate(isProvider ? 'services' : 'despacho')}>
+          {isProvider ? 'Gestionar mi servicio' : 'Simular mi plan'} <ArrowRight size={15} />
+        </button>
       </section>
 
       {error ? <ApiOffline error={error} onRetry={load} /> : (

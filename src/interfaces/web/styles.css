@@ -757,6 +757,21 @@ input[type='checkbox'] { width: 18px; min-height: 18px; height: 18px; accent-col
 .account-data-content h4 { font-size: 15px; }
 .account-data-content p { color: var(--text-2); font-size: 13.5px; }
 .account-data-content small { color: var(--text-3); font-size: 12px; }
+.provider-page { display: grid; gap: 18px; max-width: 1040px; margin: 0 auto; }
+.provider-page .page-intro { margin-bottom: 0; }
+.provider-service-overview { padding: 22px; }
+.provider-service-heading { display: flex; align-items: center; gap: 13px; }
+.provider-service-heading h3 { margin-top: 3px; font-size: 18px; }
+.provider-service-icon { display: grid; flex: none; width: 42px; height: 42px; place-items: center; border-radius: 13px; background: var(--primary-soft); color: var(--primary); }
+.provider-service-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 10px; margin-top: 20px; }
+.provider-service-facts > div { display: grid; align-content: start; gap: 6px; min-height: 78px; padding: 13px; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-2); }
+.provider-service-facts span { color: var(--text-3); font-size: 12px; }
+.provider-service-facts strong { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.provider-service-notes { margin-top: 14px; color: var(--text-2); font-size: 13px; }
+.provider-service-empty, .provider-marketplace-card { display: flex; align-items: center; gap: 16px; padding: 20px; }
+.provider-service-empty > div, .provider-marketplace-card > div { flex: 1; }
+.provider-service-empty h3, .provider-marketplace-card h3 { margin: 3px 0; font-size: 17px; }
+.provider-service-empty p, .provider-marketplace-card p { color: var(--text-2); font-size: 13px; }
 .account-security-panel { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .account-security-panel h3 { margin-top: 4px; font-size: 16px; }
 .account-security-panel p { margin-top: 4px; color: var(--text-2); font-size: 13px; }
@@ -782,6 +797,7 @@ input[type='checkbox'] { width: 18px; min-height: 18px; height: 18px; accent-col
   .account-profile-card { align-items: flex-start; flex-wrap: wrap; }
   .account-profile-card .status-pill { margin-left: 74px; }
   .section-heading, .account-security-panel { align-items: flex-start; flex-direction: column; }
+  .provider-service-empty, .provider-marketplace-card { align-items: flex-start; flex-direction: column; }
   .account-page .page-intro { align-items: flex-start; }
   .account-data-card { flex-wrap: wrap; }
   .account-data-card .danger-text-button { margin-left: 51px; }

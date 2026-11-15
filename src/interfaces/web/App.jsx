@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
-  Activity, CalendarRange, ChartNoAxesCombined, CloudSun, House, Map as MapIcon, Moon, Plus, Route,
-  Sprout, Store, Sun, UserRound, Wheat,
+  Activity, CalendarRange, ChartNoAxesCombined, CloudSun, Map as MapIcon, Moon, Plus,
+  Sprout, Sun, Wheat,
 } from 'lucide-react';
 import ChatBubble from './components/ChatBubble.jsx';
 import { ForecastTable, WeatherChart } from './components/Charts.jsx';
@@ -24,21 +24,13 @@ import {
 } from './lib/storage.js';
 import { api } from './lib/api.js';
 import { useTheme } from './lib/theme.js';
+import { getHomePageForRole, getWorkspacePages } from './lib/workspacePages.js';
 import AccountPage from './pages/AccountPage.jsx';
 import MarketplacePage from './pages/MarketplacePage.jsx';
+import ServicesPage from './pages/ServicesPage.jsx';
 
 const MapView = lazy(() => import('./components/MapView.jsx'));
 const PlanDespacho = lazy(() => import('./components/PlanDespacho.jsx'));
-
-const PAGES = [
-  { id: 'summary', label: 'Resumen', icon: House, group: 'campo' },
-  { id: 'lots', label: 'Lotes y mapa', icon: MapIcon, group: 'campo' },
-  { id: 'planning', label: 'Planificación', icon: CalendarRange, group: 'campo' },
-  { id: 'technical', label: 'Análisis técnico', icon: ChartNoAxesCombined, group: 'campo' },
-  { id: 'despacho', label: 'Plan y despacho', icon: Route, group: 'red' },
-  { id: 'marketplace', label: 'Marketplace', icon: Store, group: 'red' },
-  { id: 'account', label: 'Cuenta', icon: UserRound, group: 'cuenta' },
-];
 
 function BrandMark() {
   return (
@@ -76,38 +68,43 @@ function LotSelector({ lots, selectedLot, onSelect }) {
   );
 }
 
-function Header({ page, lots, selectedLot, onSelectLot, onCreate, theme, onToggleTheme }) {
+function Header({ page, pages, isProducer, lots, selectedLot, onSelectLot, onCreate, theme, onToggleTheme }) {
+  const pageLabel = pages.find(({ id }) => id === page)?.label ?? '';
   return (
     <header className="topbar">
       <div className="topbar-title">
         <span className="mobile-brand"><BrandMark /></span>
         <div>
-          <div className="breadcrumbs">AgroFlow <span>/</span> {PAGES.find(({ id }) => id === page)?.label}</div>
-          <h1>{PAGES.find(({ id }) => id === page)?.label}</h1>
+          <div className="breadcrumbs">AgroFlow <span>/</span> {pageLabel}</div>
+          <h1>{pageLabel}</h1>
         </div>
       </div>
       <div className="topbar-actions">
-        {page !== 'account' && <LotSelector lots={lots} selectedLot={selectedLot} onSelect={onSelectLot} />}
+        {isProducer && page !== 'account' && <LotSelector lots={lots} selectedLot={selectedLot} onSelect={onSelectLot} />}
         <button type="button" className="icon-button theme-toggle" onClick={onToggleTheme} aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
-        {page !== 'account' && <button type="button" className="button button--primary" onClick={onCreate} aria-label="Nuevo lote"><Plus size={16} aria-hidden="true" /> <span>Nuevo lote</span></button>}
+        {isProducer && page !== 'account' && <button type="button" className="button button--primary" onClick={onCreate} aria-label="Nuevo lote"><Plus size={16} aria-hidden="true" /> <span>Nuevo lote</span></button>}
       </div>
     </header>
   );
 }
 
-function Sidebar({ page, onNavigate, apiStatus }) {
+function Sidebar({ pages, page, homePage, onNavigate, apiStatus, isProducer }) {
+  const groupLabels = { campo: 'MI CAMPO', servicios: 'MI SERVICIO', marketplace: 'MARKETPLACE', cuenta: 'MI CUENTA' };
+  const helpText = isProducer
+    ? apiStatus === 'off' ? 'Corré npm run dev:api para usar Marketplace y plan logístico.' : 'Lotes y snapshots se guardan en este navegador.'
+    : apiStatus === 'off' ? 'El Marketplace requiere conexión con la API.' : 'Tu servicio se administra desde este espacio.';
   return (
     <aside className="sidebar">
-      <a className="brand" href="#" onClick={(event) => { event.preventDefault(); onNavigate('summary'); }}>
+      <a className="brand" href="#" onClick={(event) => { event.preventDefault(); onNavigate(homePage); }}>
         <BrandMark />
         <span><strong>AgroFlow</strong><small>COSECHA · LOGÍSTICA</small></span>
       </a>
       <nav className="primary-nav" aria-label="Principal">
-        {PAGES.map((item, index) => (<div key={item.id} className="nav-group">
-          {(index === 0 || PAGES[index - 1].group !== item.group) && (
-            <div className="sidebar-caption">{item.group === 'campo' ? 'MI CAMPO' : item.group === 'red' ? 'RED AGROFLOW' : 'MI CUENTA'}</div>
+        {pages.map((item, index) => (<div key={item.id} className="nav-group">
+          {(index === 0 || pages[index - 1].group !== item.group) && (
+            <div className="sidebar-caption">{groupLabels[item.group]}</div>
           )}
           <button
             type="button"
@@ -124,7 +121,7 @@ function Sidebar({ page, onNavigate, apiStatus }) {
         <div className={`api-badge api-badge--${apiStatus}`}>
           <span />{apiStatus === 'ok' ? 'API conectada' : apiStatus === 'checking' ? 'Conectando API…' : 'API sin conexión'}
         </div>
-        <p>{apiStatus === 'off' ? 'Corré npm run dev:api para usar marketplace y plan logístico.' : 'Lotes y snapshots se guardan en este navegador.'}</p>
+        <p>{helpText}</p>
         <div className="sidebar-version">AgroFlow · v0.2</div>
       </div>
     </aside>
@@ -512,17 +509,25 @@ function TechnicalPage({ lot, snapshotRecord }) {
 }
 
 export function WorkspaceApp({ user, account, onAccountChange, onSignOut }) {
-  const [page, setPage] = useState('summary');
+  const role = account.profile.role;
+  const isProducer = role === 'productor';
+  const pages = getWorkspacePages(role);
+  const homePage = getHomePageForRole(role);
+  const [page, setPage] = useState(homePage);
   const [lots, setLots] = useState([]);
   const [snapshots, setSnapshots] = useState({});
   const [selectedLotId, setSelectedLotId] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isProducer);
   const [storageError, setStorageError] = useState('');
   const [toast, setToast] = useState('');
   const [theme, toggleTheme] = useTheme();
   const [apiStatus, setApiStatus] = useState('checking');
   const [draftLot, setDraftLot] = useState(null);
+
+  useEffect(() => {
+    if (!pages.some(({ id }) => id === page)) setPage(homePage);
+  }, [pages, page, homePage]);
 
   useEffect(() => {
     let alive = true;
@@ -533,6 +538,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut }) {
   }, []);
 
   useEffect(() => {
+    if (!isProducer) return undefined;
     Promise.all([listarLotes(), listarSnapshots()])
       .then(([savedLots, savedSnapshots]) => {
         setLots(savedLots);
@@ -541,7 +547,8 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut }) {
       })
       .catch((error) => setStorageError(error.message || 'No se pudo leer el almacenamiento local.'))
       .finally(() => setLoading(false));
-  }, []);
+    return undefined;
+  }, [isProducer]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -604,6 +611,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut }) {
   }
 
   function navigate(nextPage) {
+    if (!pages.some(({ id }) => id === nextPage)) return;
     setPage(nextPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -611,10 +619,12 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut }) {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#contenido">Saltar al contenido</a>
-      <Sidebar page={page} onNavigate={navigate} apiStatus={apiStatus} />
+      <Sidebar pages={pages} page={page} homePage={homePage} onNavigate={navigate} apiStatus={apiStatus} isProducer={isProducer} />
       <main className="main-content" id="contenido">
         <Header
           page={page}
+          pages={pages}
+          isProducer={isProducer}
           lots={lots}
           selectedLot={selectedLot}
           onSelectLot={setSelectedLotId}
@@ -633,14 +643,15 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut }) {
               {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSnapshot={saveSnapshot} />}
               {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
-              {page === 'marketplace' && <MarketplacePage lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
+              {page === 'services' && !isProducer && <ServicesPage account={account} onNavigate={navigate} />}
+              {page === 'marketplace' && <MarketplacePage role={role} lot={isProducer ? selectedLot : null} onToast={setToast} onNavigate={navigate} />}
               {page === 'account' && <AccountPage user={user} account={account} onAccountChange={onAccountChange} onSignOut={onSignOut} />}
             </Suspense>
           </div>
         )}
       </main>
       {showCreateDialog && <FieldDialog initial={draftLot} onClose={() => { setShowCreateDialog(false); setDraftLot(null); }} onCreate={createLot} />}
-      {page !== 'account' && <ChatBubble lots={lots} selectedLot={selectedLot} onNavigate={navigate} />}
+      {isProducer && page !== 'account' && <ChatBubble lots={lots} selectedLot={selectedLot} onNavigate={navigate} />}
       {toast && <div className="toast-message" role="status"><span>✓</span>{toast}</div>}
     </div>
   );
