@@ -22,6 +22,7 @@
 import { randomUUID } from 'node:crypto';
 import { ESCENARIOS } from '../../application/usecases/explicar.js';
 import { ErrorHttp, exigirFecha, fechaParam, leerJson, responder, responderError } from './validacion.js';
+import { manejarCuenta } from './accountApi.js';
 
 export const ENTRADA_EJEMPLO = {
   lote: { id: 'lote-pergamino', lat: -33.95, lon: -60.6 },
@@ -213,6 +214,9 @@ export function crearApi({ contenedor, servirEstatico = null, origenCors = '*', 
         return res.end();
       }
       const camino = url.pathname.replace(/\/$/, '') || '/';
+      if (camino === '/api/account') return manejarCuenta(req, res, 'account');
+      if (camino === '/api/fields') return manejarCuenta(req, res, 'fields');
+      if (camino === '/api/offering') return manejarCuenta(req, res, 'offering');
       const ruta = rutas[`${req.method} ${camino}`];
       if (ruta) {
         const [estado, cuerpo] = await ruta(req, url);

@@ -109,6 +109,14 @@ Ninguna key de API se usa desde el navegador.
 
 El mapa base usa OpenFreeMap/OpenStreetMap y ofrece imágenes de Esri como alternativa, con atribución visible. Para generar una compilación de producción ejecutá `npm run build` (salida en `dist/`).
 
+### Cuentas y despliegue en Vercel
+
+El acceso usa Neon Auth y los perfiles se guardan en PostgreSQL mediante las funciones privadas de Vercel. Para el frontend configurá `VITE_NEON_AUTH_URL` con la URL pública de Neon Auth. Para las funciones configurá `DATABASE_URL` (solo servidor), `NEON_AUTH_BASE_URL` y `NEON_AUTH_JWKS_URL`. No uses el prefijo `VITE_` para credenciales de base de datos.
+
+Antes del primer uso, aplicá el esquema una vez con `npm run db:migrate:accounts`; el script local requiere `DATABASE_URL_UNPOOLED` en `.env.local`. En Neon Auth agregá el dominio de producción de Vercel a **Trusted Domains**. En Vercel usá preset Vite, `npm run build`, directorio de salida `dist` e instalación `npm install`.
+
+Los perfiles distinguen productores (uno o más campos con superficie y coordenadas) y prestadores (una oferta con tipo de servicio, capacidad, precio, cobertura y disponibilidad). Cada usuario solo puede consultar y modificar sus propios datos.
+
 ```bash
 npm run actualizar-tarifas
 ```

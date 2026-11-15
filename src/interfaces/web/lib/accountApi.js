@@ -1,0 +1,47 @@
+import { authClient } from './auth.js';
+
+export class AccountApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = 'AccountApiError';
+    this.status = status;
+  }
+}
+
+async function request(path, { method = 'GET', body } = {}) {
+  if (!authClient) throw new AccountApiError('La autenticación no está configurada para esta aplicación.', 503);
+  const tokenResult = await authClient.token();
+  if (tokenResult.error) throw new AccountApiError(tokenResult.error.message, 401);
+  const token = tokenResult.data?.token;
+  if (!token) throw new AccountApiError('La sesión expiró. Iniciá sesión nuevamente.', 401);
+
+  let response;
+  try {
+    response = await fetch(path, {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        ...(body ? { 'content-type': 'application/json' } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+  } catch {
+    throw new AccountApiError('No se pudo conectar con el servidor de cuentas.', 0);
+  }
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new AccountApiError(result.error ?? `El servidor respondió ${response.status}.`, response.status);
+  return result;
+}
+
+export const accountApi = {
+  get: () => request('/api/account'),
+  create: (profile) => request('/api/account', { method: 'POST', body: profile }),
+  updateProfile: (profile) => request('/api/account', { method: 'PATCH', body: profile }),
+  listFields: () => request('/api/fields'),
+  createField: (field) => request('/api/fields', { method: 'POST', body: field }),
+  updateField: (id, field) => request(`/api/fields?id=${encodeURIComponent(id)}`, { method: 'PUT', body: field }),
+  deleteField: (id) => request(`/api/fields?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  getOffering: () => request('/api/offering'),
+  saveOffering: (offering) => request('/api/offering', { method: 'PUT', body: offering }),
+};
