@@ -206,3 +206,31 @@ test('rechaza acciones de cotización desconocidas', async () => {
   }, {});
   assert.equal(response.status, 400);
 });
+
+test('permite crear el perfil autenticado antes de sus datos operativos', async () => {
+  let created;
+  const res = responseRecorder();
+  await manejarCuenta({
+    method: 'POST',
+    url: '/api/account',
+    headers: { 'content-type': 'application/json' },
+    body: { role: 'prestador', displayName: 'Ana Prestadora', phone: '' },
+  }, res, 'account', {
+    authenticate: async () => ids.providerId,
+    repository: {
+      create: async (userId, account) => {
+        created = { userId, account };
+        return { profile: { userId, role: account.role, displayName: account.displayName }, fields: [], offering: null };
+      },
+    },
+  });
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(created.userId, ids.providerId);
+  assert.deepEqual(created.account, {
+    displayName: 'Ana Prestadora',
+    phone: null,
+    role: 'prestador',
+  });
+  assert.deepEqual(JSON.parse(res.body).fields, []);
+});

@@ -298,8 +298,8 @@ export const accountRepository = {
       [userId, account.role, account.displayName, account.phone],
     );
     if (!created.rowCount) throw new ErrorHttp(409, 'la cuenta ya tiene un perfil');
-    if (account.role === 'productor') await insertarCampo(client, userId, account.field);
-    if (account.role === 'prestador') await guardarOferta(client, userId, account.offering);
+    if (account.role === 'productor' && account.field) await insertarCampo(client, userId, account.field);
+    if (account.role === 'prestador' && account.offering) await guardarOferta(client, userId, account.offering);
     return leerCuenta(client, userId);
   }),
 
