@@ -1,17 +1,22 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Activity, CalendarRange, ChartNoAxesCombined, CloudSun, House, Map as MapIcon, Moon, Package, Plus, Route,
+  Activity, ChartNoAxesCombined, CloudSun, House, Map as MapIcon, Moon, Package, Plus, Route,
   Sprout, Store, Sun, UserRound, Wheat,
 } from 'lucide-react';
 import ChatBubble from './components/ChatBubble.jsx';
 import { ForecastTable, WeatherChart } from './components/Charts.jsx';
+import ConfirmDialog from './components/ConfirmDialog.jsx';
 import { BoundaryImport, SnapshotImport } from './components/DataImport.jsx';
-import FieldDialog from './components/FieldDialog.jsx';
+import LotDialog from './components/LotDialog.jsx';
+import Modal from './components/Modal.jsx';
+import SowingDialog from './components/SowingDialog.jsx';
 import {
   diasEnVentana,
   distanciaKm,
   nombreCultivo,
+  nombreVariedad,
   promedio,
+  quitarSiembra,
   ventanaDelLote,
 } from './lib/data.js';
 import {
@@ -31,16 +36,30 @@ import SilobolsasPage from './pages/SilobolsasPage.jsx';
 const MapView = lazy(() => import('./components/MapView.jsx'));
 const PlanDespacho = lazy(() => import('./components/PlanDespacho.jsx'));
 
-const PAGES = [
-  { id: 'summary', label: 'Resumen', icon: House, group: 'campo' },
-  { id: 'lots', label: 'Lotes y mapa', icon: MapIcon, group: 'campo' },
-  { id: 'planning', label: 'Planificación', icon: CalendarRange, group: 'campo' },
-  { id: 'technical', label: 'Análisis técnico', icon: ChartNoAxesCombined, group: 'campo' },
-  { id: 'despacho', label: 'Plan y despacho', icon: Route, group: 'red' },
-  { id: 'marketplace', label: 'Marketplace', icon: Store, group: 'red' },
-  { id: 'silobolsas', label: 'Silobolsas', icon: Package, group: 'red' },
-  { id: 'account', label: 'Cuenta', icon: UserRound, group: 'cuenta' },
+const SECTIONS = [
+  { id: 'inicio', label: 'Inicio', icon: House, pages: [{ id: 'summary', label: 'Resumen' }] },
+  {
+    id: 'lotes', label: 'Gestionar lotes', icon: MapIcon,
+    pages: [
+      { id: 'lots', label: 'Lotes y mapa' },
+      { id: 'planning', label: 'Planificación' },
+      { id: 'technical', label: 'Análisis técnico' },
+    ],
+  },
+  { id: 'silos', label: 'Gestionar silobolsas', icon: Package, pages: [{ id: 'silobolsas', label: 'Silobolsas' }] },
+  {
+    id: 'logistica', label: 'Logística y ventas', icon: Route,
+    pages: [
+      { id: 'despacho', label: 'Plan y despacho' },
+      { id: 'marketplace', label: 'Marketplace' },
+    ],
+  },
+  { id: 'cuenta', label: 'Gestionar cuenta', icon: UserRound, pages: [{ id: 'account', label: 'Mi cuenta' }] },
 ];
+
+const PAGES = SECTIONS.flatMap(({ pages }) => pages);
+const sectionOf = (pageId) => SECTIONS.find(({ pages }) => pages.some(({ id }) => id === pageId));
+const PAGES_WITH_LOT_SELECTOR = new Set(['summary', 'lots', 'planning', 'technical', 'despacho', 'marketplace']);
 
 function BrandMark() {
   return (
@@ -78,7 +97,7 @@ function LotSelector({ lots, selectedLot, onSelect }) {
   );
 }
 
-function Header({ page, lots, selectedLot, onSelectLot, onCreate, theme, onToggleTheme }) {
+function Header({ page, lots, selectedLot, onSelectLot, theme, onToggleTheme }) {
   return (
     <header className="topbar">
       <div className="topbar-title">
@@ -89,11 +108,10 @@ function Header({ page, lots, selectedLot, onSelectLot, onCreate, theme, onToggl
         </div>
       </div>
       <div className="topbar-actions">
-        {page !== 'account' && <LotSelector lots={lots} selectedLot={selectedLot} onSelect={onSelectLot} />}
+        {PAGES_WITH_LOT_SELECTOR.has(page) && <LotSelector lots={lots} selectedLot={selectedLot} onSelect={onSelectLot} />}
         <button type="button" className="icon-button theme-toggle" onClick={onToggleTheme} aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
-        {page !== 'account' && <button type="button" className="button button--primary" onClick={onCreate} aria-label="Nuevo lote"><Plus size={16} aria-hidden="true" /> <span>Nuevo lote</span></button>}
       </div>
     </header>
   );
@@ -107,20 +125,22 @@ function Sidebar({ page, onNavigate, apiStatus }) {
         <span><strong>AgroFlow</strong><small>COSECHA · LOGÍSTICA</small></span>
       </a>
       <nav className="primary-nav" aria-label="Principal">
-        {PAGES.map((item, index) => (<div key={item.id} className="nav-group">
-          {(index === 0 || PAGES[index - 1].group !== item.group) && (
-            <div className="sidebar-caption">{item.group === 'campo' ? 'MI CAMPO' : item.group === 'red' ? 'RED AGROFLOW' : 'MI CUENTA'}</div>
-          )}
-          <button
-            type="button"
-            className={`nav-item${page === item.id ? ' is-active' : ''}`}
-            onClick={() => onNavigate(item.id)}
-            aria-current={page === item.id ? 'page' : undefined}
-          >
-            <item.icon className="nav-icon" size={18} aria-hidden="true" />
-            {item.label}
-          </button>
-        </div>))}
+        {SECTIONS.map((section) => {
+          const active = sectionOf(page)?.id === section.id;
+          return (
+            <div key={section.id} className="nav-group">
+              <button
+                type="button"
+                className={`nav-item${active ? ' is-active' : ''}`}
+                onClick={() => onNavigate(section.pages[0].id)}
+                aria-current={active ? 'page' : undefined}
+              >
+                <section.icon className="nav-icon" size={18} aria-hidden="true" />
+                {section.label}
+              </button>
+            </div>
+          );
+        })}
       </nav>
       <div className="sidebar-bottom">
         <div className={`api-badge api-badge--${apiStatus}`}>
@@ -130,6 +150,26 @@ function Sidebar({ page, onNavigate, apiStatus }) {
         <div className="sidebar-version">AgroFlow · v0.2</div>
       </div>
     </aside>
+  );
+}
+
+function SectionTabs({ page, onNavigate }) {
+  const section = sectionOf(page);
+  if (!section || section.pages.length < 2) return null;
+  return (
+    <nav className="section-tabs" aria-label={section.label}>
+      {section.pages.map((item) => (
+        <button
+          type="button"
+          key={item.id}
+          className={`section-tab${item.id === page ? ' is-active' : ''}`}
+          aria-current={item.id === page ? 'page' : undefined}
+          onClick={() => onNavigate(item.id)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -170,7 +210,7 @@ function MetricCard({ label, value, unit, detail, icon, tone = 'green' }) {
 
 function WindowTag({ lot }) {
   const window = ventanaDelLote(lot);
-  if (!window) return <span className="status-pill status-pill--muted">Sin fecha de siembra</span>;
+  if (!window) return <span className="status-pill status-pill--muted">Sin cultivo sembrado</span>;
   return <span className="window-tag">{formatDate(window.inicio, { day: 'numeric', month: 'short' })} – {formatDate(window.fin, { day: 'numeric', month: 'short' })}</span>;
 }
 
@@ -212,7 +252,7 @@ function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, on
             <div className="lot-list">
               {lots.slice(0, 5).map((lot) => (
                 <button className="lot-list-row" type="button" key={lot.id} onClick={() => { onSelectLot(lot.id); onNavigate('lots'); }}>
-                  <span className="crop-avatar">{nombreCultivo(lot.crop).slice(0, 1)}</span>
+                  <span className="crop-avatar">{lot.crop ? nombreCultivo(lot.crop).slice(0, 1) : '–'}</span>
                   <span className="lot-list-copy">
                     <strong>{lot.name}</strong>
                     <small>{nombreCultivo(lot.crop)} · {formatNumber(lot.areaHa)} ha</small>
@@ -226,7 +266,7 @@ function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, on
           ) : (
             <EmptyState
               title="Todavía no hay lotes"
-              description="Agregá el nombre, cultivo y ubicación real para comenzar. Los polígonos se importan después."
+              description="Agregá el terreno marcando su ubicación en el mapa. El cultivo se siembra después desde Gestionar lotes."
               action={<button type="button" className="button button--primary button--small" onClick={onCreate}>＋ Agregar un lote</button>}
             />
           )}
@@ -269,54 +309,75 @@ function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, on
   );
 }
 
-function LotDetails({ lot, snapshotRecord, onBoundary, onSnapshot, onDelete }) {
+function ImportModal({ title, onClose, children }) {
+  return (
+    <Modal title={title} onClose={onClose}>
+      {children}
+      <div className="dialog-actions">
+        <button type="button" className="button button--secondary" onClick={onClose}>Cerrar</button>
+      </div>
+    </Modal>
+  );
+}
+
+function LotDetails({ lot, snapshotRecord, onBoundary, onSnapshot, onEdit, onSow, onClearSowing, onDelete }) {
+  const [importing, setImporting] = useState(null);
+
   if (!lot) {
-    return <EmptyState title="Seleccioná un lote" description="Elegí o creá un lote para ver sus datos y cargar límites o snapshots." />;
+    return <EmptyState title="Seleccioná un lote" description="Elegí o creá un lote para ver sus datos." />;
   }
   const snapshot = snapshotRecord?.snapshot;
   const window = ventanaDelLote(lot);
+  const variety = nombreVariedad(lot.crop, lot.variety);
 
   return (
     <div className="lot-details">
       <div className="detail-title">
-        <span className="crop-avatar crop-avatar--large">{nombreCultivo(lot.crop).slice(0, 1)}</span>
-        <div><span className="eyebrow">{nombreCultivo(lot.crop)}</span><h2>{lot.name}</h2></div>
+        <span className="crop-avatar crop-avatar--large">{lot.crop ? nombreCultivo(lot.crop).slice(0, 1) : '–'}</span>
+        <div><span className="eyebrow">{lot.crop ? `${nombreCultivo(lot.crop)}${variety ? ` · ${variety}` : ''}` : 'Sin cultivo sembrado'}</span><h2>{lot.name}</h2></div>
+      </div>
+      <div className="action-row">
+        <button type="button" className="button button--primary button--small" onClick={onSow}><Sprout size={14} aria-hidden="true" /> {lot.crop ? 'Cambiar cultivo' : 'Sembrar cultivo'}</button>
+        <button type="button" className="button button--secondary button--small" onClick={onEdit}>Editar lote</button>
+        {lot.crop && <button type="button" className="button button--secondary button--small" onClick={onClearSowing}>Quitar cultivo</button>}
       </div>
       <div className="detail-stats">
         <div><span>{lot.boundary?.properties?.areaHa ? 'Superficie medida' : 'Superficie declarada'}</span><strong>{formatNumber(lot.areaHa, 2)} ha</strong></div>
-        <div><span>Ciclo ingresado</span><strong>{lot.cycleDays} días</strong></div>
-        <div><span>Fecha de siembra</span><strong>{formatDate(lot.sowingDate)}</strong></div>
+        <div><span>Ciclo estimado</span><strong>{lot.cycleDays ? `${lot.cycleDays} días` : '—'}</strong></div>
+        <div><span>Fecha de siembra</span><strong>{lot.sowingDate ? formatDate(lot.sowingDate) : '—'}</strong></div>
         <div><span>Coordenadas del punto</span><strong>{lot.latitude.toFixed(4)}, {lot.longitude.toFixed(4)}</strong></div>
       </div>
       <div className="detail-block">
         <div className="detail-block-heading"><strong>Límite del lote</strong><span className={`status-pill ${lot.boundary ? 'status-pill--success' : 'status-pill--muted'}`}>{lot.boundary ? 'Cargado' : 'Pendiente'}</span></div>
         <p>{lot.boundary ? `Polígono ${lot.boundary.properties?.origen === 'dibujado en AgroFlow' ? 'dibujado en el mapa' : 'importado'}${lot.boundary.properties?.areaHa ? ` · superficie medida ${formatNumber(lot.boundary.properties.areaHa, 2)} ha` : ''}.` : 'Dibujá el límite en el mapa para medir la superficie, o importá un GeoJSON.'}</p>
-        <BoundaryImport onImport={onBoundary} />
+        <button type="button" className="button button--secondary button--small" onClick={() => setImporting('boundary')}>Importar límite GeoJSON</button>
       </div>
       <div className="detail-block">
         <div className="detail-block-heading"><strong>Datos climáticos</strong><span className={`status-pill ${snapshot ? 'status-pill--success' : 'status-pill--muted'}`}>{snapshot ? 'Snapshot guardado' : 'Sin importar'}</span></div>
         {snapshot && <p>Consulta: {formatDate(snapshot.queriedAt)} · {snapshot.sourceStatus.successful?.length ?? 0} fuente(s) disponible(s).</p>}
-        <SnapshotImport onImport={onSnapshot} />
+        <button type="button" className="button button--secondary button--small" onClick={() => setImporting('snapshot')}>Importar snapshot climático</button>
       </div>
       <div className="detail-block">
         <strong>Ventana estimada de cosecha</strong>
         {window
           ? <p>{formatDate(window.inicio)} – {formatDate(window.fin)} · fecha central estimada {formatDate(window.optimo)}.</p>
-          : <p>Agregá fecha de siembra para calcular un rango orientativo.</p>}
+          : <p>Sembrá un cultivo para calcular un rango orientativo.</p>}
         <small>Estimación por duración del ciclo; no sustituye evaluación agronómica.</small>
       </div>
       <button type="button" className="danger-text-button" onClick={onDelete}>Eliminar lote y datos asociados</button>
+      {importing === 'boundary' && <ImportModal title="Importar límite del lote" onClose={() => setImporting(null)}><BoundaryImport onImport={onBoundary} /></ImportModal>}
+      {importing === 'snapshot' && <ImportModal title="Importar snapshot climático" onClose={() => setImporting(null)}><SnapshotImport onImport={onSnapshot} /></ImportModal>}
     </div>
   );
 }
 
-function LotsPage({ lots, selectedLot, snapshots, onSelectLot, onBoundary, onSnapshot, onDelete, onCreate, onDrawnBoundary, onCreateFromDrawing, theme }) {
+function LotsPage({ lots, selectedLot, snapshots, onSelectLot, onBoundary, onSnapshot, onEdit, onSow, onClearSowing, onDelete, onCreate, onDrawnBoundary, onCreateFromDrawing, theme }) {
   return (
     <>
       <PageIntro
-        eyebrow="EXPLORADOR"
+        eyebrow="GESTIONAR LOTES"
         title="Lotes y mapa"
-        description="Dibujá el límite de cada campo sobre el satélite y AgroFlow calcula su superficie."
+        description="Un lote es un terreno. Dibujá su límite sobre el satélite y después sembrá el cultivo desde su ficha."
         action={<button type="button" className="button button--primary button--small" onClick={onCreate}><Plus size={15} /> Nuevo lote</button>}
       />
       <div className="lots-workspace">
@@ -339,6 +400,9 @@ function LotsPage({ lots, selectedLot, snapshots, onSelectLot, onBoundary, onSna
               snapshotRecord={snapshots[selectedLot.id]}
               onBoundary={(boundary) => onBoundary(selectedLot, boundary)}
               onSnapshot={(snapshot) => onSnapshot(selectedLot, snapshot)}
+              onEdit={() => onEdit(selectedLot)}
+              onSow={() => onSow(selectedLot)}
+              onClearSowing={() => onClearSowing(selectedLot)}
               onDelete={() => onDelete(selectedLot)}
             />
           ) : (
@@ -366,7 +430,8 @@ function SourceNote({ lot, snapshot }) {
   );
 }
 
-function PlanningPage({ lot, snapshotRecord, onSnapshot }) {
+function PlanningPage({ lot, snapshotRecord, onSnapshot, onSow }) {
+  const [importing, setImporting] = useState(false);
   const snapshot = snapshotRecord?.snapshot;
   const window = ventanaDelLote(lot);
   const days = diasEnVentana(snapshot?.dailyForecast, window);
@@ -376,11 +441,11 @@ function PlanningPage({ lot, snapshotRecord, onSnapshot }) {
       <PageIntro
         eyebrow="DECISIÓN AGRONÓMICA"
         title="Planificación de cosecha"
-        description={lot ? `${lot.name} · ${nombreCultivo(lot.crop)} · ciclo declarado ${lot.cycleDays} días` : 'Seleccioná un lote para consultar su ventana estimada.'}
+        description={lot ? `${lot.name} · ${lot.crop ? `${nombreCultivo(lot.crop)} · ciclo declarado ${lot.cycleDays} días` : 'sin cultivo sembrado'}` : 'Seleccioná un lote para consultar su ventana estimada.'}
         action={lot ? <WindowTag lot={lot} /> : null}
       />
       {!lot ? (
-        <EmptyState title="No hay un lote seleccionado" description="Agregá un lote desde el encabezado para generar su ventana orientativa." />
+        <EmptyState title="No hay un lote seleccionado" description="Creá un lote en Gestionar lotes para generar su ventana orientativa." />
       ) : (
         <>
           <div className="planning-overview-grid">
@@ -394,7 +459,10 @@ function PlanningPage({ lot, snapshotRecord, onSnapshot }) {
                   <div className="inline-note">Cálculo basado en fecha de siembra y ciclo configurado ({window.cicloDias} días). No es una recomendación de cosecha.</div>
                 </>
               ) : (
-                <div className="compact-empty">No hay fecha de siembra configurada.</div>
+                <div className="compact-empty">
+                  <p>El lote no tiene cultivo sembrado.</p>
+                  <button type="button" className="button button--primary button--small" onClick={onSow}>Sembrar cultivo</button>
+                </div>
               )}
             </section>
             <section className="panel recommendation-panel">
@@ -410,8 +478,9 @@ function PlanningPage({ lot, snapshotRecord, onSnapshot }) {
           </div>
           <div className="section-heading section-heading--standalone">
             <div><h3>Pronóstico durante la ventana</h3><p>Solo se muestran días cubiertos por el snapshot importado.</p></div>
-            <SnapshotImport onImport={(data) => onSnapshot(lot, data)} />
+            <button type="button" className="button button--secondary button--small" onClick={() => setImporting(true)}>Importar snapshot climático</button>
           </div>
+          {importing && <ImportModal title="Importar snapshot climático" onClose={() => setImporting(false)}><SnapshotImport onImport={(data) => onSnapshot(lot, data)} /></ImportModal>}
           {snapshot && <SourceNote lot={lot} snapshot={snapshot} />}
           {!snapshot ? (
             <EmptyState title="Falta importar el pronóstico" description="Generá un snapshot con el CLI del proyecto y cargá el archivo JSON para mostrar datos reales." />
@@ -480,7 +549,7 @@ function TechnicalPage({ lot, snapshotRecord }) {
       {!lot ? (
         <EmptyState title="No hay un lote seleccionado" description="Agregá o elegí un lote para ver datos técnicos." />
       ) : !snapshot ? (
-        <EmptyState title="Sin datos técnicos importados" description="Importá un snapshot climático desde la vista Lotes y mapa. No se muestran valores sintéticos." icon="◌" />
+        <EmptyState title="Sin datos técnicos importados" description="Importá un snapshot climático desde Lotes y mapa. No se muestran valores sintéticos." icon="◌" />
       ) : (
         <>
           <SourceNote lot={lot} snapshot={snapshot} />
@@ -518,13 +587,12 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   const [lots, setLots] = useState([]);
   const [snapshots, setSnapshots] = useState({});
   const [selectedLotId, setSelectedLotId] = useState('');
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [dialog, setDialog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState('');
   const [toast, setToast] = useState('');
   const [theme, toggleTheme] = useTheme();
   const [apiStatus, setApiStatus] = useState('checking');
-  const [draftLot, setDraftLot] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -553,11 +621,19 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
 
   const selectedLot = lots.find((lot) => lot.id === selectedLotId) ?? null;
 
+  const closeDialog = useCallback(() => setDialog(null), []);
+
   async function createLot(lot) {
     await guardarLote(lot);
     setLots((current) => [...current, lot]);
     setSelectedLotId(lot.id);
     setToast('Lote guardado en este navegador.');
+  }
+
+  async function updateLot(lot, message) {
+    await guardarLote(lot);
+    setLots((current) => current.map((item) => item.id === lot.id ? lot : item));
+    setToast(message);
   }
 
   async function saveBoundary(lot, boundary) {
@@ -576,13 +652,15 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   }
 
   function createFromDrawing(feature, { ha, center }) {
-    setDraftLot({
-      areaHa: ha.toFixed(2),
-      latitude: center[1].toFixed(6),
-      longitude: center[0].toFixed(6),
-      boundary: { ...feature, properties: { ...feature.properties, areaHa: ha } },
+    setDialog({
+      type: 'lot',
+      draft: {
+        areaHa: ha.toFixed(2),
+        latitude: center[1].toFixed(6),
+        longitude: center[0].toFixed(6),
+        boundary: { ...feature, properties: { ...feature.properties, areaHa: ha } },
+      },
     });
-    setShowCreateDialog(true);
   }
 
   async function saveSnapshot(lot, snapshot) {
@@ -592,7 +670,6 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   }
 
   async function removeLot(lot) {
-    if (!window.confirm(`¿Eliminar “${lot.name}” y sus datos asociados de este navegador?`)) return;
     await Promise.all([eliminarLote(lot.id), eliminarSnapshot(lot.id)]);
     const remaining = lots.filter((item) => item.id !== lot.id);
     setLots(remaining);
@@ -603,6 +680,10 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
       return next;
     });
     setToast('Lote y datos asociados eliminados.');
+  }
+
+  function openCreate() {
+    setDialog({ type: 'lot' });
   }
 
   function navigate(nextPage) {
@@ -620,19 +701,19 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
           lots={lots}
           selectedLot={selectedLot}
           onSelectLot={setSelectedLotId}
-          onCreate={() => setShowCreateDialog(true)}
           theme={theme}
           onToggleTheme={toggleTheme}
         />
+        <SectionTabs page={page} onNavigate={navigate} />
         {storageError && <div className="app-alert" role="alert">No se pudo abrir la base local: {storageError}. Recargá la página o probá otro navegador.</div>}
         {loading ? (
           <div className="loading-state" role="status">Cargando tus datos locales…</div>
         ) : (
           <div className="page-content">
             <Suspense fallback={<div className="loading-state" role="status">Cargando mapa…</div>}>
-              {page === 'summary' && <SummaryPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onNavigate={navigate} onSelectLot={setSelectedLotId} onCreate={() => setShowCreateDialog(true)} theme={theme} />}
-              {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onBoundary={saveBoundary} onSnapshot={saveSnapshot} onDelete={removeLot} onCreate={() => setShowCreateDialog(true)} onDrawnBoundary={saveDrawnBoundary} onCreateFromDrawing={createFromDrawing} theme={theme} />}
-              {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSnapshot={saveSnapshot} />}
+              {page === 'summary' && <SummaryPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onNavigate={navigate} onSelectLot={setSelectedLotId} onCreate={openCreate} theme={theme} />}
+              {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onBoundary={saveBoundary} onSnapshot={saveSnapshot} onEdit={(lot) => setDialog({ type: 'lot', lot })} onSow={(lot) => setDialog({ type: 'sow', lot })} onClearSowing={(lot) => setDialog({ type: 'clear', lot })} onDelete={(lot) => setDialog({ type: 'delete', lot })} onCreate={openCreate} onDrawnBoundary={saveDrawnBoundary} onCreateFromDrawing={createFromDrawing} theme={theme} />}
+              {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSnapshot={saveSnapshot} onSow={() => setDialog({ type: 'sow', lot: selectedLot })} />}
               {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
               {page === 'marketplace' && <MarketplacePage lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
@@ -642,7 +723,33 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
           </div>
         )}
       </main>
-      {showCreateDialog && <FieldDialog initial={draftLot} onClose={() => { setShowCreateDialog(false); setDraftLot(null); }} onCreate={createLot} />}
+      {dialog?.type === 'lot' && (
+        <LotDialog
+          lot={dialog.lot}
+          draft={dialog.draft}
+          onClose={closeDialog}
+          onSave={dialog.lot ? (lot) => updateLot(lot, 'Lote actualizado.') : createLot}
+        />
+      )}
+      {dialog?.type === 'sow' && <SowingDialog lot={dialog.lot} onClose={closeDialog} onSave={(lot) => updateLot(lot, `Siembra de ${nombreCultivo(lot.crop)} registrada en ${lot.name}.`)} />}
+      {dialog?.type === 'clear' && (
+        <ConfirmDialog
+          title="Quitar cultivo"
+          message={`Se borra el cultivo y la fecha de siembra de “${dialog.lot.name}”. El terreno y su límite se conservan.`}
+          confirmLabel="Quitar cultivo"
+          onClose={closeDialog}
+          onConfirm={() => updateLot(quitarSiembra(dialog.lot), 'Cultivo quitado del lote.')}
+        />
+      )}
+      {dialog?.type === 'delete' && (
+        <ConfirmDialog
+          title="Eliminar lote"
+          message={`¿Eliminar “${dialog.lot.name}” y sus datos asociados de este navegador? No se puede deshacer.`}
+          confirmLabel="Eliminar lote"
+          onClose={closeDialog}
+          onConfirm={() => removeLot(dialog.lot)}
+        />
+      )}
       {page !== 'account' && <ChatBubble lots={lots} selectedLot={selectedLot} onNavigate={navigate} />}
       {toast && <div className="toast-message" role="status"><span>✓</span>{toast}</div>}
     </div>

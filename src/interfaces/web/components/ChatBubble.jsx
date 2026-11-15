@@ -43,7 +43,7 @@ async function answer(text, { lots, selectedLot, onNavigate }) {
   if (/cosech|ventana|cuando/.test(q)) {
     if (!lot) return 'Primero cargá o seleccioná un lote para estimar la ventana de cosecha.';
     const v = ventanaDelLote(lot);
-    if (!v) return `${lot.name} no tiene fecha de siembra cargada.`;
+    if (!v) return `${lot.name} no tiene cultivo sembrado. Sembralo desde Gestionar lotes.`;
     return `Para ${lot.name} (${nombreCultivo(lot.crop)}) la ventana estimada va del ${fmtDate(v.inicio)} al ${fmtDate(v.fin)}, con centro el ${fmtDate(v.optimo)}. Es orientativa: depende del ciclo declarado (${lot.cycleDays} días).`;
   }
 

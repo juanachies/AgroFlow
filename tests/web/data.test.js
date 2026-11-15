@@ -4,8 +4,12 @@ import assert from 'node:assert/strict';
 import {
   crearLote,
   diasEnVentana,
+  editarLote,
   leerSnapshotClimatico,
   parsearGeoJSON,
+  quitarSiembra,
+  sembrarLote,
+  variedadesDe,
   ventanaDelLote,
 } from '../../src/interfaces/web/lib/data.js';
 
@@ -42,19 +46,38 @@ test('valida la estructura mínima del snapshot climático', () => {
   assert.throws(() => leerSnapshotClimatico(JSON.stringify({ ...snapshot, dailyForecast: undefined })), /serie diaria/);
 });
 
-test('crea el lote con el ciclo por cultivo y calcula la ventana existente', () => {
-  const lot = crearLote({
-    name: 'Lote norte',
-    crop: 'soja',
-    areaHa: '20',
-    latitude: '-32',
-    longitude: '-61',
-    sowingDate: '2025-10-01',
-    cycleDays: '120',
-  });
+test('crea el lote como terreno, sin cultivo ni ventana', () => {
+  const lot = crearLote({ name: 'Lote norte', areaHa: '20', latitude: '-32', longitude: '-61' });
   assert.equal(lot.areaHa, 20);
-  assert.equal(ventanaDelLote(lot).optimo, '2026-01-29');
+  assert.equal(lot.crop, null);
+  assert.equal(ventanaDelLote(lot), null);
   assert.throws(() => crearLote({ ...lot, areaHa: 0 }), /superficie/);
+  assert.throws(() => crearLote({ ...lot, latitude: '95' }), /latitud/);
+});
+
+test('siembra un cultivo con su ciclo y calcula la ventana', () => {
+  const terreno = crearLote({ name: 'Lote norte', areaHa: '20', latitude: '-32', longitude: '-61' });
+  const sembrado = sembrarLote(terreno, { crop: 'soja', variety: 'soja-corto', sowingDate: '2025-10-01', cycleDays: '120' });
+  assert.equal(sembrado.variety, 'soja-corto');
+  assert.equal(ventanaDelLote(sembrado).optimo, '2026-01-29');
+  assert.throws(() => sembrarLote(terreno, { crop: 'soja', variety: 'maiz-corto', sowingDate: '2025-10-01' }), /ciclo/);
+  assert.throws(() => sembrarLote(terreno, { crop: 'soja', variety: 'soja-corto', sowingDate: '' }), /fecha/);
+  assert.equal(quitarSiembra(sembrado).sowingDate, null);
+});
+
+test('el catálogo ofrece ciclos para soja, maíz, trigo y sorgo', () => {
+  for (const cultivo of ['soja', 'maiz', 'trigo', 'sorgo']) {
+    assert.ok(variedadesDe(cultivo).length >= 3, cultivo);
+  }
+});
+
+test('edita nombre, superficie y ubicación sin tocar la siembra', () => {
+  const terreno = crearLote({ name: 'A', areaHa: '10', latitude: '-32', longitude: '-61' });
+  const sembrado = sembrarLote(terreno, { crop: 'trigo', variety: 'trigo-intermedio', sowingDate: '2026-06-01' });
+  const editado = editarLote(sembrado, { name: 'B', areaHa: '12', latitude: '-33', longitude: '-60' });
+  assert.equal(editado.name, 'B');
+  assert.equal(editado.crop, 'trigo');
+  assert.equal(editado.cycleDays, 170);
 });
 
 test('filtra pronóstico a los días que cubre la ventana', () => {

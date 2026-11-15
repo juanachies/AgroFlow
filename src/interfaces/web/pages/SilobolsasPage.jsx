@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Package, Plus, RefreshCw } from 'lucide-react';
+import Modal from '../components/Modal.jsx';
 import { ApiError, api } from '../lib/api.js';
 
 const CULTIVOS = [
@@ -45,13 +46,156 @@ function textoDecision(resultado) {
   return partes.join(' · ');
 }
 
+function useFormulario(inicial) {
+  const [valores, setValores] = useState(inicial);
+  const cambiar = ({ target: { name, value } }) => setValores((actual) => ({ ...actual, [name]: value }));
+  return [valores, cambiar, setValores];
+}
+
+function NuevaSilobolsaDialog({ lots, onClose, onCreated }) {
+  const [alta, cambiar, setAlta] = useFormulario({ cultivo: 'soja', kg: '', fechaCreacion: hoyISO(), loteId: '' });
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState('');
+
+  async function registrar(event) {
+    event.preventDefault();
+    setGuardando(true);
+    setError('');
+    try {
+      const datos = { cultivo: alta.cultivo, kg: Number(alta.kg), fechaCreacion: alta.fechaCreacion };
+      if (alta.loteId) datos.loteId = alta.loteId;
+      const { silobolsa } = await api.registrarSilobolsa(datos);
+      onCreated(silobolsa);
+      onClose();
+    } catch (reason) {
+      setError(mensaje(reason));
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal eyebrow="Silobolsas" title="Nueva silobolsa" onClose={onClose} busy={guardando}>
+      <form className="field-form" onSubmit={registrar}>
+        <fieldset className="choice-group">
+          <legend>Cultivo embolsado</legend>
+          <div className="choice-row">
+            {CULTIVOS.map((c) => (
+              <label key={c.id} className={`choice-chip${alta.cultivo === c.id ? ' is-selected' : ''}`}>
+                <input type="radio" name="cultivo" value={c.id} checked={alta.cultivo === c.id} onChange={() => setAlta((actual) => ({ ...actual, cultivo: c.id }))} />
+                {c.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <div className="form-grid">
+          <label>Kilos embolsados<input name="kg" type="number" min="1" step="1" value={alta.kg} onChange={cambiar} placeholder="Ej. 200000" required autoFocus /></label>
+          <label>Fecha de embolsado<input name="fechaCreacion" type="date" value={alta.fechaCreacion} onChange={cambiar} required /></label>
+        </div>
+        <label>Lote de origen
+          <select name="loteId" value={alta.loteId} onChange={cambiar}>
+            <option value="">Sin lote asociado</option>
+            {lots.map((lot) => <option key={lot.id} value={lot.id}>{lot.name}</option>)}
+          </select>
+        </label>
+        {error && <div className="form-error" role="alert">{error}</div>}
+        <div className="dialog-actions">
+          <button type="button" className="button button--secondary" onClick={onClose} disabled={guardando}>Cancelar</button>
+          <button type="submit" className="button button--primary" disabled={guardando}>{guardando ? 'Registrando…' : 'Guardar silobolsa'}</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function LecturaDialog({ bolsa, onClose }) {
+  const [lectura, cambiar] = useFormulario({ humedad: '', temperatura: '', co2: '' });
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState('');
+
+  async function enviar(event) {
+    event.preventDefault();
+    setGuardando(true);
+    setError('');
+    try {
+      await api.cargarLecturas(bolsa.id, [{
+        timestamp: new Date().toISOString(),
+        humedad: Number(lectura.humedad),
+        temperatura: Number(lectura.temperatura),
+        co2: Number(lectura.co2),
+      }]);
+      onClose(true);
+    } catch (reason) {
+      setError(mensaje(reason));
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal eyebrow={bolsa.id} title="Cargar lectura del sensor" onClose={() => onClose(false)} busy={guardando}>
+      <form className="field-form" onSubmit={enviar}>
+        <div className="form-grid form-grid--3">
+          <label>Humedad (%)<input name="humedad" type="number" step="any" value={lectura.humedad} onChange={cambiar} required autoFocus /></label>
+          <label>Temperatura (°C)<input name="temperatura" type="number" step="any" value={lectura.temperatura} onChange={cambiar} required /></label>
+          <label>CO₂ (%)<input name="co2" type="number" step="any" value={lectura.co2} onChange={cambiar} required /></label>
+        </div>
+        {error && <div className="form-error" role="alert">{error}</div>}
+        <div className="dialog-actions">
+          <button type="button" className="button button--secondary" onClick={() => onClose(false)} disabled={guardando}>Cancelar</button>
+          <button type="submit" className="button button--primary" disabled={guardando}>{guardando ? 'Cargando…' : 'Guardar lectura'}</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function VentaDialog({ bolsa, onClose }) {
+  const [venta, cambiar] = useFormulario({ terminal: 'Puerto Gran Rosario', distanciaKm: 300 });
+  const [vendiendo, setVendiendo] = useState(false);
+  const [error, setError] = useState('');
+  const [decision, setDecision] = useState('');
+
+  async function vender(event) {
+    event.preventDefault();
+    setVendiendo(true);
+    setError('');
+    setDecision('');
+    try {
+      const resultado = await api.venderSilobolsa(bolsa.id, {
+        hoy: hoyISO(),
+        destino: { terminal: venta.terminal.trim(), distanciaKm: Number(venta.distanciaKm) },
+        tasaAnual: 0.08,
+      });
+      setDecision(textoDecision(resultado));
+    } catch (reason) {
+      setError(mensaje(reason));
+    } finally {
+      setVendiendo(false);
+    }
+  }
+
+  return (
+    <Modal eyebrow={bolsa.id} title="Decisión de venta" onClose={onClose} busy={vendiendo}>
+      <form className="field-form" onSubmit={vender}>
+        <div className="form-grid">
+          <label>Terminal<input name="terminal" value={venta.terminal} onChange={cambiar} required autoFocus /></label>
+          <label>Distancia (km)<input name="distanciaKm" type="number" min="1" step="any" value={venta.distanciaKm} onChange={cambiar} required /></label>
+        </div>
+        {error && <div className="form-error" role="alert">{error}</div>}
+        {decision && <p className="result-note">{decision}</p>}
+        <div className="dialog-actions">
+          <button type="button" className="button button--secondary" onClick={onClose} disabled={vendiendo}>Cerrar</button>
+          <button type="submit" className="button button--primary" disabled={vendiendo}>{vendiendo ? 'Calculando…' : 'Calcular venta'}</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export default function SilobolsasPage({ lots = [] }) {
   const [bolsas, setBolsas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [alta, setAlta] = useState({ cultivo: 'soja', kg: '', fechaCreacion: hoyISO(), loteId: '' });
-  const [guardando, setGuardando] = useState(false);
-  const [errorAlta, setErrorAlta] = useState('');
+  const [creando, setCreando] = useState(false);
 
   async function cargar() {
     setLoading(true);
@@ -68,61 +212,16 @@ export default function SilobolsasPage({ lots = [] }) {
 
   useEffect(() => { cargar(); }, []);
 
-  function cambiarAlta({ target: { name, value } }) {
-    setAlta((actual) => ({ ...actual, [name]: value }));
-  }
-
-  async function registrar(event) {
-    event.preventDefault();
-    setGuardando(true);
-    setErrorAlta('');
-    try {
-      const datos = { cultivo: alta.cultivo, kg: Number(alta.kg), fechaCreacion: alta.fechaCreacion };
-      if (alta.loteId) datos.loteId = alta.loteId;
-      const { silobolsa } = await api.registrarSilobolsa(datos);
-      setBolsas((actual) => [...actual, silobolsa]);
-      setAlta((actual) => ({ ...actual, kg: '' }));
-    } catch (reason) {
-      setErrorAlta(mensaje(reason));
-    } finally {
-      setGuardando(false);
-    }
-  }
-
   return (
     <>
       <div className="page-intro">
         <div>
-          <span className="eyebrow">SILOBOLSAS</span>
+          <span className="eyebrow">GESTIONAR SILOBOLSAS</span>
           <h2>Riesgo y venta de cada bolsa</h2>
-          <p>Registrá la bolsa, cargá lecturas del sensor y consultá el riesgo o la decisión de venta.</p>
+          <p>Registrá cada bolsa, cargá lecturas del sensor y consultá el riesgo o la decisión de venta.</p>
         </div>
+        <button type="button" className="button button--primary button--small" onClick={() => setCreando(true)}><Plus size={15} /> Nueva silobolsa</button>
       </div>
-
-      <section className="panel">
-        <div className="section-heading"><div><h3>Registrar silobolsa</h3></div></div>
-        <form className="field-form" onSubmit={registrar}>
-          <div className="form-grid">
-            <label>Cultivo
-              <select name="cultivo" value={alta.cultivo} onChange={cambiarAlta}>
-                {CULTIVOS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-              </select>
-            </label>
-            <label>Kg<input name="kg" type="number" min="1" step="1" value={alta.kg} onChange={cambiarAlta} required /></label>
-            <label>Fecha de creación<input name="fechaCreacion" type="date" value={alta.fechaCreacion} onChange={cambiarAlta} required /></label>
-            <label>Lote
-              <select name="loteId" value={alta.loteId} onChange={cambiarAlta}>
-                <option value="">Sin lote</option>
-                {lots.map((lot) => <option key={lot.id} value={lot.id}>{lot.name}</option>)}
-              </select>
-            </label>
-          </div>
-          {errorAlta && <div className="form-error" role="alert">{errorAlta}</div>}
-          <div>
-            <button type="submit" className="button button--primary" disabled={guardando}><Plus size={16} /> {guardando ? 'Registrando…' : 'Registrar'}</button>
-          </div>
-        </form>
-      </section>
 
       {error ? (
         <div className="empty-state empty-state--api">
@@ -137,58 +236,26 @@ export default function SilobolsasPage({ lots = [] }) {
         <div className="empty-state">
           <span className="empty-state-icon"><Package size={22} /></span>
           <h3>Todavía no hay silobolsas</h3>
-          <p>Registrá la primera con el formulario de arriba.</p>
+          <p>Registrá la primera con el botón “Nueva silobolsa”.</p>
+          <button type="button" className="button button--primary button--small" onClick={() => setCreando(true)}><Plus size={15} /> Nueva silobolsa</button>
         </div>
       ) : (
         <div className="lot-list">
           {bolsas.map((bolsa) => <SilobolsaCard key={bolsa.id} bolsa={bolsa} lote={lots.find((lot) => lot.id === bolsa.loteId)} />)}
         </div>
       )}
+
+      {creando && <NuevaSilobolsaDialog lots={lots} onClose={() => setCreando(false)} onCreated={(silobolsa) => setBolsas((actual) => [...actual, silobolsa])} />}
     </>
   );
 }
 
 function SilobolsaCard({ bolsa, lote }) {
-  const [lectura, setLectura] = useState({ humedad: '', temperatura: '', co2: '' });
-  const [venta, setVenta] = useState({ terminal: 'Puerto Gran Rosario', distanciaKm: 300 });
-  const [guardandoLectura, setGuardandoLectura] = useState(false);
+  const [dialogo, setDialogo] = useState(null);
   const [consultandoRiesgo, setConsultandoRiesgo] = useState(false);
-  const [vendiendo, setVendiendo] = useState(false);
-  const [errorLectura, setErrorLectura] = useState('');
   const [errorRiesgo, setErrorRiesgo] = useState('');
-  const [errorVenta, setErrorVenta] = useState('');
-  const [avisoLectura, setAvisoLectura] = useState('');
+  const [aviso, setAviso] = useState('');
   const [riesgo, setRiesgo] = useState('');
-  const [decision, setDecision] = useState('');
-
-  function cambiarLectura({ target: { name, value } }) {
-    setLectura((actual) => ({ ...actual, [name]: value }));
-  }
-
-  function cambiarVenta({ target: { name, value } }) {
-    setVenta((actual) => ({ ...actual, [name]: value }));
-  }
-
-  async function enviarLectura(event) {
-    event.preventDefault();
-    setGuardandoLectura(true);
-    setErrorLectura('');
-    setAvisoLectura('');
-    try {
-      const { agregadas } = await api.cargarLecturas(bolsa.id, [{
-        timestamp: new Date().toISOString(),
-        humedad: Number(lectura.humedad),
-        temperatura: Number(lectura.temperatura),
-        co2: Number(lectura.co2),
-      }]);
-      setAvisoLectura(`${agregadas} lectura cargada.`);
-      setLectura({ humedad: '', temperatura: '', co2: '' });
-    } catch (reason) {
-      setErrorLectura(mensaje(reason));
-    } finally {
-      setGuardandoLectura(false);
-    }
-  }
 
   async function verRiesgo() {
     setConsultandoRiesgo(true);
@@ -204,23 +271,9 @@ function SilobolsaCard({ bolsa, lote }) {
     }
   }
 
-  async function vender(event) {
-    event.preventDefault();
-    setVendiendo(true);
-    setErrorVenta('');
-    setDecision('');
-    try {
-      const resultado = await api.venderSilobolsa(bolsa.id, {
-        hoy: hoyISO(),
-        destino: { terminal: venta.terminal.trim(), distanciaKm: Number(venta.distanciaKm) },
-        tasaAnual: 0.08,
-      });
-      setDecision(textoDecision(resultado));
-    } catch (reason) {
-      setErrorVenta(mensaje(reason));
-    } finally {
-      setVendiendo(false);
-    }
+  function cerrarLectura(cargada) {
+    setDialogo(null);
+    if (cargada) setAviso('Lectura cargada.');
   }
 
   return (
@@ -231,39 +284,16 @@ function SilobolsaCard({ bolsa, lote }) {
           <p>{nombreCultivo(bolsa.cultivo)} · {fmt(bolsa.kg)} kg · {bolsa.fechaCreacion}{lote ? ` · ${lote.name}` : ''}</p>
         </div>
       </div>
-
-      <form className="field-form" onSubmit={enviarLectura}>
-        <strong>Cargar lectura</strong>
-        <div className="form-grid form-grid--3">
-          <label>Humedad (%)<input name="humedad" type="number" step="any" value={lectura.humedad} onChange={cambiarLectura} required /></label>
-          <label>Temperatura (°C)<input name="temperatura" type="number" step="any" value={lectura.temperatura} onChange={cambiarLectura} required /></label>
-          <label>CO₂ (%)<input name="co2" type="number" step="any" value={lectura.co2} onChange={cambiarLectura} required /></label>
-        </div>
-        {errorLectura && <div className="form-error" role="alert">{errorLectura}</div>}
-        {avisoLectura && <p>{avisoLectura}</p>}
-        <div>
-          <button type="submit" className="button" disabled={guardandoLectura}>{guardandoLectura ? 'Cargando…' : 'Cargar lectura'}</button>
-        </div>
-      </form>
-
-      <div className="detail-block">
-        <button type="button" className="button button--primary" onClick={verRiesgo} disabled={consultandoRiesgo}>{consultandoRiesgo ? 'Consultando…' : 'Ver riesgo'}</button>
-        {errorRiesgo && <div className="form-error" role="alert">{errorRiesgo}</div>}
-        {riesgo && <p>{riesgo}</p>}
+      <div className="action-row">
+        <button type="button" className="button button--secondary button--small" onClick={() => { setAviso(''); setDialogo('lectura'); }}>Cargar lectura</button>
+        <button type="button" className="button button--secondary button--small" onClick={verRiesgo} disabled={consultandoRiesgo}>{consultandoRiesgo ? 'Consultando…' : 'Ver riesgo'}</button>
+        <button type="button" className="button button--primary button--small" onClick={() => setDialogo('venta')}>Calcular venta</button>
       </div>
-
-      <form className="field-form" onSubmit={vender}>
-        <strong>Venta</strong>
-        <div className="form-grid">
-          <label>Terminal<input name="terminal" value={venta.terminal} onChange={cambiarVenta} required /></label>
-          <label>Distancia (km)<input name="distanciaKm" type="number" min="1" step="any" value={venta.distanciaKm} onChange={cambiarVenta} required /></label>
-        </div>
-        {errorVenta && <div className="form-error" role="alert">{errorVenta}</div>}
-        {decision && <p>{decision}</p>}
-        <div>
-          <button type="submit" className="button button--primary" disabled={vendiendo}>{vendiendo ? 'Calculando…' : 'Calcular venta'}</button>
-        </div>
-      </form>
+      {aviso && <p className="result-note">{aviso}</p>}
+      {errorRiesgo && <div className="form-error" role="alert">{errorRiesgo}</div>}
+      {riesgo && <p className="result-note">{riesgo}</p>}
+      {dialogo === 'lectura' && <LecturaDialog bolsa={bolsa} onClose={cerrarLectura} />}
+      {dialogo === 'venta' && <VentaDialog bolsa={bolsa} onClose={() => setDialogo(null)} />}
     </article>
   );
 }

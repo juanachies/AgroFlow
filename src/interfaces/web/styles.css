@@ -788,3 +788,26 @@ input[type='checkbox'] { width: 18px; min-height: 18px; height: 18px; accent-col
   .dialog-backdrop { align-items: end; padding: 0; }
   .dialog-card { max-height: 92dvh; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); border-radius: 20px 20px 0 0; }
 }
+
+/* ---------- Modales y secciones de gestión ---------- */
+.dialog-card--wide { width: min(680px, 100%); }
+.dialog-message { margin: 0 0 18px; color: var(--text-2); line-height: 1.5; }
+.field-form-group { display: grid; gap: 10px; }
+.map-picker { position: relative; overflow: hidden; height: 280px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
+.map-picker-canvas { position: absolute; inset: 0; }
+.map-picker-toggle { position: absolute; z-index: 2; top: 10px; left: 10px; }
+.button--danger { background: var(--danger); color: #fff; }
+.button--danger:hover:not(:disabled) { filter: brightness(.92); }
+.section-tabs { display: flex; flex-wrap: wrap; gap: 6px; width: fit-content; max-width: 100%; margin-bottom: 18px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.section-tab { padding: 8px 14px; border: 0; border-radius: 9px; background: transparent; color: var(--text-2); font: inherit; font-size: 14px; font-weight: 550; cursor: pointer; }
+.section-tab:hover { background: var(--surface-2); color: var(--text); }
+.section-tab.is-active { background: var(--primary); color: var(--on-primary); }
+.action-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.result-note { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); color: var(--text-2); font-size: 14px; line-height: 1.45; }
+.choice-group { margin: 0; padding: 0; border: 0; }
+.choice-group legend { margin-bottom: 8px; padding: 0; font-weight: 600; }
+.choice-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice-chip { display: inline-flex; align-items: center; padding: 9px 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 14px; font-weight: 550; cursor: pointer; }
+.choice-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.choice-chip.is-selected { border-color: var(--primary); background: var(--primary); color: var(--on-primary); }
+.choice-chip:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }

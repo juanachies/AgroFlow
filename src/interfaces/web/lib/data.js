@@ -1,47 +1,107 @@
 import { calcularVentanaCosecha } from '../../../domain/cosecha/ventanaCosecha.js';
 
+// Días siembra→cosecha orientativos, alineados con dataset_ciclos_cultivos.py (zona núcleo).
+// Los grupos de madurez y el ciclo exacto dependen del cultivar y la fecha: el usuario puede ajustarlos.
 export const CULTIVOS = [
-  { value: 'soja', label: 'Soja', cycleDays: 120 },
-  { value: 'maiz', label: 'Maíz', cycleDays: 145 },
-  { value: 'trigo', label: 'Trigo', cycleDays: 170 },
+  {
+    value: 'soja',
+    label: 'Soja',
+    variedades: [
+      { value: 'soja-corto', label: 'Ciclo corto (GM III–IV corto)', cycleDays: 150 },
+      { value: 'soja-medio', label: 'Ciclo medio (GM IV largo–V corto)', cycleDays: 165 },
+      { value: 'soja-largo', label: 'Ciclo largo (GM V largo–VII)', cycleDays: 180 },
+      { value: 'soja-segunda', label: 'Soja de segunda (sobre trigo)', cycleDays: 145 },
+    ],
+  },
+  {
+    value: 'maiz',
+    label: 'Maíz',
+    variedades: [
+      { value: 'maiz-corto', label: 'Ciclo corto', cycleDays: 145 },
+      { value: 'maiz-intermedio', label: 'Ciclo intermedio', cycleDays: 160 },
+      { value: 'maiz-largo', label: 'Ciclo largo', cycleDays: 180 },
+      { value: 'maiz-tardio', label: 'Siembra tardía (diciembre)', cycleDays: 175 },
+    ],
+  },
+  {
+    value: 'trigo',
+    label: 'Trigo',
+    variedades: [
+      { value: 'trigo-corto', label: 'Ciclo corto (siembra tardía)', cycleDays: 150 },
+      { value: 'trigo-intermedio', label: 'Ciclo intermedio', cycleDays: 170 },
+      { value: 'trigo-largo', label: 'Ciclo largo (siembra temprana)', cycleDays: 190 },
+    ],
+  },
+  {
+    value: 'sorgo',
+    label: 'Sorgo granífero',
+    variedades: [
+      { value: 'sorgo-corto', label: 'Ciclo corto', cycleDays: 115 },
+      { value: 'sorgo-medio', label: 'Ciclo medio', cycleDays: 135 },
+      { value: 'sorgo-largo', label: 'Ciclo largo', cycleDays: 155 },
+    ],
+  },
 ];
 
-export function crearLote(values) {
-  const name = values.name?.trim();
-  const crop = CULTIVOS.find(({ value }) => value === values.crop);
-  const areaHa = Number(values.areaHa);
-  const latitude = Number(values.latitude);
-  const longitude = Number(values.longitude);
-  const cycleDays = values.cycleDays ? Number(values.cycleDays) : crop?.cycleDays;
+export function variedadesDe(cropValue) {
+  return CULTIVOS.find(({ value }) => value === cropValue)?.variedades ?? [];
+}
 
-  if (!name) throw new TypeError('Ingresá un nombre para el lote.');
-  if (!crop) throw new TypeError('Seleccioná un cultivo válido.');
-  if (!Number.isFinite(areaHa) || areaHa <= 0) throw new TypeError('La superficie debe ser mayor a cero.');
+function validarCoordenadas(latitude, longitude) {
   if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
     throw new TypeError('La latitud debe estar entre -90 y 90.');
   }
   if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
     throw new TypeError('La longitud debe estar entre -180 y 180.');
   }
-  if (!values.sowingDate || Number.isNaN(Date.parse(`${values.sowingDate}T00:00:00Z`))) {
-    throw new TypeError('Ingresá una fecha de siembra válida.');
-  }
-  if (!Number.isFinite(cycleDays) || cycleDays <= 0) {
-    throw new TypeError('El ciclo del cultivo debe ser mayor a cero.');
-  }
+}
 
+function datosDelTerreno(values) {
+  const name = values.name?.trim();
+  const areaHa = Number(values.areaHa);
+  const latitude = Number(values.latitude);
+  const longitude = Number(values.longitude);
+
+  if (!name) throw new TypeError('Ingresá un nombre para el lote.');
+  if (!Number.isFinite(areaHa) || areaHa <= 0) throw new TypeError('La superficie debe ser mayor a cero.');
+  validarCoordenadas(latitude, longitude);
+  return { name, areaHa, latitude, longitude };
+}
+
+export function crearLote(values) {
   return {
     id: crypto.randomUUID(),
-    name,
-    crop: crop.value,
-    areaHa,
-    latitude,
-    longitude,
-    sowingDate: values.sowingDate,
-    cycleDays,
+    ...datosDelTerreno(values),
+    crop: null,
+    variety: null,
+    sowingDate: null,
+    cycleDays: null,
     boundary: null,
     createdAt: new Date().toISOString(),
   };
+}
+
+export function editarLote(lot, values) {
+  return { ...lot, ...datosDelTerreno(values) };
+}
+
+export function sembrarLote(lot, values) {
+  const crop = CULTIVOS.find(({ value }) => value === values.crop);
+  if (!crop) throw new TypeError('Seleccioná un cultivo válido.');
+  const variety = crop.variedades.find(({ value }) => value === values.variety);
+  if (!variety) throw new TypeError('Seleccioná el tipo de ciclo.');
+  if (!values.sowingDate || Number.isNaN(Date.parse(`${values.sowingDate}T00:00:00Z`))) {
+    throw new TypeError('Ingresá una fecha de siembra válida.');
+  }
+  const cycleDays = Number(values.cycleDays || variety.cycleDays);
+  if (!Number.isFinite(cycleDays) || cycleDays <= 0) {
+    throw new TypeError('El ciclo del cultivo debe ser mayor a cero.');
+  }
+  return { ...lot, crop: crop.value, variety: variety.value, sowingDate: values.sowingDate, cycleDays };
+}
+
+export function quitarSiembra(lot) {
+  return { ...lot, crop: null, variety: null, sowingDate: null, cycleDays: null };
 }
 
 function isPosition(position) {
@@ -173,5 +233,9 @@ export function promedio(values = []) {
 }
 
 export function nombreCultivo(value) {
-  return CULTIVOS.find(({ value: crop }) => crop === value)?.label ?? 'Cultivo';
+  return CULTIVOS.find(({ value: crop }) => crop === value)?.label ?? 'Sin cultivo';
+}
+
+export function nombreVariedad(cropValue, varietyValue) {
+  return variedadesDe(cropValue).find(({ value }) => value === varietyValue)?.label ?? '';
 }
