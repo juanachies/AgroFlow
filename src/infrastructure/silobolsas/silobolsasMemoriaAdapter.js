@@ -9,6 +9,9 @@ export function crearSilobolsasMemoriaAdapter(iniciales = []) {
       if (!silobolsa?.id) throw new RangeError('el silobolsa necesita id');
       porId.set(silobolsa.id, silobolsa);
     },
+    async listar() {
+      return [...porId.values()];
+    },
     async obtener(id) {
       const silobolsa = porId.get(id);
       if (!silobolsa) throw new DatoNoDisponible(`silobolsa inexistente: ${id}`);

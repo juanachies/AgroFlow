@@ -1,8 +1,8 @@
-// Cliente de la API HTTP de AgroFlow (src/interfaces/http). Ver docs/API.md.
-// En desarrollo Vite reenvía /api al servidor (npm run dev:api). En producción, si el front
-// se despliega aparte, definir VITE_AGROFLOW_API con la URL base de la API.
+// Cliente de la API de AgroFlow (docs/API.md).
+// Misma URL en producción (el servidor sirve dist/); en desarrollo, Vite hace proxy de /api al
+// puerto 3000. VITE_API_URL permite apuntar a una API desplegada aparte.
 
-const BASE = (import.meta.env?.VITE_AGROFLOW_API ?? '').replace(/\/$/, '');
+const BASE = (import.meta.env?.VITE_API_URL ?? '').replace(/\/$/, '');
 
 export class ApiError extends Error {
   constructor(message, status) {
@@ -11,22 +11,20 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, { method = 'GET', body, signal } = {}) {
-  let response;
+async function pedir(ruta, { metodo = 'GET', cuerpo } = {}) {
+  let respuesta;
   try {
-    response = await fetch(`${BASE}${path}`, {
-      method,
-      signal,
-      headers: body ? { 'content-type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
+    respuesta = await fetch(`${BASE}${ruta}`, {
+      method: metodo,
+      headers: cuerpo ? { 'content-type': 'application/json' } : undefined,
+      body: cuerpo ? JSON.stringify(cuerpo) : undefined,
     });
-  } catch (error) {
-    if (error.name === 'AbortError') throw error;
-    throw new ApiError('No se pudo conectar con la API de AgroFlow. ¿Está corriendo `npm run dev:api`?', 0);
+  } catch {
+    throw new ApiError('No se pudo conectar con la API. ¿Está corriendo `npm start` o `npm run dev:api`?', 0);
   }
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(data.error ?? `Error ${response.status}`, response.status);
-  return data;
+  const datos = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) throw new ApiError(datos.error ?? `La API respondió ${respuesta.status}`, respuesta.status);
+  return datos;
 }
 
 const query = (params) => {
@@ -35,25 +33,62 @@ const query = (params) => {
 };
 
 export const api = {
-  salud: (opts) => request('/api/salud', opts),
-  ejemplo: (opts) => request('/api/ejemplo', opts),
-  simular: (entrada) => request('/api/simular', { method: 'POST', body: entrada }),
-  confirmarReservas: (simulacionId, loteId) => request('/api/reservas', { method: 'POST', body: { simulacionId, loteId } }),
-  reservas: (params = {}) => request(`/api/reservas${query(params)}`),
-  ofertas: (params = {}) => request(`/api/ofertas${query(params)}`),
-  publicarOferta: (oferta) => request('/api/ofertas', { method: 'POST', body: oferta }),
-  saturacion: (params) => request(`/api/saturacion${query(params)}`),
+  salud: () => pedir('/api/salud'),
+  ejemplo: () => pedir('/api/ejemplo'),
+  simular: (entrada) => pedir('/api/simular', { metodo: 'POST', cuerpo: entrada }),
+  explicar: (simulacionId, pregunta) => pedir('/api/explicar', { metodo: 'POST', cuerpo: { simulacionId, ...(pregunta ? { pregunta } : {}) } }),
+  escenario: (simulacionId, escenario) => pedir('/api/escenario', { metodo: 'POST', cuerpo: { simulacionId, escenario } }),
+  confirmar: (simulacionId, loteId) => pedir('/api/reservas', { metodo: 'POST', cuerpo: { simulacionId, loteId } }),
+  reservas: (params = {}) => pedir(`/api/reservas${query(params)}`),
+  ofertas: (params = {}) => pedir(`/api/ofertas${query(params)}`),
+  publicarOferta: (oferta) => pedir('/api/ofertas', { metodo: 'POST', cuerpo: oferta }),
+  saturacion: (params) => pedir(`/api/saturacion${query(params)}`),
 };
 
-/** Arma la entrada de POST /api/simular a partir de un lote del navegador. */
-export function entradaDesdeLote(lot, ejemplo, overrides = {}) {
+// Valores de referencia editables para precargar el formulario (USD/t y qq/ha). No son cotizaciones.
+export const REFERENCIAS = {
+  soja: { qqHa: 35, puerto: 335, acopio: 303, silobolsa: 300 },
+  maiz: { qqHa: 90, puerto: 195, acopio: 185, silobolsa: 180 },
+  trigo: { qqHa: 40, puerto: 215, acopio: 205, silobolsa: 200 },
+};
+
+export const PUERTOS = [
+  { id: 'Puerto Gran Rosario', label: 'Gran Rosario (Up-River)' },
+  { id: 'Bahía Blanca', label: 'Bahía Blanca' },
+  { id: 'Quequén', label: 'Quequén / Necochea' },
+];
+
+/**
+ * Arma la entrada de POST /api/simular a partir del lote del front y del formulario.
+ * El lote trae ubicación, cultivo, superficie y siembra; las distancias las calcula el servidor.
+ */
+export function armarEntrada(lote, f) {
+  const destinos = [];
+  if (f.usarSilobolsa) destinos.push({ nombre: 'Silobolsa en el campo', tipo: 'silobolsa', precioUsdPorT: Number(f.precioSilobolsa) });
+  if (f.usarAcopio) {
+    destinos.push({
+      nombre: f.nombreAcopio || 'Acopio',
+      tipo: 'acopio',
+      precioUsdPorT: Number(f.precioAcopio),
+      costoAdicionalUsdPorT: Number(f.tarifaAcopio || 0),
+      distanciaKm: Number(f.distanciaAcopio || 15),
+    });
+  }
+  if (f.usarPuerto) destinos.push({ nombre: f.puerto, tipo: 'puerto', terminal: f.puerto, precioUsdPorT: Number(f.precioPuerto) });
+  const servicios = [];
+  if (f.usarPuerto || f.usarAcopio) servicios.push('transporte');
+  if (f.usarSilobolsa) servicios.push('almacenaje');
   return {
-    ...ejemplo,
-    lote: { id: lot.id, lat: lot.latitude, lon: lot.longitude },
-    ha: Math.round(lot.areaHa * 100) / 100,
-    cultivo: lot.crop,
-    fechaSiembra: lot.sowingDate,
-    fechaInicioCosecha: undefined,
-    ...overrides,
+    lote: { id: lote.id, lat: lote.latitude, lon: lote.longitude },
+    hoy: f.hoy,
+    ha: Number(lote.areaHa),
+    qqHa: Number(f.qqHa),
+    cultivo: lote.crop,
+    fechaSiembra: lote.sowingDate,
+    fechaInicioCosecha: f.fechaInicioCosecha || undefined,
+    diasDisponibles: Number(f.diasDisponibles),
+    urgencia: f.urgencia,
+    servicios,
+    destinos,
   };
 }

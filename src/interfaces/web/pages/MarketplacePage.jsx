@@ -217,7 +217,7 @@ export default function MarketplacePage({ lot, onToast, onNavigate }) {
         <div className="actor-step actor-step--brand"><span className="actor-step-icon"><Container size={18} /></span><div><strong>AgroFlow asigna</strong><small>Por distancia, fecha, precio y saturación del puerto</small></div></div>
         <ArrowRight className="actor-arrow" size={18} aria-hidden="true" />
         <div className="actor-step"><span className="actor-step-icon"><Truck size={18} /></span><div><strong>Contratistas y transportistas</strong><small>Reciben la reserva confirmada con fechas</small></div></div>
-        <button type="button" className="text-button" onClick={() => onNavigate('logistics')}>Simular mi plan <ArrowRight size={15} /></button>
+        <button type="button" className="text-button" onClick={() => onNavigate('despacho')}>Simular mi plan <ArrowRight size={15} /></button>
       </section>
 
       {error ? <ApiOffline error={error} onRetry={load} /> : (

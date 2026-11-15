@@ -7,6 +7,9 @@ import { crearEvaluarSilobolsa } from '../application/usecases/evaluarSilobolsa.
 import { crearPlanificarCosecha } from '../application/usecases/planificarCosecha.js';
 import { crearSimularPlan, crearConfirmarReservas } from '../application/usecases/simularPlan.js';
 import { crearConsultarSaturacion } from '../application/usecases/consultarSaturacion.js';
+import { crearExplicarRecomendacion, crearSimularEscenario } from '../application/usecases/explicar.js';
+import { crearOpenAIAdapter } from '../infrastructure/ia/openaiAdapter.js';
+import { crearExplicadorPlantillaAdapter } from '../infrastructure/ia/explicadorPlantillaAdapter.js';
 import { crearMarketplaceMemoriaAdapter } from '../infrastructure/marketplace/marketplaceMemoriaAdapter.js';
 import { crearTarifasJsonAdapter } from '../infrastructure/tarifas/tarifasJsonAdapter.js';
 import { crearBarcosSimuladosAdapter } from '../infrastructure/barcos/barcosSimuladosAdapter.js';
@@ -92,6 +95,8 @@ export function crearContenedor({
   tarifas = crearTarifasJsonAdapter(), silobolsas, lecturasIot, precios, barcos,
   rutaLineup = null, mercado = null, nivelParanaM = null, fuentes = serviciosFuentes, rutaMagyp = null,
   marketplace = crearMarketplaceMemoriaAdapter(),
+  fuentesExternas = false, // true: pronóstico (Open-Meteo) y rutas (OSRM) en el simulador; usa red
+  explicador = env.openAIApiKey ? crearOpenAIAdapter({ apiKey: env.openAIApiKey, modelo: env.openAIModel }) : null,
 } = {}) {
   const barcosSimulado = crearBarcosSimuladosAdapter({ mercado });
   const base = adaptadorDeBarcos(barcos, { rutaLineup, mercado, simulado: barcosSimulado });
@@ -102,12 +107,16 @@ export function crearContenedor({
   // Elegir destino usa los barcos del puerto solo si se pasó un BarcosPort o un modo explícito.
   const compararDestinos = crearCompararDestinos({ tarifas, barcos: barcos ? adaptadorBarcos : null, nivelRio });
   const planificarCosecha = crearPlanificarCosecha({ tarifas, compararDestinos });
-  const contenedor = { tarifas, compararDestinos, planificarCosecha, marketplace };
+  const contenedor = { tarifas, compararDestinos, planificarCosecha, marketplace, silobolsas, lecturasIot };
 
   // Producto central: simulador (plan + saturación del puerto) y marketplace de cadetes.
-  contenedor.simularPlan = crearSimularPlan({ planificarCosecha, marketplace, barcos: adaptadorBarcos, nivelRio });
+  contenedor.simularPlan = crearSimularPlan({ planificarCosecha, marketplace, barcos: adaptadorBarcos, nivelRio, clima: fuentes.openMeteo ?? null, rutas: fuentes.rutas ?? null, fuentesExternas });
   contenedor.confirmarReservas = crearConfirmarReservas({ marketplace, tarifas });
   contenedor.consultarSaturacion = crearConsultarSaturacion({ barcos: adaptadorBarcos, marketplace, nivelRio });
+  // IA: explica con OpenAI si hay OPENAI_API_KEY; si no o si falla, con la plantilla.
+  contenedor.explicador = explicador;
+  contenedor.explicarRecomendacion = crearExplicarRecomendacion({ explicador, respaldo: crearExplicadorPlantillaAdapter() });
+  contenedor.simularEscenario = crearSimularEscenario({ simularPlan: contenedor.simularPlan, explicarRecomendacion: contenedor.explicarRecomendacion });
 
   // Venta durante la cosecha según los barcos (puerto si cumple los índices, acopio o silobolsa).
   contenedor.decidirVentaCosecha = crearDecidirVentaCosecha({
@@ -133,6 +142,8 @@ export function crearContenedor({
       simularPlan: contenedor.simularPlan,
       confirmarReservas: contenedor.confirmarReservas,
       consultarSaturacion: contenedor.consultarSaturacion,
+      explicarRecomendacion: contenedor.explicarRecomendacion,
+      simularEscenario: contenedor.simularEscenario,
       compararDestinos: contenedor.compararDestinos,
       planificarCosecha: contenedor.planificarCosecha,
       decidirVentaCosecha: contenedor.decidirVentaCosecha,

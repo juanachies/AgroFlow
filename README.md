@@ -66,7 +66,7 @@ Para levantar la API (el front la consume; documentación en [docs/API.md](docs/
 npm start
 ```
 
-Queda en `http://localhost:3000` (`GET /api/salud`). Si el front está en `src/interfaces/web`, se sirve desde la misma URL.
+Queda en `http://localhost:3000` (`GET /api/salud`). Si el front está compilado en `dist/` (`npm run build`), se sirve desde la misma URL. Para publicarlo: [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
 
 Otros comandos:
 
@@ -78,13 +78,34 @@ npm run demo:venta
 
 ### Frontend web
 
-La aplicación de planificación está implementada en React/JSX con Vite. Iniciá el servidor local con:
+La aplicación está implementada en React/JSX con Vite. En desarrollo se corren la API y el front, cada uno en su terminal (Vite manda `/api` a la API):
+
+```bash
+npm start
+```
 
 ```bash
 npm run dev
 ```
 
-En la interfaz podés registrar lotes y sus puntos de referencia, importar límites GeoJSON y cargar snapshots climáticos generados por `npm run update:weather`. Los datos de lotes y snapshots se guardan en IndexedDB del navegador. La app no tiene backend ni consulta APIs con credenciales desde el cliente; los indicadores y capas que todavía no existen se identifican como no disponibles.
+Para producción, el front compilado y la API salen por la misma URL:
+
+```bash
+npm run build
+```
+
+```bash
+npm start
+```
+
+En la interfaz podés registrar lotes y sus puntos de referencia, importar límites GeoJSON y cargar snapshots climáticos generados por `npm run update:weather`. Los datos de lotes y snapshots se guardan en IndexedDB del navegador. La página **Plan y despacho** usa la API (`src/interfaces/web/lib/api.js`). Hace estas cuatro cosas:
+
+1. Simula el plan del lote seleccionado: destino por margen neto, saturación del puerto con la ventana de despacho, y pedido asignado a proveedores del marketplace.
+2. Explica el plan, con IA o con la plantilla de respaldo, y responde preguntas.
+3. Corre escenarios "¿y si…?".
+4. Confirma las reservas.
+
+Ninguna key de API se usa desde el navegador.
 
 El mapa base usa OpenFreeMap/OpenStreetMap y ofrece imágenes de Esri como alternativa, con atribución visible. Para generar una compilación de producción ejecutá `npm run build` (salida en `dist/`).
 
@@ -105,7 +126,7 @@ npm run actualizar-tarifas
 | **Saturación del puerto** | Qué días se satura el puerto y cuándo despachar | `domain/saturacion`, `domain/barcos` | [MARKETPLACE.md](docs/MARKETPLACE.md), [INDICES_PUERTO.md](docs/INDICES_PUERTO.md) |
 | Venta | Vender ya o guardar (spot y futuros), y canal | `domain/venta`, `decidirVentaCosecha` | [VENTA.md](docs/VENTA.md), [PLAN_BARCOS.md](docs/PLAN_BARCOS.md) |
 | Silobolsa | Riesgo por IoT (CO₂, humedad, temperatura) y "sacar y vender" | `domain/silobolsa`, `evaluarSilobolsa`, `decidirVenta` | [VENTA.md](docs/VENTA.md) |
-| IA | Explica la recomendación y responde escenarios; no calcula | *(pendiente)* | [PROYECTO.md](PROYECTO.md) |
+| IA | Explica el plan y responde escenarios "¿y si…?" (lluvia, demora, precio, flete, saturación); no calcula. OpenAI con reintentos y plantilla de respaldo | `domain/ia`, `explicarRecomendacion`, `simularEscenario` | [API.md](docs/API.md) |
 
 Todos los cálculos son código determinista y auditable. Internamente se calcula en toneladas y USD.
 
@@ -120,7 +141,9 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 - [x] API HTTP para el front (`npm start`)
 - [ ] Formulario del lote y vista del plan, desplegado con URL pública
 - [ ] Persistencia del marketplace (base de datos) y alta de proveedores
-- [ ] Explicación con IA y escenarios
+- [x] Explicación con IA y escenarios (OpenAI con respaldo de plantilla)
+- [x] Clima real (Open-Meteo) y distancias por ruta (OSRM) en el simulador
+- [x] API de silobolsas (registro, lecturas del IoT, riesgo y venta) y venta en cosecha
 - [ ] Guion de demo de 2 minutos
 
 ## Pendientes
@@ -138,6 +161,7 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 | [docs/FRENTE.md](docs/FRENTE.md) | Posicionamiento, problema, diferencial frente a lo que existe, barreras y guion de pitch |
 | [docs/MARKETPLACE.md](docs/MARKETPLACE.md) | Marketplace de cadetes, reservas y pronóstico de saturación del puerto |
 | [docs/API.md](docs/API.md) | API HTTP para el front: endpoints, entradas, respuestas y errores |
+| [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md) | URL pública: servidor con pm2 o Docker, variables de entorno y datos reales |
 | [PROYECTO.md](PROYECTO.md) | Plan técnico original: módulos, fórmulas, flujo, datos, reglas del evento |
 | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Arquitectura hexagonal y árbol de carpetas |
 | [docs/DATOS.md](docs/DATOS.md) | Estado de cada dato, supuestos y cifras de referencia |

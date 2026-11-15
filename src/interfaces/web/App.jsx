@@ -24,17 +24,17 @@ import {
 } from './lib/storage.js';
 import { api } from './lib/api.js';
 import { useTheme } from './lib/theme.js';
-import LogisticsPage from './pages/LogisticsPage.jsx';
 import MarketplacePage from './pages/MarketplacePage.jsx';
 
 const MapView = lazy(() => import('./components/MapView.jsx'));
+const PlanDespacho = lazy(() => import('./components/PlanDespacho.jsx'));
 
 const PAGES = [
   { id: 'summary', label: 'Resumen', icon: House, group: 'campo' },
   { id: 'lots', label: 'Lotes y mapa', icon: MapIcon, group: 'campo' },
   { id: 'planning', label: 'Planificación', icon: CalendarRange, group: 'campo' },
   { id: 'technical', label: 'Análisis técnico', icon: ChartNoAxesCombined, group: 'campo' },
-  { id: 'logistics', label: 'Plan logístico', icon: Route, group: 'red' },
+  { id: 'despacho', label: 'Plan y despacho', icon: Route, group: 'red' },
   { id: 'marketplace', label: 'Marketplace', icon: Store, group: 'red' },
 ];
 
@@ -257,7 +257,7 @@ function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, on
             <span className="eyebrow">PLANIFICACIÓN</span>
             <h3>Cosecha y despacho sin colas.</h3>
             <p>Simulá el plan de tu lote: destino con mejor margen, maquinaria a pedir y proveedores del marketplace, evitando los días de puerto saturado.</p>
-            <button type="button" className="text-button" onClick={() => onNavigate('logistics')}>Simular plan logístico <span>→</span></button>
+            <button type="button" className="text-button" onClick={() => onNavigate('despacho')}>Simular plan logístico <span>→</span></button>
           </div>
         </section>
       </div>
@@ -629,8 +629,8 @@ export default function App() {
               {page === 'summary' && <SummaryPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onNavigate={navigate} onSelectLot={setSelectedLotId} onCreate={() => setShowCreateDialog(true)} theme={theme} />}
               {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onBoundary={saveBoundary} onSnapshot={saveSnapshot} onDelete={removeLot} onCreate={() => setShowCreateDialog(true)} onDrawnBoundary={saveDrawnBoundary} onCreateFromDrawing={createFromDrawing} theme={theme} />}
               {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSnapshot={saveSnapshot} />}
+              {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
-              {page === 'logistics' && <LogisticsPage lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
               {page === 'marketplace' && <MarketplacePage lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
             </Suspense>
           </div>

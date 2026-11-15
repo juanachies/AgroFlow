@@ -54,8 +54,8 @@ async function answer(text, { lots, selectedLot, onNavigate }) {
   }
 
   if (/plan|simul|margen|destino|vender/.test(q)) {
-    onNavigate('logistics');
-    return 'Abrí el plan logístico: elegí rinde, días disponibles y precios de cada destino, y AgroFlow te dice dónde conviene vender, qué maquinaria pedir y qué proveedores reservar.';
+    onNavigate('despacho');
+    return 'Abrí Plan y despacho: elegí rinde, días disponibles y precios de cada destino, y AgroFlow te dice dónde conviene vender, qué maquinaria pedir y qué proveedores reservar.';
   }
 
   if (/hola|buenas|ayuda|que podes/.test(q)) {

@@ -14,6 +14,63 @@ import { mejorVentanaDeEntrega } from '../../domain/saturacion/index.js';
 import { crearConsultarSaturacion } from './consultarSaturacion.js';
 import { asignarPlan, crearReservas } from '../../domain/marketplace/index.js';
 import { sumarDias, diasEntre } from '../../domain/shared/util.js';
+import { resolverFechaInicio } from '../../domain/destino/servicios.js';
+import { diasHabilesConLluvia } from '../../domain/clima/ajusteLluvia.js';
+import { distanciaKm } from '../../domain/marketplace/index.js';
+import { PUERTOS } from '../../domain/barcos/index.js';
+
+const FACTOR_RUTA_SOBRE_RECTA = 1.3;
+
+// Completa la distancia de los destinos que no la traen: OSRM por ruta si hay RutasPort y fuentes
+// externas; si no, línea recta × 1,3. El puerto toma sus coordenadas del módulo de barcos.
+async function completarDistancias(entrada, { rutas, fuentesExternas }) {
+  const lote = entrada.lote;
+  const registro = [];
+  if (!lote || !Number.isFinite(Number(lote.lat)) || !Number.isFinite(Number(lote.lon))) return { entrada, registro };
+  const destinos = await Promise.all((entrada.destinos ?? []).map(async (d) => {
+    if (d.tipo === 'silobolsa' || d.distanciaKm != null) return d;
+    let punto = Number.isFinite(Number(d.lat)) && Number.isFinite(Number(d.lon)) ? { lat: Number(d.lat), lon: Number(d.lon) } : null;
+    if (!punto && d.tipo === 'puerto') {
+      const info = PUERTOS[puertoDeTerminal(d.terminal ?? d.nombre ?? 'gran-rosario')];
+      punto = { lat: info.lat, lon: info.lon };
+    }
+    if (!punto) return d;
+    if (rutas && fuentesExternas) {
+      try {
+        const r = await rutas.distanciaKm(lote, punto);
+        registro.push({ destino: d.nombre ?? d.tipo, km: r.distanceKm, fuente: r.source ?? 'ruta' });
+        return { ...d, distanciaKm: r.distanceKm };
+      } catch { /* cae a línea recta */ }
+    }
+    const km = Math.round(distanciaKm(lote, punto) * FACTOR_RUTA_SOBRE_RECTA);
+    registro.push({ destino: d.nombre ?? d.tipo, km, fuente: 'línea recta × 1,3' });
+    return { ...d, distanciaKm: km };
+  }));
+  return { entrada: { ...entrada, destinos }, registro };
+}
+
+// Descuenta los días de lluvia del pronóstico (Open-Meteo) dentro de la ventana de cosecha.
+async function ajustarPorClima(entrada, { clima, fuentesExternas }) {
+  const lote = entrada.lote;
+  if (!clima || !fuentesExternas || !lote || entrada.usarClima === false) return { entrada, clima: null };
+  const desde = entrada.fechaInicioCosecha;
+  const hoy = entrada.hoy ?? null;
+  if (hoy && diasEntre(hoy, desde) > 15) {
+    return { entrada, clima: { disponible: false, motivo: 'la cosecha está a más de 16 días: el pronóstico todavía no la cubre; se descuenta la lluvia cuando entre en el horizonte' } };
+  }
+  try {
+    const p = await clima.obtenerPronostico({
+      latitude: Number(lote.lat), longitude: Number(lote.lon), startDate: desde,
+      endDate: sumarDias(desde, entrada.diasDisponibles - 1), daily: ['precipitation_sum'], hourly: ['precipitation'],
+    });
+    const pronostico = (p.daily?.time ?? []).map((fecha, i) => ({ fecha, lluviaMm: p.daily.precipitation_sum?.[i] }));
+    const ajuste = diasHabilesConLluvia({ diasDisponibles: entrada.diasDisponibles, desde, pronostico });
+    if (!ajuste.diasCubiertos) return { entrada, clima: { disponible: false, motivo: 'el pronóstico no cubre la ventana de cosecha' } };
+    return { entrada: { ...entrada, diasDisponibles: ajuste.diasDisponibles }, clima: { disponible: true, fuente: 'Open-Meteo', ...ajuste } };
+  } catch (error) {
+    return { entrada, clima: { disponible: false, motivo: `pronóstico no disponible (${error.message})` } };
+  }
+}
 
 function aviso(tipo, nivel, fecha, mensaje, datos = {}) {
   return { modulo: 'plan', tipo, nivel, fecha, mensaje, datos };
@@ -23,11 +80,18 @@ function aviso(tipo, nivel, fecha, mensaje, datos = {}) {
  * @param {{ planificarCosecha: Function,
  *           marketplace: import('../ports/MarketplacePort.js').MarketplacePort,
  *           barcos?: import('../ports/BarcosPort.js').BarcosPort,
- *           nivelRio?: import('../ports/NivelRioPort.js').NivelRioPort }} dependencias
+ *           nivelRio?: import('../ports/NivelRioPort.js').NivelRioPort,
+ *           clima?: { obtenerPronostico: Function }, rutas?: { distanciaKm: Function },
+ *           fuentesExternas?: boolean }} dependencias
+ *   fuentesExternas: si es true, usa el pronóstico y OSRM (red); si no, solo cálculos locales.
  */
-export function crearSimularPlan({ planificarCosecha, marketplace, barcos = null, nivelRio = null }) {
+export function crearSimularPlan({ planificarCosecha, marketplace, barcos = null, nivelRio = null, clima = null, rutas = null, fuentesExternas = false }) {
   const consultarSaturacion = barcos ? crearConsultarSaturacion({ barcos, marketplace, nivelRio }) : null;
-  return async function simularPlan(entrada) {
+  return async function simularPlan(original) {
+    // --- 0. Preparar la entrada: fecha de cosecha, distancias y lluvia ---
+    const conFecha = resolverFechaInicio(original);
+    const { entrada: conDistancias, registro: distancias } = await completarDistancias(conFecha, { rutas, fuentesExternas });
+    const { entrada, clima: climaAplicado } = await ajustarPorClima(conDistancias, { clima, fuentesExternas });
     const hoy = entrada.hoy ?? entrada.fechaInicioCosecha ?? entrada.fechaSiembra;
     const plan = await planificarCosecha(entrada);
     const rec = plan.recomendado;
@@ -41,9 +105,14 @@ export function crearSimularPlan({ planificarCosecha, marketplace, barcos = null
     let puerto = null;
     if (barcos && destinoPuerto) {
       puerto = puertoDeTerminal(destinoPuerto.terminal ?? destinoPuerto.nombre ?? 'gran-rosario');
-      saturacion = await consultarSaturacion({ puerto, cultivo: entrada.cultivo, hoy, nivelParanaM: entrada.nivelParanaM ?? null, camionesPublicadosDia: entrada.camionesPublicadosDia ?? null, params: entrada.paramsSaturacion });
-
+      // El pronóstico cubre 60 días: si la cosecha está lejos, arranca 20 días antes del despacho
+      // (más allá del line-up publicado es estacional + reservas del marketplace).
       const camion = pedidos.find((p) => p.recurso === 'camión');
+      const inicioDespacho = camion?.usar_desde ?? entrada.fechaInicioCosecha;
+      const desdeSaturacion = diasEntre(hoy, inicioDespacho) > 30 ? sumarDias(inicioDespacho, -20) : hoy;
+      saturacion = await consultarSaturacion({ puerto, cultivo: entrada.cultivo, hoy: desdeSaturacion, nivelParanaM: entrada.nivelParanaM ?? null, camionesPublicadosDia: entrada.camionesPublicadosDia ?? null, params: entrada.paramsSaturacion });
+      saturacion.desde = desdeSaturacion;
+
       if (rec.tipo === 'puerto' && camion) {
         const duracion = diasEntre(camion.usar_desde, camion.usar_hasta) + 1;
         ventana = mejorVentanaDeEntrega({ pronostico: saturacion, desde: camion.usar_desde, duracion, margenDias: entrada.margenDiasDespacho ?? 10, noAntesDe: camion.usar_desde });
@@ -84,7 +153,13 @@ export function crearSimularPlan({ planificarCosecha, marketplace, barcos = null
       }
     }
 
+    if (climaAplicado?.disponible && climaAplicado.diasConLluvia > 0) {
+      avisos.push(aviso('clima', 'alerta', hoy, `El pronóstico marca ${climaAplicado.diasConLluvia} día(s) de lluvia en la ventana de cosecha: quedan ${climaAplicado.diasDisponibles} días hábiles de ${climaAplicado.diasDisponiblesOriginal}. El plan ya lo considera.`, climaAplicado));
+    }
     return {
+      entrada,
+      clima: climaAplicado,
+      distancias,
       lote: entrada.lote ?? null,
       plan: { ...plan, recomendado: { ...rec, pedidos } },
       saturacion,
