@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Anchor, Package, Sprout, Star, Truck, Wheat } from 'lucide-react';
+import Almanaque from './Almanaque.jsx';
 import LogisticsMap, { CAPAS } from './LogisticsMap.jsx';
 import { Avisos, Destinos, formularioInicial, Pedido, Saturacion } from './PlanDespacho.jsx';
 import { api, armarEntrada } from '../lib/api.js';
@@ -209,7 +210,7 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
     if (!selectedLot || !sembrado) return undefined;
     let vivo = true;
     setSimulando(true);
-    api.simular(armarEntrada(selectedLot, formularioInicial(selectedLot)))
+    api.decision(armarEntrada(selectedLot, formularioInicial(selectedLot)))
       .then((resultado) => vivo && setSim(resultado))
       .catch((reason) => vivo && setSimError(reason.message))
       .finally(() => vivo && setSimulando(false));
@@ -223,7 +224,13 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
   const etapa = useMemo(() => etapaDelCiclo(selectedLot, ventana, hoy), [selectedLot, ventana, hoy]);
   const cercanos = useMemo(() => fleterosCercanos(selectedLot, ofertas || []), [selectedLot, ofertas]);
   const resumen = useMemo(() => resumirFleteros(cercanos), [cercanos]);
-  const clima = useMemo(() => evaluarClima(snapshotRecord?.snapshot?.dailyForecast, ventana), [snapshotRecord, ventana]);
+  const pronosticoDelServidor = useMemo(() => (sim?.decision?.almanaque ?? [])
+    .filter((dia) => dia.clima.fuente === 'pronostico')
+    .map((dia) => ({ date: dia.fecha, precipitationMm: dia.clima.lluviaMm })), [sim]);
+  const clima = useMemo(
+    () => evaluarClima(snapshotRecord?.snapshot?.dailyForecast ?? pronosticoDelServidor, ventana),
+    [snapshotRecord, pronosticoDelServidor, ventana],
+  );
   const silobolsas = useMemo(() => ubicarSilobolsas(bolsas || [], lots), [bolsas, lots]);
   const recomendado = sim?.plan?.recomendado;
   const destinoPuerto = recomendado?.tipo === 'puerto' ? recomendado.destino : null;
@@ -257,8 +264,10 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
         <Kpi icono={<Sprout size={18} />} etiqueta="Lotes" valor={lots.length} detalle={`${numero(totalHa)} ha en total`} />
         <Kpi
           icono={<Wheat size={18} />} tono="amber" etiqueta="Cosecha estimada"
-          valor={ventana ? fecha(ventana.optimo) : '—'}
-          detalle={etapa ? (etapa.enCosecha ? 'En curso' : etapa.cosechado ? 'Terminada' : `en ${etapa.diasHastaCentro} días`) : 'Sin cultivo sembrado'}
+          valor={sim?.decision ? fecha(sim.decision.cosecha.inicio) : ventana ? fecha(ventana.optimo) : '—'}
+          detalle={sim?.decision
+            ? `hasta el ${fecha(sim.decision.cosecha.fin)} · ${sim.decision.cosecha.dias} días`
+            : etapa ? (etapa.enCosecha ? 'En curso' : etapa.cosechado ? 'Terminada' : `en ${etapa.diasHastaCentro} días`) : 'Sin cultivo sembrado'}
         />
         <Kpi icono={<Anchor size={18} />} tono="violet" etiqueta="Mejor destino" valor={recomendado?.destino ?? (simulando ? 'Calculando…' : '—')} detalle={recomendado ? `margen ${usd(recomendado.margen_usd)}` : 'Requiere cultivo sembrado'} />
         <Kpi icono={<Truck size={18} />} tono="blue" etiqueta="Camiones disponibles" valor={ofertas === null ? '…' : camiones} detalle={`${cercanos.length} proveedores en radio`} />
@@ -297,6 +306,8 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
           <ClimaPanel clima={clima} sim={sim} ventana={ventana} tieneSnapshot={Boolean(snapshotRecord)} />
         </div>
       </div>
+
+      {sim?.decision && <Almanaque decision={sim.decision} nombreLote={selectedLot?.name} />}
 
       <div className="cl-two">
         <FleterosPanel cercanos={cercanos} resumen={resumen} cargado={ofertas !== false} />

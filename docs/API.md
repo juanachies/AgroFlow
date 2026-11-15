@@ -147,6 +147,25 @@ Por ejemplo: `/api/saturacion?puerto=gran-rosario&cultivo=soja&hoy=2027-03-20`.
 - `puerto` acepta la clave (`gran-rosario`, `bahia-blanca`, `quequen`) o un nombre (`Puerto Gran Rosario`, `San Lorenzo`).
 - Devuelve los 60 días con estado, el calado y los avisos de barcos.
 
+### `GET /api/clima`
+
+Clima público de un punto, sin clave: `/api/clima?lat=-33.9&lon=-60.6&desde=2027-03-20&hasta=2027-05-10` (`desde` por defecto hoy, `hasta` por defecto `desde` + 90 días, máximo 366 días).
+
+- Días cercanos (hasta 16): pronóstico de Open-Meteo, con `lluviaMm`.
+- Días lejanos: frecuencia histórica de lluvia de esa fecha en los últimos 10 años (Open-Meteo Historical), con `probLluvia` y `probFuerte` (>= 5 mm). Es una probabilidad, no un pronóstico.
+- Cada día trae `fuente` (`pronostico`, `climatologia` o `sin-dato`) y `apto` (`bueno`, `regular`, `malo`, `desconocido`).
+- Si una fuente falla, responde con la otra y lo informa en `errores`. `503` si el servidor corre con `AGROFLOW_FUENTES_EXTERNAS=0`.
+
+### `POST /api/decision`
+
+Misma entrada que `/api/simular`. Devuelve la simulación completa más `decision`:
+
+- `cosecha`: inicio, fin, días, corrimiento respecto del plan para evitar lluvia, días favorables / con lluvia leve / con lluvia fuerte y recursos a reservar.
+- `transporte`: desde, hasta, destino, camiones, fecha límite de reserva y días de puerto saturado (`null` si el destino es silobolsa).
+- `almacenaje`: `silobolsa`, `acopio` o `directo al puerto`, con toneladas, bolsas y días de espera en el campo.
+- `almanaque`: un registro por día con clima, rango de cosecha, rango de transporte, día de reserva y saturación; `diasClave`, `alertas` y `resumen`.
+- Con `simulacionId` se puede confirmar con `POST /api/reservas`.
+
 ### `POST /api/explicar`
 
 ```json
