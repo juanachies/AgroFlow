@@ -94,7 +94,7 @@ export default function AuthPage({ onAuthenticated, onGuest = null }) {
           <h2>{mode === 'signup' ? 'Empezá con AgroFlow' : 'Iniciá sesión'}</h2>
           <p className="auth-subtitle">{mode === 'signup' ? 'Creá tu perfil básico; después podrás completar los datos del campo o servicio.' : 'Ingresá con el correo y la contraseña de tu cuenta.'}</p>
 
-          {mode === 'signup' ? (
+          {authClient && (mode === 'signup' ? (
             <>
               <label className="auth-label">
                 Correo electrónico
@@ -132,18 +132,19 @@ export default function AuthPage({ onAuthenticated, onGuest = null }) {
                   {busy ? 'Ingresando…' : 'Iniciar sesión'}
                 </button>
             </form>
-          )}
+          ))}
 
-          <p className="auth-switch">
+          {authClient && <p className="auth-switch">
             {mode === 'signup' ? '¿Ya tenés cuenta?' : '¿Todavía no tenés cuenta?'}
             <button type="button" onClick={() => { setError(''); setNotice(''); setMode(mode === 'signup' ? 'signin' : 'signup'); }}>
               {mode === 'signup' ? 'Iniciar sesión' : 'Crear una cuenta'}
             </button>
-          </p>
+          </p>}
           {onGuest && (
             <div className="auth-guest">
-              <button type="button" className="button button--secondary auth-submit" onClick={onGuest}>Entrar como visitante</button>
-              <small>Probá AgroFlow con un productor de ejemplo. Los datos son ficticios y quedan solo en este navegador.</small>
+              <button type="button" className="button button--secondary auth-submit" onClick={() => onGuest('productor')}>Entrar como visitante productor</button>
+              <button type="button" className="button button--secondary auth-submit" onClick={() => onGuest('prestador')}>Entrar como visitante prestador de servicios</button>
+              <small>Probá AgroFlow con datos de ejemplo ficticios. Quedan solo en este navegador.</small>
             </div>
           )}
           <small className="auth-privacy-note">La contraseña se administra con Neon Auth; AgroFlow no la almacena.</small>

@@ -101,7 +101,7 @@ function LotSelector({ lots, selectedLot, onSelect }) {
   );
 }
 
-function Header({ page, pages, lots, selectedLot, onSelectLot, theme, onToggleTheme }) {
+function Header({ page, pages, lots, selectedLot, onSelectLot, theme, onToggleTheme, onSignOut }) {
   const pageLabel = pages.find(({ id }) => id === page)?.label ?? '';
   return (
     <header className="topbar">
@@ -117,6 +117,7 @@ function Header({ page, pages, lots, selectedLot, onSelectLot, theme, onToggleTh
         <button type="button" className="icon-button theme-toggle" onClick={onToggleTheme} aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
+        <button type="button" className="button button--secondary button--small" onClick={onSignOut}>Cerrar sesión</button>
       </div>
     </header>
   );
@@ -741,6 +742,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
           onSelectLot={setSelectedLotId}
           theme={theme}
           onToggleTheme={toggleTheme}
+          onSignOut={onSignOut}
         />
         {isProducer && <SectionTabs page={page} onNavigate={navigate} />}
         {storageError && <div className="app-alert" role="alert">No se pudo abrir la base local: {storageError}. Recargá la página o probá otro navegador.</div>}
@@ -758,7 +760,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
               {page === 'marketplace' && <MarketplacePage role={role} fields={account?.fields ?? []} guest={guest} lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
               {page === 'silobolsas' && <SilobolsasPage lots={lots} />}
-              {page === 'services' && <ServicesPage account={account} onNavigate={navigate} />}
+              {page === 'services' && <ServicesPage account={account} onNavigate={navigate} guest={guest} />}
               {page === 'account' && <AccountPage user={user} account={account} onAccountChange={onAccountChange} onSignOut={onSignOut} guest={guest} lots={lots} onResetExample={resetExample} />}
             </Suspense>
           </div>

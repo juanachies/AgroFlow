@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import AccountDetailsForm from './components/AccountDetailsForm.jsx';
 import { authClient } from './lib/auth.js';
 import { accountApi } from './lib/accountApi.js';
+import { CUENTA_PRESTADOR_EJEMPLO, USUARIO_PRESTADOR_EJEMPLO } from './lib/prestadorEjemplo.js';
 import AuthPage from './pages/AuthPage.jsx';
 import { WorkspaceApp } from './App.jsx';
 import './styles.css';
@@ -53,8 +54,8 @@ function AccountSetup({ user, onCreated, onSignOut }) {
   );
 }
 
-function SignedInApp({ user, guest = false, onSignOut, signOutError, onClearSignOutError }) {
-  const [account, setAccount] = useState(guest ? CUENTA_INVITADO : null);
+function SignedInApp({ user, guest = false, guestAccount = CUENTA_INVITADO, onSignOut, signOutError, onClearSignOutError }) {
+  const [account, setAccount] = useState(guest ? guestAccount : null);
   const [loading, setLoading] = useState(!guest);
   const [error, setError] = useState('');
 
@@ -120,7 +121,7 @@ export default function AuthenticatedApp() {
   const [loading, setLoading] = useState(true);
   const [signOutError, setSignOutError] = useState('');
   const [authError, setAuthError] = useState('');
-  const [visitante, setVisitante] = useState(false);
+  const [visitante, setVisitante] = useState(null);
 
   useEffect(() => {
     if (!authClient) {
@@ -155,12 +156,15 @@ export default function AuthenticatedApp() {
   }
 
   if (loading) return <Loading message="Verificando sesión…" />;
-  if (!authClient || visitante) {
+  if (visitante) {
+    const esPrestador = visitante === 'prestador';
     return (
       <SignedInApp
-        user={USUARIO_INVITADO}
+        key={visitante}
+        user={esPrestador ? USUARIO_PRESTADOR_EJEMPLO : USUARIO_INVITADO}
         guest
-        onSignOut={authClient ? () => setVisitante(false) : () => {}}
+        guestAccount={esPrestador ? CUENTA_PRESTADOR_EJEMPLO : CUENTA_INVITADO}
+        onSignOut={() => setVisitante(null)}
         signOutError=""
         onClearSignOutError={() => {}}
       />
@@ -177,7 +181,7 @@ export default function AuthenticatedApp() {
       </main>
     );
   }
-  if (!session) return <AuthPage onAuthenticated={setSession} onGuest={() => setVisitante(true)} />;
+  if (!authClient || !session) return <AuthPage onAuthenticated={setSession} onGuest={() => setVisitante(true)} />;
   return (
     <SignedInApp
       user={session.user}

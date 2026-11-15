@@ -4,6 +4,7 @@ import {
   Package, Send, Tractor, Truck, UserRound, X,
 } from 'lucide-react';
 import { accountApi } from '../lib/accountApi.js';
+import { solicitudesDeEjemplo } from '../lib/prestadorEjemplo.js';
 
 const SERVICE_LABELS = {
   transporte: 'Transporte',
@@ -210,7 +211,7 @@ function RequestCard({ request, onQuote, onDecline, busy }) {
   );
 }
 
-export default function ServicesPage({ account, onNavigate }) {
+export default function ServicesPage({ account, onNavigate, guest = false }) {
   const offering = account.offering;
   const ServiceIcon = SERVICE_ICONS[offering?.serviceType] ?? Truck;
   const [requests, setRequests] = useState([]);
@@ -225,6 +226,10 @@ export default function ServicesPage({ account, onNavigate }) {
     setLoading(true);
     setError('');
     try {
+      if (guest) {
+        setRequests((current) => (current.length ? current : solicitudesDeEjemplo()));
+        return;
+      }
       const { requests: list } = await accountApi.listServiceRequests();
       setRequests(list);
     } catch (reason) {
@@ -246,7 +251,9 @@ export default function ServicesPage({ account, onNavigate }) {
   });
 
   async function sendQuote(requestId, quote) {
-    const { request } = await accountApi.submitServiceQuote(requestId, quote);
+    const { request } = guest
+      ? { request: { ...requests.find((item) => item.id === requestId), status: 'quoted', quote: { ...quote, priceUnit: offering.priceUnit } } }
+      : await accountApi.submitServiceQuote(requestId, quote);
     setRequests((current) => current.map((item) => item.id === requestId ? request : item));
     setActiveQuote(null);
   }
@@ -255,7 +262,9 @@ export default function ServicesPage({ account, onNavigate }) {
     setBusyRequestId(requestId);
     setActionError('');
     try {
-      const { request } = await accountApi.declineServiceRequest(requestId);
+      const { request } = guest
+        ? { request: { ...requests.find((item) => item.id === requestId), status: 'declined' } }
+        : await accountApi.declineServiceRequest(requestId);
       setRequests((current) => current.map((item) => item.id === requestId ? request : item));
     } catch (reason) {
       setActionError(reason.message || 'No se pudo actualizar la solicitud.');

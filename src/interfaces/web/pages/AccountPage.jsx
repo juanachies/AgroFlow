@@ -118,16 +118,22 @@ export default function AccountPage({ user, account, onAccountChange, onSignOut,
 
   async function updateProfile(payload) {
     setError('');
-    await accountApi.updateProfile({ displayName: payload.displayName, phone: payload.phone });
-    onAccountChange(await accountApi.get());
+    if (guest) onAccountChange({ ...account, profile: { ...account.profile, displayName: payload.displayName, phone: payload.phone } });
+    else {
+      await accountApi.updateProfile({ displayName: payload.displayName, phone: payload.phone });
+      onAccountChange(await accountApi.get());
+    }
     setEditingProfile(false);
     setNotice('El perfil se guardó sin modificar tus datos de campo o servicio.');
   }
 
   async function saveOffering(payload) {
     setError('');
-    await accountApi.saveOffering(payload.offering);
-    onAccountChange(await accountApi.get());
+    if (guest) onAccountChange({ ...account, offering: payload.offering });
+    else {
+      await accountApi.saveOffering(payload.offering);
+      onAccountChange(await accountApi.get());
+    }
     setEditingOffering(false);
     setNotice('La oferta de servicio se guardó.');
   }
@@ -156,7 +162,7 @@ export default function AccountPage({ user, account, onAccountChange, onSignOut,
     }
   }
 
-  if (guest) {
+  if (guest && account.profile.role === 'productor') {
     return (
       <div className="account-page">
         <div className="page-intro">
@@ -230,10 +236,10 @@ export default function AccountPage({ user, account, onAccountChange, onSignOut,
             <div className="account-profile-main">
               <span className="eyebrow">{ROLE_LABELS[account.profile.role]}</span>
               <h3>{account.profile.displayName}</h3>
-              <p>{user.email}</p>
+              <p>{user.email || 'Modo visitante · datos ficticios'}</p>
               <small>{account.profile.phone || 'Sin teléfono de contacto'}</small>
             </div>
-            <span className="status-pill status-pill--success">Sesión activa</span>
+            <span className="status-pill status-pill--success">{guest ? 'Visitante' : 'Sesión activa'}</span>
           </section>
 
           {account.profile.role === 'productor' ? (
