@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import AccountDetailsForm from '../components/AccountDetailsForm.jsx';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
+import { nombreCultivo, nombreVariedad } from '../lib/data.js';
+import { PRODUCTOR_EJEMPLO } from '../lib/productorEjemplo.js';
 import { accountApi } from '../lib/accountApi.js';
 
 const ROLE_LABELS = { productor: 'Dueño/a de campo', prestador: 'Prestador/a de servicios' };
@@ -37,8 +40,9 @@ function FieldForm({ profile, onSave, onCancel }) {
   );
 }
 
-export default function AccountPage({ user, account, onAccountChange, onSignOut, guest = false }) {
+export default function AccountPage({ user, account, onAccountChange, onSignOut, guest = false, lots = [], onResetExample = null }) {
   const [editing, setEditing] = useState(false);
+  const [confirmandoReinicio, setConfirmandoReinicio] = useState(false);
   const [addingField, setAddingField] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -96,12 +100,38 @@ export default function AccountPage({ user, account, onAccountChange, onSignOut,
         <div className="page-intro">
           <div>
             <span className="eyebrow">TU PERFIL</span>
-            <h2>Modo invitado</h2>
+            <h2>{PRODUCTOR_EJEMPLO.establecimiento}</h2>
+            <p>{PRODUCTOR_EJEMPLO.responsable} · {PRODUCTOR_EJEMPLO.zona} · {PRODUCTOR_EJEMPLO.telefono}</p>
           </div>
+          {onResetExample && (
+            <button type="button" className="button button--secondary" onClick={() => setConfirmandoReinicio(true)}>Restablecer datos de ejemplo</button>
+          )}
         </div>
         <div className="app-alert" role="status">
-          Cuentas no configuradas: estás usando AgroFlow en modo invitado. Los lotes se guardan en este navegador.
+          Estás usando AgroFlow en modo invitado con un productor de ejemplo: todos los datos son ficticios y se guardan en este navegador. Dibujá el perímetro de cada lote en el mapa.
         </div>
+        <section className="panel">
+          <div className="section-heading"><div><h3>Lotes del establecimiento</h3><p>{lots.length} lotes · {lots.reduce((suma, lot) => suma + lot.areaHa, 0).toLocaleString('es-AR')} ha</p></div></div>
+          <ul className="account-lots">
+            {lots.map((lot) => (
+              <li key={lot.id}>
+                <strong>{lot.name}</strong>
+                <span>{lot.crop ? `${nombreCultivo(lot.crop)} · ${nombreVariedad(lot.crop, lot.variety)}` : 'Sin cultivo sembrado'}</span>
+                <span>{lot.areaHa.toLocaleString('es-AR')} ha</span>
+                <span>{lot.boundary ? 'Perímetro dibujado' : 'Falta dibujar el perímetro'}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+        {confirmandoReinicio && (
+          <ConfirmDialog
+            title="Restablecer datos de ejemplo"
+            message="Se vuelven a cargar los lotes de ejemplo con fechas de siembra actualizadas. Los perímetros que hayas dibujado en esos lotes se pierden; tus lotes propios no se tocan."
+            confirmLabel="Restablecer"
+            onClose={() => setConfirmandoReinicio(false)}
+            onConfirm={onResetExample}
+          />
+        )}
       </div>
     );
   }

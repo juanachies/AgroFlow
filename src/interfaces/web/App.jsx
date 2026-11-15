@@ -23,6 +23,9 @@ import {
 } from './lib/storage.js';
 import { api } from './lib/api.js';
 import { pronosticoDelLote } from './lib/climaAutomatico.js';
+import {
+  cargarSilobolsasDeEjemplo, ejemploYaCargado, esLoteDeEjemplo, lotesDeEjemplo, marcarEjemploCargado,
+} from './lib/productorEjemplo.js';
 import { useTheme } from './lib/theme.js';
 import AccountPage from './pages/AccountPage.jsx';
 import MarketplacePage from './pages/MarketplacePage.jsx';
@@ -574,9 +577,18 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
 
   useEffect(() => {
     listarLotes()
-      .then((savedLots) => {
-        setLots(savedLots);
-        setSelectedLotId(savedLots[0]?.id ?? '');
+      .then(async (savedLots) => {
+        let lotes = savedLots;
+        // La primera vez en modo invitado se suma un productor de ejemplo (sin tocar los lotes propios) para probar la aplicación como uno real.
+        if (guest && !ejemploYaCargado()) {
+          const ejemplo = lotesDeEjemplo().filter((lote) => !lotes.some((guardado) => guardado.id === lote.id));
+          await Promise.all(ejemplo.map((lote) => guardarLote(lote)));
+          lotes = [...ejemplo, ...lotes];
+          marcarEjemploCargado();
+          cargarSilobolsasDeEjemplo(api).catch(() => {});
+        }
+        setLots(lotes);
+        setSelectedLotId(lotes[0]?.id ?? '');
       })
       .catch((error) => setStorageError(error.message || 'No se pudo leer el almacenamiento local.'))
       .finally(() => setLoading(false));
@@ -660,6 +672,17 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
     setToast('Lote y datos asociados eliminados.');
   }
 
+  async function resetExample() {
+    const propios = lots.filter((lot) => !esLoteDeEjemplo(lot));
+    const nuevos = lotesDeEjemplo();
+    await Promise.all([...lots.filter(esLoteDeEjemplo).map((lot) => eliminarLote(lot.id)), ...nuevos.map((lote) => guardarLote(lote))]);
+    setLots([...nuevos, ...propios]);
+    setSelectedLotId(nuevos[0].id);
+    marcarEjemploCargado();
+    cargarSilobolsasDeEjemplo(api).catch(() => {});
+    setToast('Datos de ejemplo restablecidos.');
+  }
+
   function openCreate() {
     setDialog({ type: 'lot' });
   }
@@ -697,7 +720,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
               {page === 'marketplace' && <MarketplacePage lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
               {page === 'silobolsas' && <SilobolsasPage lots={lots} />}
-              {page === 'account' && <AccountPage user={user} account={account} onAccountChange={onAccountChange} onSignOut={onSignOut} guest={guest} />}
+              {page === 'account' && <AccountPage user={user} account={account} onAccountChange={onAccountChange} onSignOut={onSignOut} guest={guest} lots={lots} onResetExample={resetExample} />}
             </Suspense>
           </div>
         )}

@@ -6,10 +6,10 @@ import AuthPage from './pages/AuthPage.jsx';
 import { WorkspaceApp } from './App.jsx';
 import './styles.css';
 
-const USUARIO_INVITADO = { id: 'invitado', name: 'Invitado', email: '' };
+const USUARIO_INVITADO = { id: 'invitado', name: 'Productor de ejemplo', email: '' };
 
 const CUENTA_INVITADO = {
-  profile: { displayName: 'Invitado', role: 'productor', phone: '' },
+  profile: { displayName: 'Estancia La Esperanza (ejemplo)', role: 'productor', phone: '' },
   fields: [],
   offering: null,
 };

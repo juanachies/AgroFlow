@@ -130,3 +130,53 @@ export function circuloGeoJSON(latitude, longitude, radioKm, pasos = 64) {
   });
   return { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [anillo] } };
 }
+
+const RECURSOS_DEL_PLAN = [
+  { recurso: 'camión', etapa: 'Transporte' },
+  { recurso: 'cosechadora', etapa: 'Cosecha' },
+  { recurso: 'tractor con tolva', etapa: 'Cosecha' },
+  { recurso: 'embolsadora', etapa: 'Almacenaje' },
+];
+
+// Quién va a venir a trabajar al lote y cuánto cobra: sale de la asignación del marketplace, con los
+// datos de cada proveedor (localidad, calificación) cuando están disponibles.
+export function armarPlanDeProveedores({ asignacion, ofertas = [], toneladas = 0 }) {
+  const lineas = asignacion?.lineas ?? [];
+  const porOferta = new Map((Array.isArray(ofertas) ? ofertas : []).map((oferta) => [oferta.id, oferta]));
+  const filas = lineas.flatMap(({ linea, asignaciones = [] }) => asignaciones.map((asignado) => {
+    const oferta = porOferta.get(asignado.ofertaId);
+    return {
+      recurso: linea.recurso,
+      proveedor: asignado.proveedor,
+      localidad: oferta?.base?.localidad ?? null,
+      calificacion: oferta?.calificacion ?? null,
+      unidades: asignado.unidades,
+      distanciaKm: asignado.distanciaKm,
+      precioRelativo: asignado.precioRelativo,
+      costoUSD: asignado.costoUsd,
+      desde: linea.usar_desde,
+      hasta: linea.usar_hasta,
+      pedirAntesDel: linea.pedir_antes_del,
+    };
+  }));
+
+  const camiones = filas.filter((fila) => fila.recurso === 'camión');
+  const costoCamionesUSD = camiones.reduce((suma, fila) => suma + fila.costoUSD, 0);
+  const grupos = RECURSOS_DEL_PLAN
+    .map(({ recurso, etapa }) => ({ recurso, etapa, filas: filas.filter((fila) => fila.recurso === recurso) }))
+    .filter((grupo) => grupo.filas.length);
+  return {
+    filas,
+    grupos,
+    faltantes: lineas.filter((l) => l.faltan > 0).map((l) => ({ recurso: l.linea.recurso, faltan: l.faltan, desde: l.linea.usar_desde, hasta: l.linea.usar_hasta })),
+    camiones: {
+      transportistas: new Set(camiones.map((fila) => fila.proveedor)).size,
+      unidades: camiones.reduce((suma, fila) => suma + fila.unidades, 0),
+      costoUSD: costoCamionesUSD,
+      costoUSDt: toneladas > 0 ? costoCamionesUSD / toneladas : null,
+      costoUSDqq: toneladas > 0 ? costoCamionesUSD / (toneladas * 10) : null,
+    },
+    costoTotalUSD: filas.reduce((suma, fila) => suma + fila.costoUSD, 0),
+    coberturaPct: asignacion?.coberturaPct ?? null,
+  };
+}

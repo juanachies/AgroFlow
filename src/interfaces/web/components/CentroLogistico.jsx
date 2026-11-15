@@ -4,6 +4,7 @@ import Almanaque from './Almanaque.jsx';
 import EconomiaCampana from './EconomiaCampana.jsx';
 import LogisticsMap, { CAPAS } from './LogisticsMap.jsx';
 import { Avisos, Destinos, Pedido, Saturacion } from './PlanDespacho.jsx';
+import PlanCamiones from './PlanCamiones.jsx';
 import ZonaLote from './ZonaLote.jsx';
 import { api } from '../lib/api.js';
 import { nombreCultivo, ventanaDelLote } from '../lib/data.js';
@@ -188,6 +189,7 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
   const [riesgos, setRiesgos] = useState({});
   const [sim, setSim] = useState(null);
   const [simError, setSimError] = useState('');
+  const [reservas, setReservas] = useState([]);
   const [simulando, setSimulando] = useState(false);
   const [capas, setCapas] = useState(() => Object.fromEntries(CAPAS.map(({ id }) => [id, true])));
 
@@ -223,6 +225,22 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
     // La simulación depende del lote activo y de su siembra, no de cada edición menor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lotId, selectedLot?.crop, selectedLot?.sowingDate, selectedLot?.cycleDays]);
+
+  const lotIdReservas = selectedLot?.id;
+  const cargarReservas = () => api.reservas()
+    .then(({ reservas: lista }) => setReservas(lista.filter((reserva) => reserva.loteId === lotIdReservas)))
+    .catch(() => setReservas([]));
+  useEffect(() => {
+    if (lotIdReservas) cargarReservas();
+    else setReservas([]);
+    // Se vuelve a pedir al cambiar de lote o de plan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lotIdReservas, sim?.simulacionId]);
+
+  async function confirmarReservas() {
+    await api.confirmar(sim.simulacionId, selectedLot.id);
+    await cargarReservas();
+  }
 
   const hoy = hoyIso();
   const ventana = useMemo(() => ventanaDelLote(selectedLot), [selectedLot]);
@@ -312,6 +330,7 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
         </div>
       </div>
 
+      {sim?.decision && <PlanCamiones sim={sim} ofertas={ofertas} nombreLote={selectedLot?.name} reservas={reservas} onConfirmar={confirmarReservas} />}
       {sim?.decision && <ZonaLote decision={sim.decision} />}
       {sim?.decision && <Almanaque decision={sim.decision} nombreLote={selectedLot?.name} />}
       {sim?.decision?.economia && <EconomiaCampana economia={sim.decision.economia} nombreLote={selectedLot?.name} />}

@@ -1019,3 +1019,47 @@ input[type='checkbox'] { width: 18px; min-height: 18px; height: 18px; accent-col
 .zona-titulo { color: var(--text-3); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .zona-dato strong { font-size: 14px; line-height: 1.35; }
 .zona-dato small { color: var(--text-2); font-size: 12px; line-height: 1.45; }
+
+/* ---------- Camiones y despacho ---------- */
+.cam { display: grid; gap: 16px; }
+.cam-decision { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; padding: 16px 18px; border: 1px solid var(--primary); border-radius: 16px; background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+.cam-decision > div:first-child { display: grid; gap: 8px; flex: 1 1 380px; }
+.cam-resumen { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.45; }
+.cam-puntos { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; color: var(--text-2); font-size: 13px; }
+.cam-puntos li { display: flex; gap: 8px; align-items: flex-start; }
+.cam-puntos svg { flex: none; margin-top: 2px; color: var(--primary); }
+.cam-accion { display: grid; gap: 6px; justify-items: end; }
+.cam-accion small { color: var(--text-2); font-size: 12px; }
+.cam-reservado { display: inline-flex; gap: 6px; align-items: center; padding: 8px 14px; border-radius: 999px; background: var(--primary); color: var(--on-primary); font-weight: 650; }
+.cam-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.cam-kpi { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
+.cam-kpi > div { display: grid; }
+.cam-kpi span:first-child { color: var(--text-3); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.cam-kpi strong { font-size: 19px; }
+.cam-kpi small { color: var(--text-2); font-size: 12px; }
+.cam-kpi-icono { display: grid; flex: none; width: 34px; height: 34px; place-items: center; border-radius: 10px; color: #fff; background: #2563eb; }
+.cam-tabla-envoltorio { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
+.cam-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cam-tabla th, .cam-tabla td { padding: 9px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.cam-tabla thead th { background: var(--surface-2); color: var(--text-3); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.cam-tabla td small { display: block; color: var(--text-3); font-size: 11px; }
+.cam-grupo th { background: color-mix(in srgb, var(--primary) 10%, var(--surface)); color: var(--text); font-size: 12px; }
+.cam-estrella { display: inline-flex; gap: 3px; align-items: center; color: #d97706; font-weight: 600; }
+.cam-cronograma { display: flex; gap: 8px; padding-bottom: 4px; overflow-x: auto; }
+.cam-dia { display: grid; flex: none; min-width: 84px; justify-items: center; gap: 1px; padding: 10px 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.cam-dia span { color: var(--text-2); font-size: 12px; font-weight: 600; }
+.cam-dia strong { font-size: 22px; line-height: 1; }
+.cam-dia small { color: var(--text-3); font-size: 11px; }
+.cam-dia em { color: #b91c1c; font-size: 11px; font-style: normal; font-weight: 600; }
+.cam-dia--fluido { border-color: #86efac; background: #f0fdf4; color: #14532d; }
+.cam-dia--cargado { border-color: #fde68a; background: #fffbeb; color: #78350f; }
+.cam-dia--saturado { border-color: #fca5a5; background: #fef2f2; color: #7f1d1d; }
+.cam-dia--fluido span, .cam-dia--cargado span, .cam-dia--saturado span, .cam-dia--fluido small, .cam-dia--cargado small, .cam-dia--saturado small { color: inherit; }
+.cam-reservas { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.cam-reservas li { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; }
+.cam-reservas svg { color: var(--primary); }
+
+.account-lots { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.account-lots li { display: grid; grid-template-columns: 1.4fr 1.3fr .6fr 1fr; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; font-size: 13px; }
+.account-lots li span { color: var(--text-2); }
+@media (max-width: 760px) { .account-lots li { grid-template-columns: 1fr; } }

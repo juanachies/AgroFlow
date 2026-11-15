@@ -72,3 +72,39 @@ test('genera un círculo cerrado de radio aproximado', () => {
   assert.deepEqual(anillo[0], anillo.at(-1));
   assert.ok(Math.abs(anillo[0][0] - -60 - 100 / (111.32 * Math.cos((33 * Math.PI) / 180))) < 1e-9);
 });
+
+test('arma el plan de proveedores con costo, localidad y calificación', async () => {
+  const { armarPlanDeProveedores } = await import('../../src/interfaces/web/lib/logistica.js');
+  const asignacion = {
+    coberturaPct: 90,
+    lineas: [
+      {
+        linea: { recurso: 'camión', usar_desde: '2027-04-12', usar_hasta: '2027-04-19', pedir_antes_del: '2027-04-03' },
+        faltan: 2,
+        asignaciones: [
+          { ofertaId: 'of-1', proveedor: 'Transporte Pergamino 1', unidades: 6, distanciaKm: 12, precioRelativo: 0.99, costoUsd: 6000 },
+          { ofertaId: 'of-2', proveedor: 'Transporte Rojas 1', unidades: 4, distanciaKm: 40, precioRelativo: 1.1, costoUsd: 4400 },
+        ],
+      },
+      {
+        linea: { recurso: 'cosechadora', usar_desde: '2027-04-10', usar_hasta: '2027-04-17', pedir_antes_del: '2027-03-26' },
+        faltan: 0,
+        asignaciones: [{ ofertaId: 'of-9', proveedor: 'Contratista Junín 2', unidades: 2, distanciaKm: 70, precioRelativo: 1, costoUsd: 8000 }],
+      },
+    ],
+  };
+  const ofertas = [{ id: 'of-1', calificacion: 4.5, base: { localidad: 'Pergamino' } }];
+  const plan = armarPlanDeProveedores({ asignacion, ofertas, toneladas: 1000 });
+
+  assert.equal(plan.filas.length, 3);
+  assert.deepEqual(plan.filas[0], {
+    recurso: 'camión', proveedor: 'Transporte Pergamino 1', localidad: 'Pergamino', calificacion: 4.5, unidades: 6, distanciaKm: 12,
+    precioRelativo: 0.99, costoUSD: 6000, desde: '2027-04-12', hasta: '2027-04-19', pedirAntesDel: '2027-04-03',
+  });
+  assert.equal(plan.filas[1].localidad, null, 'sin datos del proveedor no inventa localidad');
+  assert.deepEqual(plan.camiones, { transportistas: 2, unidades: 10, costoUSD: 10400, costoUSDt: 10.4, costoUSDqq: 1.04 });
+  assert.equal(plan.costoTotalUSD, 18400);
+  assert.deepEqual(plan.grupos.map((g) => [g.etapa, g.recurso]), [['Transporte', 'camión'], ['Cosecha', 'cosechadora']]);
+  assert.deepEqual(plan.faltantes, [{ recurso: 'camión', faltan: 2, desde: '2027-04-12', hasta: '2027-04-19' }]);
+  assert.equal(armarPlanDeProveedores({ asignacion: undefined, ofertas: false }).filas.length, 0);
+});
