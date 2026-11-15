@@ -3,8 +3,9 @@ import { Anchor, Package, Sprout, Star, Truck, Wheat } from 'lucide-react';
 import Almanaque from './Almanaque.jsx';
 import EconomiaCampana from './EconomiaCampana.jsx';
 import LogisticsMap, { CAPAS } from './LogisticsMap.jsx';
-import { Avisos, Destinos, formularioInicial, Pedido, Saturacion } from './PlanDespacho.jsx';
-import { api, armarEntrada } from '../lib/api.js';
+import { Avisos, Destinos, Pedido, Saturacion } from './PlanDespacho.jsx';
+import ZonaLote from './ZonaLote.jsx';
+import { api } from '../lib/api.js';
 import { nombreCultivo, ventanaDelLote } from '../lib/data.js';
 import {
   ACOPIOS_EJEMPLO,
@@ -211,7 +212,10 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
     if (!selectedLot || !sembrado) return undefined;
     let vivo = true;
     setSimulando(true);
-    api.decision(armarEntrada(selectedLot, formularioInicial(selectedLot)))
+    api.decisionLote({
+      id: selectedLot.id, lat: selectedLot.latitude, lon: selectedLot.longitude, ha: selectedLot.areaHa,
+      cultivo: selectedLot.crop, fechaSiembra: selectedLot.sowingDate, cycleDays: selectedLot.cycleDays,
+    })
       .then((resultado) => vivo && setSim(resultado))
       .catch((reason) => vivo && setSimError(reason.message))
       .finally(() => vivo && setSimulando(false));
@@ -308,6 +312,7 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
         </div>
       </div>
 
+      {sim?.decision && <ZonaLote decision={sim.decision} />}
       {sim?.decision && <Almanaque decision={sim.decision} nombreLote={selectedLot?.name} />}
       {sim?.decision?.economia && <EconomiaCampana economia={sim.decision.economia} nombreLote={selectedLot?.name} />}
       {sim?.decision?.errorEconomia && <div className="pd-aviso pd-aviso--alerta"><strong>No se pudo estimar la ganancia</strong> {sim.decision.errorEconomia}</div>}
@@ -318,7 +323,7 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
       </div>
 
       <div className="section-heading section-heading--standalone">
-        <div><h3>Decisiones para {selectedLot?.name}</h3><p>Plan calculado con los valores de referencia; ajustalos en Logística y ventas → Plan y despacho.</p></div>
+        <div><h3>Decisiones para {selectedLot?.name}</h3><p>Plan calculado solo con los datos de tu lote y de tu zona; si querés probar otros valores, usá el simulador.</p></div>
         <button type="button" className="button button--secondary button--small" onClick={() => onNavigate('despacho')}>Abrir simulador completo</button>
       </div>
       {!sembrado && <div className="panel compact-empty">El lote no tiene cultivo sembrado: sembralo en Gestionar lotes para calcular destino, flete y despacho.</div>}

@@ -36,6 +36,7 @@ export const api = {
   salud: () => pedir('/api/salud'),
   ejemplo: () => pedir('/api/ejemplo'),
   simular: (entrada) => pedir('/api/simular', { metodo: 'POST', cuerpo: entrada }),
+  decisionLote: (lote) => pedir('/api/decision-lote', { metodo: 'POST', cuerpo: lote }),
   decision: (entrada) => pedir('/api/decision', { metodo: 'POST', cuerpo: entrada }),
   clima: (params) => pedir(`/api/clima${query(params)}`),
   explicar: (simulacionId, pregunta) => pedir('/api/explicar', { metodo: 'POST', cuerpo: { simulacionId, ...(pregunta ? { pregunta } : {}) } }),

@@ -7,6 +7,7 @@ import { crearEvaluarSilobolsa } from '../application/usecases/evaluarSilobolsa.
 import { crearPlanificarCosecha } from '../application/usecases/planificarCosecha.js';
 import { crearSimularPlan, crearConfirmarReservas } from '../application/usecases/simularPlan.js';
 import { crearConsultarClima, crearDecidirOperacion } from '../application/usecases/decidirOperacion.js';
+import { crearArmarEntradaDeLote } from '../application/usecases/armarEntradaDeLote.js';
 import { OpenMeteoClimatologiaAdapter } from '../infrastructure/clima/openMeteoClimatologiaAdapter.js';
 import { crearConsultarSaturacion } from '../application/usecases/consultarSaturacion.js';
 import { crearExplicarRecomendacion, crearSimularEscenario } from '../application/usecases/explicar.js';
@@ -115,8 +116,14 @@ export function crearContenedor({
   // Producto central: simulador (plan + saturación del puerto) y marketplace de cadetes.
   contenedor.simularPlan = crearSimularPlan({ planificarCosecha, marketplace, barcos: adaptadorBarcos, nivelRio, clima: fuentes.openMeteo ?? null, rutas: fuentes.rutas ?? null, fuentesExternas });
   contenedor.decidirOperacion = crearDecidirOperacion({
-    simularPlan: contenedor.simularPlan, clima: fuentes.openMeteo ?? null, climatologia: fuentes.climatologia ?? null, precios: precios ?? null, fuentesExternas,
+    simularPlan: contenedor.simularPlan, clima: fuentes.openMeteo ?? null, climatologia: fuentes.climatologia ?? null, precios: precios ?? null, marketplace, tarifas, fuentesExternas,
   });
+  const armarEntradaDeLote = crearArmarEntradaDeLote({ precios: precios ?? null });
+  contenedor.decidirLote = async (datosLote) => {
+    const { entrada, automatico } = await armarEntradaDeLote(datosLote);
+    const resultado = await contenedor.decidirOperacion(entrada);
+    return { ...resultado, decision: { ...resultado.decision, automatico }, entradaAutomatica: entrada };
+  };
   if (fuentesExternas) {
     contenedor.consultarClima = crearConsultarClima({ clima: fuentes.openMeteo ?? null, climatologia: fuentes.climatologia ?? null });
   }
@@ -150,6 +157,7 @@ export function crearContenedor({
     usecases: {
       simularPlan: contenedor.simularPlan,
       decidirOperacion: contenedor.decidirOperacion,
+      decidirLote: contenedor.decidirLote,
       ...(contenedor.consultarClima ? { consultarClima: contenedor.consultarClima } : {}),
       confirmarReservas: contenedor.confirmarReservas,
       consultarSaturacion: contenedor.consultarSaturacion,

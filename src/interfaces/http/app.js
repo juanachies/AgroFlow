@@ -54,7 +54,7 @@ function cors(origen) {
  * @param {{ contenedor: object, servirEstatico?: Function|null, origenCors?: string, maxSimulaciones?: number, version?: string }} opciones
  */
 export function crearApi({ contenedor, servirEstatico = null, origenCors = '*', maxSimulaciones = 500, version = '0.1.0' }) {
-  const { simularPlan, decidirOperacion, consultarClima, confirmarReservas, consultarSaturacion, marketplace, explicarRecomendacion, simularEscenario } = contenedor;
+  const { simularPlan, decidirOperacion, decidirLote, consultarClima, confirmarReservas, consultarSaturacion, marketplace, explicarRecomendacion, simularEscenario } = contenedor;
   const simulaciones = new Map();
   const encabezados = cors(origenCors);
 
@@ -94,6 +94,28 @@ export function crearApi({ contenedor, servirEstatico = null, origenCors = '*', 
         resultado.decision.economia[modo].simulacionId = guardar(entradaDelModo, simulacion);
       }
       return [200, { simulacionId: guardar(entrada, resultado), ...resultado }];
+    },
+
+    // Decisión completa a partir del lote solo: precios, puerto, acopio, rinde y fechas salen del sistema.
+    'POST /api/decision-lote': async (req) => {
+      const lote = await leerJson(req);
+      for (const campo of ['lat', 'lon', 'ha']) {
+        if (!Number.isFinite(Number(lote[campo]))) throw new ErrorHttp(400, `falta ${campo} (número) del lote`);
+      }
+      if (!lote.cultivo || !lote.fechaSiembra) throw new ErrorHttp(400, 'el lote necesita cultivo y fechaSiembra (AAAA-MM-DD)');
+      exigirFecha(lote.fechaSiembra, 'fechaSiembra');
+      let resultado;
+      try {
+        resultado = await decidirLote(lote);
+      } catch (error) {
+        if (error instanceof RangeError || error instanceof TypeError) throw new ErrorHttp(400, error.message);
+        throw error;
+      }
+      const { estrategiasSimuladas, entradaAutomatica, ...publico } = resultado;
+      for (const [modo, { entrada: entradaDelModo, simulacion }] of Object.entries(estrategiasSimuladas ?? {})) {
+        publico.decision.economia[modo].simulacionId = guardar(entradaDelModo, simulacion);
+      }
+      return [200, { simulacionId: guardar(entradaAutomatica, publico), ...publico }];
     },
 
     'GET /api/clima': async (_req, url) => {

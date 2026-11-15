@@ -20,9 +20,9 @@ function penalizacionDelTramo(diasPorFecha, desde, duracion) {
   return total;
 }
 
-function elegirInicioDeCosecha({ diasPorFecha, inicioPlan, duracion, hoy }) {
+function elegirInicioDeCosecha({ diasPorFecha, inicioPlan, duracion, hoy, margen = MARGEN_BUSQUEDA_DIAS }) {
   let mejor = null;
-  for (let corrimiento = -MARGEN_BUSQUEDA_DIAS; corrimiento <= MARGEN_BUSQUEDA_DIAS; corrimiento += 1) {
+  for (let corrimiento = -margen; corrimiento <= margen; corrimiento += 1) {
     const inicio = sumarDias(inicioPlan, corrimiento);
     if (hoy && inicio < hoy) continue;
     const penalizacion = penalizacionDelTramo(diasPorFecha, inicio, duracion);
@@ -131,7 +131,7 @@ function armarAlmanaque({ desde, hasta, diasPorFecha, cosecha, transporte, pedir
  * @param {{ simulacion: object, dias: object[], hoy?: string }} entrada
  *   simulacion: salida de simularPlan(); dias: salida de combinarPronostico()
  */
-export function decidirOperacion({ simulacion, dias = [], hoy = null }) {
+export function decidirOperacion({ simulacion, dias = [], hoy = null, margenBusquedaDias = MARGEN_BUSQUEDA_DIAS }) {
   const rec = simulacion?.plan?.recomendado;
   if (!rec) throw new TypeError('decidirOperacion necesita la salida de simularPlan()');
 
@@ -143,7 +143,7 @@ export function decidirOperacion({ simulacion, dias = [], hoy = null }) {
   const duracion = diasEntre(inicioPlan, finPlan) + 1;
   const diasPorFecha = new Map(dias.map((dia) => [dia.fecha, dia]));
 
-  const eleccion = elegirInicioDeCosecha({ diasPorFecha, inicioPlan, duracion, hoy });
+  const eleccion = elegirInicioDeCosecha({ diasPorFecha, inicioPlan, duracion, hoy, margen: margenBusquedaDias });
   const inicio = eleccion.inicio;
   const fin = sumarDias(inicio, duracion - 1);
   const calidad = contarCalidad(diasPorFecha, inicio, fin);
