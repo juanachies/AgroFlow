@@ -22,9 +22,14 @@ export async function obtenerDiasDeClima({ latitude, longitude, desde, hasta, ho
     if (diasEntre(inicio, fin) >= 0) {
       try {
         const p = await clima.obtenerPronostico({
-          latitude: Number(latitude), longitude: Number(longitude), startDate: inicio, endDate: fin, daily: ['precipitation_sum'], hourly: ['precipitation'],
+          latitude: Number(latitude), longitude: Number(longitude), startDate: inicio, endDate: fin, daily: ['precipitation_sum', 'temperature_2m_max', 'temperature_2m_min'], hourly: ['precipitation'],
         });
-        pronostico = (p.daily?.time ?? []).map((fecha, i) => ({ fecha, lluviaMm: p.daily.precipitation_sum?.[i] }));
+        pronostico = (p.daily?.time ?? []).map((fecha, i) => ({
+          fecha,
+          lluviaMm: p.daily.precipitation_sum?.[i],
+          tempMaxC: p.daily.temperature_2m_max?.[i] ?? null,
+          tempMinC: p.daily.temperature_2m_min?.[i] ?? null,
+        }));
         fuentes.pronostico = pronostico.length > 0;
       } catch (reason) {
         errores.push(`pronóstico no disponible (${mensaje(reason)})`);

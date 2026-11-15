@@ -72,7 +72,7 @@ function CicloTimeline({ lot, ventana, etapa }) {
   );
 }
 
-function ClimaPanel({ clima, sim, ventana, tieneSnapshot }) {
+function ClimaPanel({ clima, sim, ventana }) {
   const dias = clima.dias.slice(0, 16);
   const maxMm = Math.max(10, ...dias.map((dia) => dia.mm || 0));
   return (
@@ -99,7 +99,7 @@ function ClimaPanel({ clima, sim, ventana, tieneSnapshot }) {
         <p className="cl-muted">
           {sim?.clima?.disponible
             ? `${sim.clima.diasConLluvia} días de lluvia previstos durante la cosecha.`
-            : sim?.clima?.motivo ?? (tieneSnapshot ? 'El snapshot no tiene pronóstico diario.' : 'Importá un snapshot climático del lote para ver el pronóstico día por día.')}
+            : sim?.clima?.motivo ?? 'Cuando falten menos de 16 días se muestra el pronóstico día por día; antes, el almanaque usa la frecuencia histórica.'}
         </p>
       )}
       {ventana && !dias.length && <p className="cl-muted">Ventana estimada: {fecha(ventana.inicio)} a {fecha(ventana.fin)}.</p>}
@@ -304,7 +304,7 @@ export default function CentroLogistico({ lots, selectedLot, snapshotRecord, the
         </section>
         <div className="cl-side">
           <CicloTimeline lot={selectedLot} ventana={ventana} etapa={etapa} />
-          <ClimaPanel clima={clima} sim={sim} ventana={ventana} tieneSnapshot={Boolean(snapshotRecord)} />
+          <ClimaPanel clima={clima} sim={sim} ventana={ventana} />
         </div>
       </div>
 

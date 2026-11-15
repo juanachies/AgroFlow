@@ -6,28 +6,23 @@ import {
 import ChatBubble from './components/ChatBubble.jsx';
 import { ForecastTable, WeatherChart } from './components/Charts.jsx';
 import ConfirmDialog from './components/ConfirmDialog.jsx';
-import { BoundaryImport, SnapshotImport } from './components/DataImport.jsx';
 import LotDialog from './components/LotDialog.jsx';
-import Modal from './components/Modal.jsx';
 import SowingDialog from './components/SowingDialog.jsx';
 import {
   diasEnVentana,
   distanciaKm,
   nombreCultivo,
   nombreVariedad,
-  promedio,
   quitarSiembra,
   ventanaDelLote,
 } from './lib/data.js';
 import {
   eliminarLote,
-  eliminarSnapshot,
   guardarLote,
-  guardarSnapshot,
   listarLotes,
-  listarSnapshots,
 } from './lib/storage.js';
 import { api } from './lib/api.js';
+import { pronosticoDelLote } from './lib/climaAutomatico.js';
 import { useTheme } from './lib/theme.js';
 import AccountPage from './pages/AccountPage.jsx';
 import MarketplacePage from './pages/MarketplacePage.jsx';
@@ -148,7 +143,7 @@ function Sidebar({ page, onNavigate, apiStatus }) {
         <div className={`api-badge api-badge--${apiStatus}`}>
           <span />{apiStatus === 'ok' ? 'API conectada' : apiStatus === 'checking' ? 'Conectando API…' : 'API sin conexión'}
         </div>
-        <p>{apiStatus === 'off' ? 'Corré npm run dev:api para usar marketplace y plan logístico.' : 'Lotes y snapshots se guardan en este navegador.'}</p>
+        <p>{apiStatus === 'off' ? 'Corré npm run dev:api para usar marketplace y plan logístico.' : 'Los lotes se guardan en este navegador; el clima se actualiza solo.'}</p>
         <div className="sidebar-version">AgroFlow · v0.2</div>
       </div>
     </aside>
@@ -235,7 +230,7 @@ function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, on
         <MetricCard label="Lotes registrados" value={lots.length} unit="" detail={lots.length ? 'Puntos geográficos cargados' : 'Agregá tu primer lote'} icon={<Sprout size={18} />} />
         <MetricCard label="Superficie total" value={formatNumber(area)} unit=" ha" detail={lots.some((lot) => lot.boundary) ? 'Medida en el mapa o declarada' : 'Ingresada manualmente'} icon={<MapIcon size={18} />} tone="blue" />
         <MetricCard label="Ventanas configuradas" value={withWindow} unit="" detail="Según fecha de siembra y ciclo" icon={<Wheat size={18} />} tone="amber" />
-        <MetricCard label="Con datos de clima" value={withSnapshot} unit="" detail="Snapshots importados" icon={<CloudSun size={18} />} tone="violet" />
+        <MetricCard label="Con datos de clima" value={withSnapshot} unit="" detail="Pronóstico automático" icon={<CloudSun size={18} />} tone="violet" />
       </div>
       <div className="summary-main-grid">
         <div className="summary-map-column">
@@ -259,7 +254,7 @@ function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, on
                     <strong>{lot.name}</strong>
                     <small>{nombreCultivo(lot.crop)} · {formatNumber(lot.areaHa)} ha</small>
                   </span>
-                  <span className="lot-list-window"><WindowTag lot={lot} /><small>{snapshots[lot.id] ? 'Clima importado' : 'Sin snapshot'}</small></span>
+                  <span className="lot-list-window"><WindowTag lot={lot} /><small>{snapshots[lot.id] ? 'Pronóstico al día' : 'Sin pronóstico'}</small></span>
                   <span className="row-chevron">›</span>
                 </button>
               ))}
@@ -277,7 +272,7 @@ function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, on
       <div className="summary-bottom-grid">
         <section className="panel forecast-preview">
           <div className="section-heading">
-            <div><h3>Pronóstico disponible</h3><p>{selectedLot ? `Punto de consulta · ${selectedLot.name}` : 'Importá un snapshot climático'}</p></div>
+            <div><h3>Pronóstico disponible</h3><p>{selectedLot ? `Punto de consulta · ${selectedLot.name}` : 'El pronóstico se carga solo'}</p></div>
             <span className="source-chip">OPEN-METEO</span>
           </div>
           {nextDays.length ? (
@@ -311,20 +306,7 @@ function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, on
   );
 }
 
-function ImportModal({ title, onClose, children }) {
-  return (
-    <Modal title={title} onClose={onClose}>
-      {children}
-      <div className="dialog-actions">
-        <button type="button" className="button button--secondary" onClick={onClose}>Cerrar</button>
-      </div>
-    </Modal>
-  );
-}
-
-function LotDetails({ lot, snapshotRecord, onBoundary, onSnapshot, onEdit, onSow, onClearSowing, onDelete }) {
-  const [importing, setImporting] = useState(null);
-
+function LotDetails({ lot, snapshotRecord, onEdit, onSow, onClearSowing, onDelete }) {
   if (!lot) {
     return <EmptyState title="Seleccioná un lote" description="Elegí o creá un lote para ver sus datos." />;
   }
@@ -351,13 +333,11 @@ function LotDetails({ lot, snapshotRecord, onBoundary, onSnapshot, onEdit, onSow
       </div>
       <div className="detail-block">
         <div className="detail-block-heading"><strong>Límite del lote</strong><span className={`status-pill ${lot.boundary ? 'status-pill--success' : 'status-pill--muted'}`}>{lot.boundary ? 'Cargado' : 'Pendiente'}</span></div>
-        <p>{lot.boundary ? `Polígono ${lot.boundary.properties?.origen === 'dibujado en AgroFlow' ? 'dibujado en el mapa' : 'importado'}${lot.boundary.properties?.areaHa ? ` · superficie medida ${formatNumber(lot.boundary.properties.areaHa, 2)} ha` : ''}.` : 'Dibujá el límite en el mapa para medir la superficie, o importá un GeoJSON.'}</p>
-        <button type="button" className="button button--secondary button--small" onClick={() => setImporting('boundary')}>Importar límite GeoJSON</button>
+        <p>{lot.boundary ? `Polígono dibujado en el mapa${lot.boundary.properties?.areaHa ? ` · superficie medida ${formatNumber(lot.boundary.properties.areaHa, 2)} ha` : ''}.` : 'Dibujá el límite sobre el mapa: la superficie se mide sola.'}</p>
       </div>
       <div className="detail-block">
-        <div className="detail-block-heading"><strong>Datos climáticos</strong><span className={`status-pill ${snapshot ? 'status-pill--success' : 'status-pill--muted'}`}>{snapshot ? 'Snapshot guardado' : 'Sin importar'}</span></div>
-        {snapshot && <p>Consulta: {formatDate(snapshot.queriedAt)} · {snapshot.sourceStatus.successful?.length ?? 0} fuente(s) disponible(s).</p>}
-        <button type="button" className="button button--secondary button--small" onClick={() => setImporting('snapshot')}>Importar snapshot climático</button>
+        <div className="detail-block-heading"><strong>Datos climáticos</strong><span className={`status-pill ${snapshot ? 'status-pill--success' : 'status-pill--muted'}`}>{snapshot ? 'Automático' : 'Sin conexión'}</span></div>
+        <p>{snapshot ? `Pronóstico de Open-Meteo para este lote, actualizado el ${formatDate(snapshot.queriedAt)}. Se renueva solo.` : 'El pronóstico se carga solo cuando la API está conectada.'}</p>
       </div>
       <div className="detail-block">
         <strong>Ventana estimada de cosecha</strong>
@@ -367,13 +347,11 @@ function LotDetails({ lot, snapshotRecord, onBoundary, onSnapshot, onEdit, onSow
         <small>Estimación por duración del ciclo; no sustituye evaluación agronómica.</small>
       </div>
       <button type="button" className="danger-text-button" onClick={onDelete}>Eliminar lote y datos asociados</button>
-      {importing === 'boundary' && <ImportModal title="Importar límite del lote" onClose={() => setImporting(null)}><BoundaryImport onImport={onBoundary} /></ImportModal>}
-      {importing === 'snapshot' && <ImportModal title="Importar snapshot climático" onClose={() => setImporting(null)}><SnapshotImport onImport={onSnapshot} /></ImportModal>}
     </div>
   );
 }
 
-function LotsPage({ lots, selectedLot, snapshots, onSelectLot, onBoundary, onSnapshot, onEdit, onSow, onClearSowing, onDelete, onCreate, onDrawnBoundary, onCreateFromDrawing, theme }) {
+function LotsPage({ lots, selectedLot, snapshots, onSelectLot, onEdit, onSow, onClearSowing, onDelete, onCreate, onDrawnBoundary, onCreateFromDrawing, theme }) {
   return (
     <>
       <PageIntro
@@ -400,8 +378,6 @@ function LotsPage({ lots, selectedLot, snapshots, onSelectLot, onBoundary, onSna
             <LotDetails
               lot={selectedLot}
               snapshotRecord={snapshots[selectedLot.id]}
-              onBoundary={(boundary) => onBoundary(selectedLot, boundary)}
-              onSnapshot={(snapshot) => onSnapshot(selectedLot, snapshot)}
               onEdit={() => onEdit(selectedLot)}
               onSow={() => onSow(selectedLot)}
               onClearSowing={() => onClearSowing(selectedLot)}
@@ -432,8 +408,7 @@ function SourceNote({ lot, snapshot }) {
   );
 }
 
-function PlanningPage({ lot, snapshotRecord, onSnapshot, onSow }) {
-  const [importing, setImporting] = useState(false);
+function PlanningPage({ lot, snapshotRecord, onSow }) {
   const snapshot = snapshotRecord?.snapshot;
   const window = ventanaDelLote(lot);
   const days = diasEnVentana(snapshot?.dailyForecast, window);
@@ -479,17 +454,15 @@ function PlanningPage({ lot, snapshotRecord, onSnapshot, onSow }) {
             </section>
           </div>
           <div className="section-heading section-heading--standalone">
-            <div><h3>Pronóstico durante la ventana</h3><p>Solo se muestran días cubiertos por el snapshot importado.</p></div>
-            <button type="button" className="button button--secondary button--small" onClick={() => setImporting(true)}>Importar snapshot climático</button>
+            <div><h3>Pronóstico durante la ventana</h3><p>Se muestran los días que el pronóstico automático alcanza a cubrir (hasta 16 días).</p></div>
           </div>
-          {importing && <ImportModal title="Importar snapshot climático" onClose={() => setImporting(false)}><SnapshotImport onImport={(data) => onSnapshot(lot, data)} /></ImportModal>}
           {snapshot && <SourceNote lot={lot} snapshot={snapshot} />}
           {!snapshot ? (
-            <EmptyState title="Falta importar el pronóstico" description="Generá un snapshot con el CLI del proyecto y cargá el archivo JSON para mostrar datos reales." />
+            <EmptyState title="Sin pronóstico por ahora" description="El pronóstico se descarga solo cuando la API está conectada. Si estás sin conexión, volvé a intentarlo en un rato." />
           ) : days.length ? (
             <section className="panel"><ForecastTable days={days} /></section>
           ) : (
-            <div className="panel compact-empty">El snapshot no tiene días que coincidan con esta ventana estimada. No se extrapolan datos.</div>
+            <div className="panel compact-empty">La ventana de cosecha está fuera de los 16 días que cubre el pronóstico. En el Centro logístico se estima con la frecuencia histórica de lluvia.</div>
           )}
           <section className="panel explanation-panel">
             <div className="explanation-icon">i</div>
@@ -507,7 +480,7 @@ function SourceStatus({ snapshot }) {
   const failed = new Map((status.failed ?? []).map(({ source, message }) => [source, message]));
   return (
     <section className="panel source-status-panel">
-      <div className="section-heading"><div><h3>Fuentes del snapshot</h3><p>Estado registrado al momento de la consulta</p></div><span className="status-pill status-pill--muted">{status.quality ?? 'sin clasificar'}</span></div>
+      <div className="section-heading"><div><h3>Fuentes del pronóstico</h3><p>Estado registrado al momento de la consulta</p></div><span className="status-pill status-pill--muted">{status.quality ?? 'sin clasificar'}</span></div>
       <div className="source-status-list">
         {(status.requested ?? []).map((source) => (
           <div className="source-status-row" key={source}>
@@ -534,10 +507,6 @@ function TechnicalPage({ lot, snapshotRecord }) {
   const points = useMemo(() => ({
     rain: series.map((day) => ({ date: day.date, value: day.precipitationMm })),
     temperature: series.map((day) => ({ date: day.date, value: day.temperatureMaxC })),
-    soil: series.map((day) => ({
-      date: day.date,
-      value: promedio(Object.values(day.soilMoistureHourly ?? {}).flat()),
-    })),
   }), [series]);
 
   return (
@@ -545,18 +514,18 @@ function TechnicalPage({ lot, snapshotRecord }) {
       <PageIntro
         eyebrow="DATOS Y PROCEDENCIA"
         title="Análisis técnico"
-        description={lot ? `${lot.name} · observaciones del snapshot importado` : 'Seleccioná un lote para consultar las fuentes y variables.'}
+        description={lot ? `${lot.name} · pronóstico automático de Open-Meteo` : 'Seleccioná un lote para consultar las fuentes y variables.'}
         action={snapshot ? <span className="status-pill status-pill--success">Consulta {formatDate(snapshot.queriedAt)}</span> : null}
       />
       {!lot ? (
         <EmptyState title="No hay un lote seleccionado" description="Agregá o elegí un lote para ver datos técnicos." />
       ) : !snapshot ? (
-        <EmptyState title="Sin datos técnicos importados" description="Importá un snapshot climático desde Lotes y mapa. No se muestran valores sintéticos." icon="◌" />
+        <EmptyState title="Sin datos técnicos por ahora" description="El pronóstico se descarga solo cuando la API está conectada. No se muestran valores sintéticos." icon="◌" />
       ) : (
         <>
           <SourceNote lot={lot} snapshot={snapshot} />
           <div className="technical-metrics">
-            <div className="technical-metric"><span>Consultado</span><strong>{formatDate(snapshot.queriedAt)}</strong><small>Fecha registrada en snapshot</small></div>
+            <div className="technical-metric"><span>Consultado</span><strong>{formatDate(snapshot.queriedAt)}</strong><small>Descarga automática</small></div>
             <div className="technical-metric"><span>Días pronosticados</span><strong>{series.length}</strong><small>Serie diaria disponible</small></div>
             <div className="technical-metric"><span>Fuentes consultadas</span><strong>{snapshot.sourceStatus.requested?.length ?? 0}</strong><small>{snapshot.sourceStatus.successful?.length ?? 0} disponibles</small></div>
             <div className="technical-metric"><span>Horizonte del pronóstico</span><strong>{series.length ? formatDate(series[0].date, { day: 'numeric', month: 'short' }) : '—'}</strong><small>Inicio de la serie</small></div>
@@ -564,7 +533,6 @@ function TechnicalPage({ lot, snapshotRecord }) {
           <div className="technical-chart-grid">
             <WeatherChart title="Precipitación diaria" unit="mm" points={points.rain} color="blue" note="Pronóstico en el punto consultado" />
             <WeatherChart title="Temperatura máxima" unit="°C" points={points.temperature} color="amber" note="Pronóstico en el punto consultado" />
-            <WeatherChart title="Humedad de suelo modelada" unit="m³/m³" points={points.soil} color="violet" note="Promedio de valores horarios disponibles" />
           </div>
           <div className="technical-bottom-grid">
             <SourceStatus snapshot={snapshot} />
@@ -577,7 +545,7 @@ function TechnicalPage({ lot, snapshotRecord }) {
               <div className="unavailable-item"><span>—</span> Lluvia, humedad y transitabilidad por polígono</div>
             </section>
           </div>
-          <p className="technical-disclaimer">Los gráficos describen el snapshot importado; no son mediciones de campo ni una recomendación agronómica.</p>
+          <p className="technical-disclaimer">Los gráficos describen el pronóstico automático; no son mediciones de campo ni una recomendación agronómica.</p>
         </>
       )}
     </>
@@ -605,15 +573,36 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   }, []);
 
   useEffect(() => {
-    Promise.all([listarLotes(), listarSnapshots()])
-      .then(([savedLots, savedSnapshots]) => {
+    listarLotes()
+      .then((savedLots) => {
         setLots(savedLots);
-        setSnapshots(Object.fromEntries(savedSnapshots.map((record) => [record.lotId, record])));
         setSelectedLotId(savedLots[0]?.id ?? '');
       })
       .catch((error) => setStorageError(error.message || 'No se pudo leer el almacenamiento local.'))
       .finally(() => setLoading(false));
   }, []);
+
+  // El pronóstico de cada lote se descarga solo; se vuelve a pedir si cambia su ubicación.
+  const ubicaciones = lots.map((lot) => `${lot.id}:${lot.latitude}:${lot.longitude}`).join('|');
+  useEffect(() => {
+    let alive = true;
+    for (const lot of lots) {
+      pronosticoDelLote(lot)
+        .then((snapshot) => {
+          if (!alive) return;
+          setSnapshots((current) => {
+            const next = { ...current };
+            if (snapshot) next[lot.id] = { lotId: lot.id, snapshot };
+            else delete next[lot.id];
+            return next;
+          });
+        })
+        .catch(() => {});
+    }
+    return () => { alive = false; };
+    // Depende de las ubicaciones, no de cada edición del lote.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ubicaciones]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -638,13 +627,6 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
     setToast(message);
   }
 
-  async function saveBoundary(lot, boundary) {
-    const updated = { ...lot, boundary };
-    await guardarLote(updated);
-    setLots((current) => current.map((item) => item.id === lot.id ? updated : item));
-    setToast('Límite asignado al lote.');
-  }
-
   async function saveDrawnBoundary(lot, feature, { ha, center }) {
     const boundary = { ...feature, properties: { ...feature.properties, areaHa: ha } };
     const updated = { ...lot, boundary, areaHa: Math.round(ha * 100) / 100, longitude: center[0], latitude: center[1] };
@@ -665,14 +647,8 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
     });
   }
 
-  async function saveSnapshot(lot, snapshot) {
-    await guardarSnapshot(lot.id, snapshot);
-    setSnapshots((current) => ({ ...current, [lot.id]: { lotId: lot.id, snapshot } }));
-    setToast('Snapshot climático guardado.');
-  }
-
   async function removeLot(lot) {
-    await Promise.all([eliminarLote(lot.id), eliminarSnapshot(lot.id)]);
+    await eliminarLote(lot.id);
     const remaining = lots.filter((item) => item.id !== lot.id);
     setLots(remaining);
     if (selectedLotId === lot.id) setSelectedLotId(remaining[0]?.id ?? '');
@@ -714,8 +690,8 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
           <div className="page-content">
             <Suspense fallback={<div className="loading-state" role="status">Cargando mapa…</div>}>
               {page === 'summary' && <SummaryPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onNavigate={navigate} onSelectLot={setSelectedLotId} onCreate={openCreate} theme={theme} />}
-              {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onBoundary={saveBoundary} onSnapshot={saveSnapshot} onEdit={(lot) => setDialog({ type: 'lot', lot })} onSow={(lot) => setDialog({ type: 'sow', lot })} onClearSowing={(lot) => setDialog({ type: 'clear', lot })} onDelete={(lot) => setDialog({ type: 'delete', lot })} onCreate={openCreate} onDrawnBoundary={saveDrawnBoundary} onCreateFromDrawing={createFromDrawing} theme={theme} />}
-              {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSnapshot={saveSnapshot} onSow={() => setDialog({ type: 'sow', lot: selectedLot })} />}
+              {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onEdit={(lot) => setDialog({ type: 'lot', lot })} onSow={(lot) => setDialog({ type: 'sow', lot })} onClearSowing={(lot) => setDialog({ type: 'clear', lot })} onDelete={(lot) => setDialog({ type: 'delete', lot })} onCreate={openCreate} onDrawnBoundary={saveDrawnBoundary} onCreateFromDrawing={createFromDrawing} theme={theme} />}
+              {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSow={() => setDialog({ type: 'sow', lot: selectedLot })} />}
               {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
               {page === 'centro' && <CentroLogistico lots={lots} selectedLot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} theme={theme} onSelectLot={setSelectedLotId} onNavigate={navigate} />}
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}

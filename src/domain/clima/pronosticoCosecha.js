@@ -27,13 +27,13 @@ export function calificarClimatologia(probFuerte) {
  * @param {{ desde:string, hasta:string, pronostico?:{fecha:string, lluviaMm:number}[], climatologia?:object|null }} entrada
  */
 export function combinarPronostico({ desde, hasta, pronostico = [], climatologia = null }) {
-  const pronosticoPorFecha = new Map(pronostico.filter((dia) => Number.isFinite(dia.lluviaMm)).map((dia) => [dia.fecha, dia.lluviaMm]));
+  const pronosticoPorFecha = new Map(pronostico.filter((dia) => Number.isFinite(dia.lluviaMm)).map((dia) => [dia.fecha, dia]));
   const dias = [];
   for (let i = 0; i <= diasEntre(desde, hasta); i += 1) {
     const fecha = sumarDias(desde, i);
     if (pronosticoPorFecha.has(fecha)) {
-      const lluviaMm = pronosticoPorFecha.get(fecha);
-      dias.push({ fecha, fuente: 'pronostico', lluviaMm, probLluvia: null, probFuerte: null, apto: calificarPronostico(lluviaMm) });
+      const { lluviaMm, tempMaxC = null, tempMinC = null } = pronosticoPorFecha.get(fecha);
+      dias.push({ fecha, fuente: 'pronostico', lluviaMm, tempMaxC, tempMinC, probLluvia: null, probFuerte: null, apto: calificarPronostico(lluviaMm) });
       continue;
     }
     const historica = climatologiaDe(climatologia, fecha);
