@@ -1,4 +1,5 @@
 import { authClient } from './auth.js';
+import { getSessionJwt } from './authSession.js';
 
 export class AccountApiError extends Error {
   constructor(message, status) {
@@ -10,10 +11,13 @@ export class AccountApiError extends Error {
 
 async function request(path, { method = 'GET', body } = {}) {
   if (!authClient) throw new AccountApiError('La autenticación no está configurada para esta aplicación.', 503);
-  const tokenResult = await authClient.token();
-  if (tokenResult.error) throw new AccountApiError(tokenResult.error.message, 401);
-  const token = tokenResult.data?.token;
-  if (!token) throw new AccountApiError('La sesión expiró. Iniciá sesión nuevamente.', 401);
+  let token;
+  try {
+    token = await getSessionJwt(authClient);
+  } catch (error) {
+    throw new AccountApiError(error.message || 'No se pudo verificar la sesión.', 401);
+  }
+  if (!token) throw new AccountApiError('No se pudo obtener el token seguro de la sesión. Cerrá sesión y volvé a ingresar.', 401);
 
   let response;
   try {
