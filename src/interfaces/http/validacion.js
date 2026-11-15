@@ -56,6 +56,15 @@ export function fechaParam(url, nombre, { requerido = false, porDefecto = null }
   return valor;
 }
 
+export function coordenadaParam(url, nombre, maximo) {
+  const texto = url.searchParams.get(nombre);
+  const valor = texto == null || texto === '' ? Number.NaN : Number(texto);
+  if (!Number.isFinite(valor) || Math.abs(valor) > maximo) {
+    throw new ErrorHttp(400, `${nombre} tiene que ser un número entre -${maximo} y ${maximo}`);
+  }
+  return valor;
+}
+
 export function exigirFecha(valor, nombre) {
   if (typeof valor !== 'string' || !FECHA.test(valor)) throw new ErrorHttp(400, `${nombre} tiene que ser AAAA-MM-DD`);
   return valor;

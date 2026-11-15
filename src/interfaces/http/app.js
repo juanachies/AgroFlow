@@ -21,7 +21,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { ESCENARIOS } from '../../application/usecases/explicar.js';
-import { ErrorHttp, exigirFecha, fechaParam, leerJson, responder, responderError } from './validacion.js';
+import { coordenadaParam, ErrorHttp, exigirFecha, fechaParam, leerJson, responder, responderError } from './validacion.js';
 import { manejarCuenta } from './accountApi.js';
 
 export const ENTRADA_EJEMPLO = {
@@ -54,7 +54,7 @@ function cors(origen) {
  * @param {{ contenedor: object, servirEstatico?: Function|null, origenCors?: string, maxSimulaciones?: number, version?: string }} opciones
  */
 export function crearApi({ contenedor, servirEstatico = null, origenCors = '*', maxSimulaciones = 500, version = '0.1.0' }) {
-  const { simularPlan, confirmarReservas, consultarSaturacion, marketplace, explicarRecomendacion, simularEscenario } = contenedor;
+  const { simularPlan, decidirOperacion, consultarClima, confirmarReservas, consultarSaturacion, marketplace, explicarRecomendacion, simularEscenario } = contenedor;
   const simulaciones = new Map();
   const encabezados = cors(origenCors);
 
@@ -83,6 +83,25 @@ export function crearApi({ contenedor, servirEstatico = null, origenCors = '*', 
       if (entrada.hoy) exigirFecha(entrada.hoy, 'hoy');
       const resultado = await simularPlan(entrada);
       return [200, { simulacionId: guardar(entrada, resultado), ...resultado }];
+    },
+
+    'POST /api/decision': async (req) => {
+      const entrada = await leerJson(req);
+      if (entrada.hoy) exigirFecha(entrada.hoy, 'hoy');
+      const resultado = await decidirOperacion(entrada);
+      return [200, { simulacionId: guardar(entrada, resultado), ...resultado }];
+    },
+
+    'GET /api/clima': async (_req, url) => {
+      if (!consultarClima) throw new ErrorHttp(503, 'el clima externo está desactivado en este servidor');
+      const latitude = coordenadaParam(url, 'lat', 90);
+      const longitude = coordenadaParam(url, 'lon', 180);
+      try {
+        return [200, await consultarClima({ latitude, longitude, desde: fechaParam(url, 'desde'), hasta: fechaParam(url, 'hasta') })];
+      } catch (error) {
+        if (error instanceof RangeError) throw new ErrorHttp(400, error.message);
+        throw error;
+      }
     },
 
     'POST /api/reservas': async (req) => {

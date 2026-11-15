@@ -6,6 +6,8 @@ import { crearDecidirVentaCosecha } from '../application/usecases/decidirVentaCo
 import { crearEvaluarSilobolsa } from '../application/usecases/evaluarSilobolsa.js';
 import { crearPlanificarCosecha } from '../application/usecases/planificarCosecha.js';
 import { crearSimularPlan, crearConfirmarReservas } from '../application/usecases/simularPlan.js';
+import { crearConsultarClima, crearDecidirOperacion } from '../application/usecases/decidirOperacion.js';
+import { OpenMeteoClimatologiaAdapter } from '../infrastructure/clima/openMeteoClimatologiaAdapter.js';
 import { crearConsultarSaturacion } from '../application/usecases/consultarSaturacion.js';
 import { crearExplicarRecomendacion, crearSimularEscenario } from '../application/usecases/explicar.js';
 import { crearOpenAIAdapter } from '../infrastructure/ia/openaiAdapter.js';
@@ -45,6 +47,7 @@ const smn = env.smnApiBaseUrl
 const serviciosFuentes = {
   openMeteo,
   clima: openMeteo,
+  climatologia: new OpenMeteoClimatologiaAdapter({ cache }),
   nasaPower: new NasaPowerAdapter({ baseUrl: env.powerBaseUrl, cache }),
   smap: new NasaSmapAdapter({ earthdataToken: env.nasaEarthdataToken }),
   era5Land: new Era5LandAdapter({
@@ -111,6 +114,12 @@ export function crearContenedor({
 
   // Producto central: simulador (plan + saturación del puerto) y marketplace de cadetes.
   contenedor.simularPlan = crearSimularPlan({ planificarCosecha, marketplace, barcos: adaptadorBarcos, nivelRio, clima: fuentes.openMeteo ?? null, rutas: fuentes.rutas ?? null, fuentesExternas });
+  contenedor.decidirOperacion = crearDecidirOperacion({
+    simularPlan: contenedor.simularPlan, clima: fuentes.openMeteo ?? null, climatologia: fuentes.climatologia ?? null, fuentesExternas,
+  });
+  if (fuentesExternas) {
+    contenedor.consultarClima = crearConsultarClima({ clima: fuentes.openMeteo ?? null, climatologia: fuentes.climatologia ?? null });
+  }
   contenedor.confirmarReservas = crearConfirmarReservas({ marketplace, tarifas });
   contenedor.consultarSaturacion = crearConsultarSaturacion({ barcos: adaptadorBarcos, marketplace, nivelRio });
   // IA: explica con OpenAI si hay OPENAI_API_KEY; si no o si falla, con la plantilla.
@@ -140,6 +149,8 @@ export function crearContenedor({
     services: fuentes,
     usecases: {
       simularPlan: contenedor.simularPlan,
+      decidirOperacion: contenedor.decidirOperacion,
+      ...(contenedor.consultarClima ? { consultarClima: contenedor.consultarClima } : {}),
       confirmarReservas: contenedor.confirmarReservas,
       consultarSaturacion: contenedor.consultarSaturacion,
       explicarRecomendacion: contenedor.explicarRecomendacion,
