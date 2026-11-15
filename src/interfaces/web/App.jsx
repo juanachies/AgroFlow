@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   Activity, CalendarRange, ChartNoAxesCombined, CloudSun, House, Map as MapIcon, Moon, Plus, Route,
-  Sprout, Store, Sun, Wheat,
+  Sprout, Store, Sun, UserRound, Wheat,
 } from 'lucide-react';
 import ChatBubble from './components/ChatBubble.jsx';
 import { ForecastTable, WeatherChart } from './components/Charts.jsx';
@@ -24,6 +24,7 @@ import {
 } from './lib/storage.js';
 import { api } from './lib/api.js';
 import { useTheme } from './lib/theme.js';
+import AccountPage from './pages/AccountPage.jsx';
 import MarketplacePage from './pages/MarketplacePage.jsx';
 
 const MapView = lazy(() => import('./components/MapView.jsx'));
@@ -36,6 +37,7 @@ const PAGES = [
   { id: 'technical', label: 'Análisis técnico', icon: ChartNoAxesCombined, group: 'campo' },
   { id: 'despacho', label: 'Plan y despacho', icon: Route, group: 'red' },
   { id: 'marketplace', label: 'Marketplace', icon: Store, group: 'red' },
+  { id: 'account', label: 'Cuenta', icon: UserRound, group: 'cuenta' },
 ];
 
 function BrandMark() {
@@ -85,11 +87,11 @@ function Header({ page, lots, selectedLot, onSelectLot, onCreate, theme, onToggl
         </div>
       </div>
       <div className="topbar-actions">
-        <LotSelector lots={lots} selectedLot={selectedLot} onSelect={onSelectLot} />
+        {page !== 'account' && <LotSelector lots={lots} selectedLot={selectedLot} onSelect={onSelectLot} />}
         <button type="button" className="icon-button theme-toggle" onClick={onToggleTheme} aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
-        <button type="button" className="button button--primary" onClick={onCreate} aria-label="Nuevo lote"><Plus size={16} aria-hidden="true" /> <span>Nuevo lote</span></button>
+        {page !== 'account' && <button type="button" className="button button--primary" onClick={onCreate} aria-label="Nuevo lote"><Plus size={16} aria-hidden="true" /> <span>Nuevo lote</span></button>}
       </div>
     </header>
   );
@@ -105,7 +107,7 @@ function Sidebar({ page, onNavigate, apiStatus }) {
       <nav className="primary-nav" aria-label="Principal">
         {PAGES.map((item, index) => (<div key={item.id} className="nav-group">
           {(index === 0 || PAGES[index - 1].group !== item.group) && (
-            <div className="sidebar-caption">{item.group === 'campo' ? 'MI CAMPO' : 'RED AGROFLOW'}</div>
+            <div className="sidebar-caption">{item.group === 'campo' ? 'MI CAMPO' : item.group === 'red' ? 'RED AGROFLOW' : 'MI CUENTA'}</div>
           )}
           <button
             type="button"
@@ -509,7 +511,7 @@ function TechnicalPage({ lot, snapshotRecord }) {
   );
 }
 
-export default function App() {
+export function WorkspaceApp({ user, account, onAccountChange, onSignOut }) {
   const [page, setPage] = useState('summary');
   const [lots, setLots] = useState([]);
   const [snapshots, setSnapshots] = useState({});
@@ -632,13 +634,16 @@ export default function App() {
               {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
               {page === 'marketplace' && <MarketplacePage lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
+              {page === 'account' && <AccountPage user={user} account={account} onAccountChange={onAccountChange} onSignOut={onSignOut} />}
             </Suspense>
           </div>
         )}
       </main>
       {showCreateDialog && <FieldDialog initial={draftLot} onClose={() => { setShowCreateDialog(false); setDraftLot(null); }} onCreate={createLot} />}
-      <ChatBubble lots={lots} selectedLot={selectedLot} onNavigate={navigate} />
+      {page !== 'account' && <ChatBubble lots={lots} selectedLot={selectedLot} onNavigate={navigate} />}
       {toast && <div className="toast-message" role="status"><span>✓</span>{toast}</div>}
     </div>
   );
 }
+
+export default WorkspaceApp;

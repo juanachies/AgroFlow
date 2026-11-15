@@ -4,3 +4,4 @@ dist/
 .env.*
 data/cache/*
 !data/cache/.gitkeep
+.neon
