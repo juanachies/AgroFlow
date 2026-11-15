@@ -15,7 +15,7 @@ npm start
 
 **Front en la misma URL:** si existe `dist/` (el front de `src/interfaces/web` compilado con `npm run build`), el servidor sirve el front y la API desde la misma dirección, sin configurar CORS. Si el front se despliega aparte, apuntarlo a la URL de la API y configurar `CORS_ORIGIN`.
 
-**Estado en memoria:** las simulaciones, ofertas y reservas viven en memoria y se pierden al reiniciar el servidor.
+**Estado en memoria:** las simulaciones, ofertas y reservas del marketplace general viven en memoria y se pierden al reiniciar el servidor. Los perfiles y el flujo de solicitudes de cotización usan PostgreSQL.
 
 ## Endpoints
 
@@ -139,6 +139,37 @@ Devuelve `201 { "reservas": [...] }`.
 - `recurso`: `cosechadora`, `tractor con tolva`, `camión` o `embolsadora`.
 - `tipo`: los ids de `data/tarifas.json`.
 - Respuesta: `201 { "oferta": { "id": "of-051", … } }`.
+
+### Solicitudes de cotización de servicios
+
+Estos endpoints requieren una sesión válida de Neon Auth, enviada como `Authorization: Bearer <token>`. Los perfiles y ofertas persistentes se guardan en PostgreSQL; aplicá las migraciones con `npm run db:migrate:accounts` usando `DATABASE_URL_UNPOOLED` de una base de desarrollo antes de desplegar.
+
+| Método y ruta | Quién | Para qué |
+| --- | --- | --- |
+| `GET /api/service-offerings?serviceType=transporte` | Productor | Buscar ofertas; `serviceType` es opcional y acepta `transporte`, `almacenamiento` o `maquinaria` |
+| `POST /api/service-requests` | Productor | Pedir una cotización a un prestador |
+| `GET /api/service-requests` | Productor o prestador | Ver las solicitudes propias, recibidas o enviadas |
+| `PATCH /api/service-requests?id=<uuid>` | Productor o prestador | Cotizar, rechazar, aceptar una cotización o cancelar una solicitud propia |
+
+Ejemplo de solicitud:
+
+```json
+{
+  "providerId": "00000000-0000-4000-8000-000000000001",
+  "offeringId": "00000000-0000-4000-8000-000000000002",
+  "fieldId": "00000000-0000-4000-8000-000000000003",
+  "serviceType": "transporte",
+  "quantity": 120,
+  "neededFrom": "2027-04-10",
+  "neededUntil": "2027-04-12",
+  "requestDetails": { "loadType": "granos", "destination": "Puerto Gran Rosario" },
+  "message": "Coordinar carga por la mañana."
+}
+```
+
+`requestDetails` depende del servicio: transporte recibe `loadType` y `destination`; almacenamiento, `crop`, `storageType` y `storageDays`; maquinaria, `activity`. La respuesta del prestador se envía con `action: "quote"` junto a `price`, `currency` (`ARS` o `USD`), y opcionalmente `validUntil` y `message`. El productor usa `action: "accept_quote"` o `"decline_quote"`; puede cancelar una solicitud pendiente con `"cancel"`. El prestador puede responder a una solicitud pendiente con `"decline"`.
+
+La aceptación habilita el intercambio de teléfonos de contacto. No procesa pagos ni genera reservas automáticas.
 
 ### `GET /api/saturacion`
 
