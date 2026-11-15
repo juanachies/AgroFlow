@@ -17,7 +17,7 @@ const ESCENARIOS = [
   { tipo: 'saturacion', valor: 30, etiqueta: '+30% camiones al puerto' },
 ];
 
-function formularioInicial(lot) {
+export function formularioInicial(lot) {
   const ref = REFERENCIAS[lot.crop] ?? REFERENCIAS.soja;
   return {
     hoy: hoyIso(),
@@ -94,7 +94,7 @@ function Formulario({ f, set, onSubmit, cargando }) {
   );
 }
 
-function Avisos({ avisos }) {
+export function Avisos({ avisos }) {
   if (!avisos?.length) return null;
   return (
     <section className="pd-avisos">
@@ -103,7 +103,7 @@ function Avisos({ avisos }) {
   );
 }
 
-function Destinos({ plan }) {
+export function Destinos({ plan }) {
   const rec = plan.recomendado;
   const opciones = [...plan.alternativas].sort((a, b) => (b.margen_usd ?? -Infinity) - (a.margen_usd ?? -Infinity));
   return (
@@ -116,12 +116,12 @@ function Destinos({ plan }) {
           </div>
         ))}
       </div>
-      <p className="inline-note">{Math.round(plan.toneladas).toLocaleString('es-AR')} t · {plan.dias_efectivos} días efectivos de cosecha</p>
+      <p className="inline-note">{Math.round(plan.toneladas * 10).toLocaleString('es-AR')} qq · {plan.dias_efectivos} días efectivos de cosecha</p>
     </section>
   );
 }
 
-function Saturacion({ saturacion, ventana, puerto }) {
+export function Saturacion({ saturacion, ventana, puerto }) {
   if (!saturacion) return null;
   const dentro = (d) => ventana && d >= ventana.inicio && d <= ventana.fin;
   const dias = saturacion.dias.slice(0, 45);
@@ -149,7 +149,7 @@ function Saturacion({ saturacion, ventana, puerto }) {
   );
 }
 
-function Pedido({ pedidos, asignacion }) {
+export function Pedido({ pedidos, asignacion }) {
   return (
     <section className="panel pd-panel">
       <div className="section-heading"><div><span className="eyebrow">MARKETPLACE DE CADETES</span><h3>Qué contratar y con quién</h3></div><span className={`status-pill${asignacion.completa ? '' : ' status-pill--muted'}`}>Cobertura {asignacion.coberturaPct}% · {usd(asignacion.costoUsd)}</span></div>
@@ -208,13 +208,17 @@ function Escenarios({ onEscenario, resultado, cargando }) {
 export default function PlanDespacho({ lot }) {
   const [f, setF] = useState(() => (lot ? formularioInicial(lot) : null));
   const [estado, setEstado] = useState({ cargando: false, error: null, sim: null, explicacion: null, explicando: false, escenario: null, simulandoEscenario: false, reservas: null, confirmando: false });
-  useEffect(() => { if (lot) { setF(formularioInicial(lot)); setEstado((s) => ({ ...s, sim: null, explicacion: null, escenario: null, reservas: null, error: null })); } }, [lot?.id]);
+  useEffect(() => { if (lot) { setF(formularioInicial(lot)); setEstado((s) => ({ ...s, sim: null, explicacion: null, escenario: null, reservas: null, error: null })); } }, [lot?.id, lot?.crop, lot?.sowingDate]);
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
   const parche = (p) => setEstado((s) => ({ ...s, ...p }));
   const titulo = useMemo(() => (lot ? `${lot.name} · ${nombreCultivo(lot.crop)} · ${lot.areaHa.toLocaleString('es-AR')} ha` : ''), [lot]);
 
   if (!lot) {
     return <div className="panel compact-empty">Seleccioná o creá un lote para simular su plan de cosecha y despacho.</div>;
+  }
+
+  if (!lot.crop || !lot.sowingDate) {
+    return <div className="panel compact-empty">{lot.name} no tiene cultivo sembrado. Sembralo en Gestionar lotes para simular el plan de cosecha y despacho.</div>;
   }
 
   async function simular() {
