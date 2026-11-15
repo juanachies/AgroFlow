@@ -1,5 +1,5 @@
 # AgroFlow: API + front (si está) en un solo contenedor.
-FROM node:22-alpine
+FROM node:22.23.5-alpine
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --no-audit --no-fund

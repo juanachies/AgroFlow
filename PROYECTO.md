@@ -2,7 +2,7 @@
 
 > **Frente actualizado (14-nov-2026):** el producto se presenta como *cosecha y despacho sin colas*: un simulador conectado a un **marketplace de cadetes** y a un **pronóstico de saturación del puerto** que usa las reservas propias. La predicción de barcos (módulo 5) pasa a ser un insumo interno de esa saturación. Ver [docs/FRENTE.md](docs/FRENTE.md) y [docs/MARKETPLACE.md](docs/MARKETPLACE.md). Este documento queda como plan técnico original.
 
-Desafío 02 del Hackatón Donweb Day. Este documento vive fuera de `~/proyecto` a propósito: ese directorio queda vacío hasta las 15:15 del evento.
+Desafío 02 del Hackatón Nasa Space Apps. Este documento vive fuera de `~/proyecto` a propósito: ese directorio queda vacío hasta las 15:15 del evento.
 
 ## Problema
 
