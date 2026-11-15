@@ -27,8 +27,10 @@ import {
   cargarSilobolsasDeEjemplo, ejemploYaCargado, esLoteDeEjemplo, lotesDeEjemplo, marcarEjemploCargado,
 } from './lib/productorEjemplo.js';
 import { useTheme } from './lib/theme.js';
+import { getHomePageForRole, getWorkspacePages } from './lib/workspacePages.js';
 import AccountPage from './pages/AccountPage.jsx';
 import MarketplacePage from './pages/MarketplacePage.jsx';
+import ServicesPage from './pages/ServicesPage.jsx';
 import SilobolsasPage from './pages/SilobolsasPage.jsx';
 
 const MapView = lazy(() => import('./components/MapView.jsx'));
@@ -97,14 +99,15 @@ function LotSelector({ lots, selectedLot, onSelect }) {
   );
 }
 
-function Header({ page, lots, selectedLot, onSelectLot, theme, onToggleTheme }) {
+function Header({ page, pages, lots, selectedLot, onSelectLot, theme, onToggleTheme }) {
+  const pageLabel = pages.find(({ id }) => id === page)?.label ?? '';
   return (
     <header className="topbar">
       <div className="topbar-title">
         <span className="mobile-brand"><BrandMark /></span>
         <div>
-          <div className="breadcrumbs">AgroFlow <span>/</span> {PAGES.find(({ id }) => id === page)?.label}</div>
-          <h1>{PAGES.find(({ id }) => id === page)?.label}</h1>
+          <div className="breadcrumbs">AgroFlow <span>/</span> {pageLabel}</div>
+          <h1>{pageLabel}</h1>
         </div>
       </div>
       <div className="topbar-actions">
@@ -117,15 +120,33 @@ function Header({ page, lots, selectedLot, onSelectLot, theme, onToggleTheme }) 
   );
 }
 
-function Sidebar({ page, onNavigate, apiStatus }) {
+function Sidebar({ pages, page, homePage, onNavigate, apiStatus, isProducer }) {
+  const groupLabels = { campo: 'MI CAMPO', servicios: 'MI SERVICIO', marketplace: 'MARKETPLACE', cuenta: 'MI CUENTA' };
+  const helpText = isProducer
+    ? apiStatus === 'off' ? 'Corré npm run dev:api para usar Marketplace y plan logístico.' : 'Los lotes se guardan en este navegador; el clima se actualiza solo.'
+    : apiStatus === 'off' ? 'El Marketplace requiere conexión con la API.' : 'Tu servicio se administra desde este espacio.';
   return (
     <aside className="sidebar">
-      <a className="brand" href="#" onClick={(event) => { event.preventDefault(); onNavigate('summary'); }}>
+      <a className="brand" href="#" onClick={(event) => { event.preventDefault(); onNavigate(homePage); }}>
         <BrandMark />
         <span><strong>AgroFlow</strong><small>COSECHA · LOGÍSTICA</small></span>
       </a>
       <nav className="primary-nav" aria-label="Principal">
-        {SECTIONS.map((section) => {
+        {!isProducer && pages.map((item, index) => (
+          <div key={item.id} className="nav-group">
+            {(index === 0 || pages[index - 1].group !== item.group) && <div className="sidebar-caption">{groupLabels[item.group]}</div>}
+            <button
+              type="button"
+              className={`nav-item${page === item.id ? ' is-active' : ''}`}
+              onClick={() => onNavigate(item.id)}
+              aria-current={page === item.id ? 'page' : undefined}
+            >
+              <item.icon className="nav-icon" size={18} aria-hidden="true" />
+              {item.label}
+            </button>
+          </div>
+        ))}
+        {isProducer && SECTIONS.map((section) => {
           const active = sectionOf(page)?.id === section.id;
           return (
             <div key={section.id} className="nav-group">
@@ -146,7 +167,7 @@ function Sidebar({ page, onNavigate, apiStatus }) {
         <div className={`api-badge api-badge--${apiStatus}`}>
           <span />{apiStatus === 'ok' ? 'API conectada' : apiStatus === 'checking' ? 'Conectando API…' : 'API sin conexión'}
         </div>
-        <p>{apiStatus === 'off' ? 'Corré npm run dev:api para usar marketplace y plan logístico.' : 'Los lotes se guardan en este navegador; el clima se actualiza solo.'}</p>
+        <p>{helpText}</p>
         <div className="sidebar-version">AgroFlow · v0.2</div>
       </div>
     </aside>
@@ -556,6 +577,10 @@ function TechnicalPage({ lot, snapshotRecord }) {
 }
 
 export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest = false }) {
+  const role = account?.profile?.role ?? 'productor';
+  const pages = getWorkspacePages(role);
+  const homePage = getHomePageForRole(role) ?? 'account';
+  const isProducer = role === 'productor';
   const [page, setPage] = useState('summary');
   const [lots, setLots] = useState([]);
   const [snapshots, setSnapshots] = useState({});
@@ -568,6 +593,10 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   const [apiStatus, setApiStatus] = useState('checking');
 
   useEffect(() => {
+    if (!pages.some(({ id }) => id === page)) setPage(homePage);
+  }, [pages, page, homePage]);
+
+  useEffect(() => {
     let alive = true;
     const check = () => api.salud().then(() => alive && setApiStatus('ok')).catch(() => alive && setApiStatus('off'));
     check();
@@ -576,6 +605,10 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   }, []);
 
   useEffect(() => {
+    if (!isProducer) {
+      setLoading(false);
+      return undefined;
+    }
     listarLotes()
       .then(async (savedLots) => {
         let lotes = savedLots;
@@ -592,7 +625,8 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
       })
       .catch((error) => setStorageError(error.message || 'No se pudo leer el almacenamiento local.'))
       .finally(() => setLoading(false));
-  }, []);
+    return undefined;
+  }, [isProducer]);
 
   // El pronóstico de cada lote se descarga solo; se vuelve a pedir si cambia su ubicación.
   const ubicaciones = lots.map((lot) => `${lot.id}:${lot.latitude}:${lot.longitude}`).join('|');
@@ -688,6 +722,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   }
 
   function navigate(nextPage) {
+    if (!pages.some(({ id }) => id === nextPage)) return;
     setPage(nextPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -695,17 +730,18 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   return (
     <div className="app-shell">
       <a className="skip-link" href="#contenido">Saltar al contenido</a>
-      <Sidebar page={page} onNavigate={navigate} apiStatus={apiStatus} />
+      <Sidebar pages={pages} page={page} homePage={homePage} onNavigate={navigate} apiStatus={apiStatus} isProducer={isProducer} />
       <main className="main-content" id="contenido">
         <Header
           page={page}
+          pages={pages}
           lots={lots}
           selectedLot={selectedLot}
           onSelectLot={setSelectedLotId}
           theme={theme}
           onToggleTheme={toggleTheme}
         />
-        <SectionTabs page={page} onNavigate={navigate} />
+        {isProducer && <SectionTabs page={page} onNavigate={navigate} />}
         {storageError && <div className="app-alert" role="alert">No se pudo abrir la base local: {storageError}. Recargá la página o probá otro navegador.</div>}
         {loading ? (
           <div className="loading-state" role="status">Cargando tus datos locales…</div>
@@ -720,6 +756,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
               {page === 'marketplace' && <MarketplacePage lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
               {page === 'silobolsas' && <SilobolsasPage lots={lots} />}
+              {page === 'services' && <ServicesPage account={account} onNavigate={navigate} />}
               {page === 'account' && <AccountPage user={user} account={account} onAccountChange={onAccountChange} onSignOut={onSignOut} guest={guest} lots={lots} onResetExample={resetExample} />}
             </Suspense>
           </div>
@@ -752,7 +789,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
           onConfirm={() => removeLot(dialog.lot)}
         />
       )}
-      {page !== 'account' && <ChatBubble lots={lots} selectedLot={selectedLot} onNavigate={navigate} />}
+      {isProducer && page !== 'account' && <ChatBubble lots={lots} selectedLot={selectedLot} onNavigate={navigate} />}
       {toast && <div className="toast-message" role="status"><span>✓</span>{toast}</div>}
     </div>
   );
