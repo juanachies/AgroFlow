@@ -88,7 +88,11 @@ export function crearApi({ contenedor, servirEstatico = null, origenCors = '*', 
     'POST /api/decision': async (req) => {
       const entrada = await leerJson(req);
       if (entrada.hoy) exigirFecha(entrada.hoy, 'hoy');
-      const resultado = await decidirOperacion(entrada);
+      const { estrategiasSimuladas, ...resultado } = await decidirOperacion(entrada);
+      // Cada camino queda guardado con su propia simulación para poder confirmar sus reservas.
+      for (const [modo, { entrada: entradaDelModo, simulacion }] of Object.entries(estrategiasSimuladas ?? {})) {
+        resultado.decision.economia[modo].simulacionId = guardar(entradaDelModo, simulacion);
+      }
       return [200, { simulacionId: guardar(entrada, resultado), ...resultado }];
     },
 

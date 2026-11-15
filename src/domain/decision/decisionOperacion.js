@@ -34,6 +34,23 @@ function elegirInicioDeCosecha({ diasPorFecha, inicioPlan, duracion, hoy }) {
   return mejor ?? { inicio: inicioPlan, corrimiento: 0, penalizacion: 0 };
 }
 
+// Estrategia rápida: el primer día, hasta MARGEN_RAPIDO_DIAS antes del plan, desde el que casi no llueve fuerte.
+export const MARGEN_RAPIDO_DIAS = 10;
+export const MAX_DIAS_MALOS_RAPIDO = 1;
+
+function elegirInicioRapido({ diasPorFecha, inicioPlan, duracion, hoy }) {
+  let mejor = null;
+  for (let corrimiento = -MARGEN_RAPIDO_DIAS; corrimiento <= 0; corrimiento += 1) {
+    const inicio = sumarDias(inicioPlan, corrimiento);
+    if (hoy && inicio < hoy) continue;
+    let malos = 0;
+    for (let i = 0; i < duracion; i += 1) malos += diasPorFecha.get(sumarDias(inicio, i))?.apto === 'malo' ? 1 : 0;
+    if (malos <= MAX_DIAS_MALOS_RAPIDO) return inicio;
+    if (!mejor || malos < mejor.malos) mejor = { inicio, malos };
+  }
+  return mejor?.inicio ?? inicioPlan;
+}
+
 function contarCalidad(diasPorFecha, desde, hasta) {
   const cuenta = { bueno: 0, regular: 0, malo: 0, desconocido: 0 };
   const fuentes = new Set();
@@ -117,6 +134,7 @@ export function decidirOperacion({ simulacion, dias = [], hoy = null }) {
   const cosecha = {
     inicio, fin, dias: duracion,
     corrimientoDias: eleccion.corrimiento,
+    inicioMasRapido: elegirInicioRapido({ diasPorFecha, inicioPlan, duracion, hoy }),
     diasBuenos: calidad.bueno, diasRegulares: calidad.regular, diasMalos: calidad.malo, diasSinDato: calidad.desconocido,
     fuenteClima: calidad.fuente,
     recursos: deCosecha.map((p) => ({ recurso: p.recurso, cantidad: p.cantidad, pedirAntesDel: sumarDias(p.pedir_antes_del, eleccion.corrimiento) })),

@@ -115,7 +115,7 @@ export function crearContenedor({
   // Producto central: simulador (plan + saturación del puerto) y marketplace de cadetes.
   contenedor.simularPlan = crearSimularPlan({ planificarCosecha, marketplace, barcos: adaptadorBarcos, nivelRio, clima: fuentes.openMeteo ?? null, rutas: fuentes.rutas ?? null, fuentesExternas });
   contenedor.decidirOperacion = crearDecidirOperacion({
-    simularPlan: contenedor.simularPlan, clima: fuentes.openMeteo ?? null, climatologia: fuentes.climatologia ?? null, fuentesExternas,
+    simularPlan: contenedor.simularPlan, clima: fuentes.openMeteo ?? null, climatologia: fuentes.climatologia ?? null, precios: precios ?? null, fuentesExternas,
   });
   if (fuentesExternas) {
     contenedor.consultarClima = crearConsultarClima({ clima: fuentes.openMeteo ?? null, climatologia: fuentes.climatologia ?? null });

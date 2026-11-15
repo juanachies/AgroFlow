@@ -31,7 +31,16 @@ export function crearPlanificarCosecha({ tarifas, compararDestinos }) {
         costos_por_servicio: costosPorServicio(pedidos),
         pedidos,
       },
-      alternativas: evaluados.map(({ destino, tipo, costo_usd, margen_usd }) => ({ destino, tipo, costo_usd, margen_usd })),
+      alternativas: evaluados.map((evaluado) => ({
+        destino: evaluado.destino,
+        tipo: evaluado.tipo,
+        costo_usd: evaluado.costo_usd,
+        margen_usd: evaluado.margen_usd,
+        ingreso_usd: evaluado.ingreso_usd,
+        costo_extraccion_usd: evaluado.costo_extraccion_usd,
+        costos_por_servicio: costosPorServicio(armarPedidos(evaluado.resultado, entrada.fechaInicioCosecha, vigentes)),
+        distancia_km: evaluado.resultado.distancia_km ?? null,
+      })),
     };
   };
 }
