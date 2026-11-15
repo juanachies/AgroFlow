@@ -29,6 +29,7 @@ import {
 } from './lib/storage.js';
 import { api } from './lib/api.js';
 import { useTheme } from './lib/theme.js';
+import { getHomePageForRole, getWorkspacePages } from './lib/workspacePages.js';
 import AccountPage from './pages/AccountPage.jsx';
 import MarketplacePage from './pages/MarketplacePage.jsx';
 import SilobolsasPage from './pages/SilobolsasPage.jsx';
@@ -105,8 +106,8 @@ function Header({ page, lots, selectedLot, onSelectLot, theme, onToggleTheme }) 
       <div className="topbar-title">
         <span className="mobile-brand"><BrandMark /></span>
         <div>
-          <div className="breadcrumbs">AgroFlow <span>/</span> {PAGES.find(({ id }) => id === page)?.label}</div>
-          <h1>{PAGES.find(({ id }) => id === page)?.label}</h1>
+          <div className="breadcrumbs">AgroFlow <span>/</span> {pageLabel}</div>
+          <h1>{pageLabel}</h1>
         </div>
       </div>
       <div className="topbar-actions">
@@ -119,10 +120,14 @@ function Header({ page, lots, selectedLot, onSelectLot, theme, onToggleTheme }) 
   );
 }
 
-function Sidebar({ page, onNavigate, apiStatus }) {
+function Sidebar({ pages, page, homePage, onNavigate, apiStatus, isProducer }) {
+  const groupLabels = { campo: 'MI CAMPO', servicios: 'MI SERVICIO', marketplace: 'MARKETPLACE', cuenta: 'MI CUENTA' };
+  const helpText = isProducer
+    ? apiStatus === 'off' ? 'Corré npm run dev:api para usar Marketplace y plan logístico.' : 'Lotes y snapshots se guardan en este navegador.'
+    : apiStatus === 'off' ? 'El Marketplace requiere conexión con la API.' : 'Tu servicio se administra desde este espacio.';
   return (
     <aside className="sidebar">
-      <a className="brand" href="#" onClick={(event) => { event.preventDefault(); onNavigate('summary'); }}>
+      <a className="brand" href="#" onClick={(event) => { event.preventDefault(); onNavigate(homePage); }}>
         <BrandMark />
         <span><strong>AgroFlow</strong><small>COSECHA · LOGÍSTICA</small></span>
       </a>
@@ -148,7 +153,7 @@ function Sidebar({ page, onNavigate, apiStatus }) {
         <div className={`api-badge api-badge--${apiStatus}`}>
           <span />{apiStatus === 'ok' ? 'API conectada' : apiStatus === 'checking' ? 'Conectando API…' : 'API sin conexión'}
         </div>
-        <p>{apiStatus === 'off' ? 'Corré npm run dev:api para usar marketplace y plan logístico.' : 'Lotes y snapshots se guardan en este navegador.'}</p>
+        <p>{helpText}</p>
         <div className="sidebar-version">AgroFlow · v0.2</div>
       </div>
     </aside>
@@ -597,6 +602,10 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   const [apiStatus, setApiStatus] = useState('checking');
 
   useEffect(() => {
+    if (!pages.some(({ id }) => id === page)) setPage(homePage);
+  }, [pages, page, homePage]);
+
+  useEffect(() => {
     let alive = true;
     const check = () => api.salud().then(() => alive && setApiStatus('ok')).catch(() => alive && setApiStatus('off'));
     check();
@@ -605,6 +614,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   }, []);
 
   useEffect(() => {
+    if (!isProducer) return undefined;
     Promise.all([listarLotes(), listarSnapshots()])
       .then(([savedLots, savedSnapshots]) => {
         setLots(savedLots);
@@ -613,7 +623,8 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
       })
       .catch((error) => setStorageError(error.message || 'No se pudo leer el almacenamiento local.'))
       .finally(() => setLoading(false));
-  }, []);
+    return undefined;
+  }, [isProducer]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -689,6 +700,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   }
 
   function navigate(nextPage) {
+    if (!pages.some(({ id }) => id === nextPage)) return;
     setPage(nextPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -696,10 +708,12 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   return (
     <div className="app-shell">
       <a className="skip-link" href="#contenido">Saltar al contenido</a>
-      <Sidebar page={page} onNavigate={navigate} apiStatus={apiStatus} />
+      <Sidebar pages={pages} page={page} homePage={homePage} onNavigate={navigate} apiStatus={apiStatus} isProducer={isProducer} />
       <main className="main-content" id="contenido">
         <Header
           page={page}
+          pages={pages}
+          isProducer={isProducer}
           lots={lots}
           selectedLot={selectedLot}
           onSelectLot={setSelectedLotId}
