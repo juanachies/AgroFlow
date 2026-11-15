@@ -14,7 +14,7 @@ export class OpenStreetMapAdapter {
   constructor({
     nominatimUrl = 'https://nominatim.openstreetmap.org',
     osrmUrl = 'https://router.project-osrm.org',
-    userAgent = 'MarcianosCosecha/1.0',
+    userAgent = 'AgroFlow/1.0',
     fetchImpl = globalThis.fetch,
     cache = null,
   } = {}) {

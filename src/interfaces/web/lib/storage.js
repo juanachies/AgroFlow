@@ -1,3 +1,4 @@
+// Se mantiene el nombre original de la base para no perder los lotes ya guardados en el navegador.
 const DATABASE_NAME = 'marcianos-cosecha';
 const DATABASE_VERSION = 1;
 const LOTS_STORE = 'lots';

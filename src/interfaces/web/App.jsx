@@ -1,4 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import {
+  Activity, CalendarRange, ChartNoAxesCombined, CloudSun, House, Map as MapIcon, Moon, Plus, Route,
+  Sprout, Store, Sun, Wheat,
+} from 'lucide-react';
+import ChatBubble from './components/ChatBubble.jsx';
 import { ForecastTable, WeatherChart } from './components/Charts.jsx';
 import { BoundaryImport, SnapshotImport } from './components/DataImport.jsx';
 import FieldDialog from './components/FieldDialog.jsx';
@@ -17,17 +22,35 @@ import {
   listarLotes,
   listarSnapshots,
 } from './lib/storage.js';
+import { api } from './lib/api.js';
+import { useTheme } from './lib/theme.js';
+import MarketplacePage from './pages/MarketplacePage.jsx';
 
 const MapView = lazy(() => import('./components/MapView.jsx'));
 const PlanDespacho = lazy(() => import('./components/PlanDespacho.jsx'));
 
 const PAGES = [
-  { id: 'summary', label: 'Resumen', icon: '⌂' },
-  { id: 'lots', label: 'Lotes y mapa', icon: '▦' },
-  { id: 'planning', label: 'Planificación', icon: '↗' },
-  { id: 'despacho', label: 'Plan y despacho', icon: '⇄' },
-  { id: 'technical', label: 'Análisis técnico', icon: '◌' },
+  { id: 'summary', label: 'Resumen', icon: House, group: 'campo' },
+  { id: 'lots', label: 'Lotes y mapa', icon: MapIcon, group: 'campo' },
+  { id: 'planning', label: 'Planificación', icon: CalendarRange, group: 'campo' },
+  { id: 'technical', label: 'Análisis técnico', icon: ChartNoAxesCombined, group: 'campo' },
+  { id: 'despacho', label: 'Plan y despacho', icon: Route, group: 'red' },
+  { id: 'marketplace', label: 'Marketplace', icon: Store, group: 'red' },
 ];
+
+function BrandMark() {
+  return (
+    <span className="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 22c6 0 8-4 12-4s6 4 12 4" />
+        <path d="M4 27c6 0 8-4 12-4s6 4 12 4" opacity=".55" />
+        <path d="M16 15V5" />
+        <path d="M16 9c-3 0-5-2-5-5 3 0 5 2 5 5Z" fill="currentColor" stroke="none" />
+        <path d="M16 12c3 0 5-2 5-5-3 0-5 2-5 5Z" fill="currentColor" stroke="none" />
+      </svg>
+    </span>
+  );
+}
 
 function formatDate(value, options = { day: 'numeric', month: 'short', year: 'numeric' }) {
   if (!value) return 'Sin fecha';
@@ -51,50 +74,56 @@ function LotSelector({ lots, selectedLot, onSelect }) {
   );
 }
 
-function Header({ page, lots, selectedLot, onSelectLot, onCreate }) {
+function Header({ page, lots, selectedLot, onSelectLot, onCreate, theme, onToggleTheme }) {
   return (
     <header className="topbar">
       <div className="topbar-title">
-        <span className="mobile-brand">M</span>
+        <span className="mobile-brand"><BrandMark /></span>
         <div>
-          <div className="breadcrumbs">Marcianos <span>/</span> {PAGES.find(({ id }) => id === page)?.label}</div>
+          <div className="breadcrumbs">AgroFlow <span>/</span> {PAGES.find(({ id }) => id === page)?.label}</div>
           <h1>{PAGES.find(({ id }) => id === page)?.label}</h1>
         </div>
       </div>
       <div className="topbar-actions">
         <LotSelector lots={lots} selectedLot={selectedLot} onSelect={onSelectLot} />
-        <button type="button" className="button button--primary" onClick={onCreate}>＋ <span>Nuevo lote</span></button>
+        <button type="button" className="icon-button theme-toggle" onClick={onToggleTheme} aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+        <button type="button" className="button button--primary" onClick={onCreate} aria-label="Nuevo lote"><Plus size={16} aria-hidden="true" /> <span>Nuevo lote</span></button>
       </div>
     </header>
   );
 }
 
-function Sidebar({ page, onNavigate }) {
+function Sidebar({ page, onNavigate, apiStatus }) {
   return (
     <aside className="sidebar">
       <a className="brand" href="#" onClick={(event) => { event.preventDefault(); onNavigate('summary'); }}>
-        <span className="brand-mark">M</span>
-        <span><strong>marcianos</strong><small>AGTECH · COSECHA</small></span>
+        <BrandMark />
+        <span><strong>AgroFlow</strong><small>COSECHA · LOGÍSTICA</small></span>
       </a>
-      <div className="sidebar-caption">ESPACIO DE TRABAJO</div>
       <nav className="primary-nav" aria-label="Principal">
-        {PAGES.map((item) => (
+        {PAGES.map((item, index) => (<div key={item.id} className="nav-group">
+          {(index === 0 || PAGES[index - 1].group !== item.group) && (
+            <div className="sidebar-caption">{item.group === 'campo' ? 'MI CAMPO' : 'RED AGROFLOW'}</div>
+          )}
           <button
             type="button"
-            key={item.id}
             className={`nav-item${page === item.id ? ' is-active' : ''}`}
             onClick={() => onNavigate(item.id)}
             aria-current={page === item.id ? 'page' : undefined}
           >
-            <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+            <item.icon className="nav-icon" size={18} aria-hidden="true" />
             {item.label}
           </button>
-        ))}
+        </div>))}
       </nav>
       <div className="sidebar-bottom">
-        <div className="local-storage-badge"><span /> Datos locales</div>
-        <p>La información de lotes y snapshots se guarda en este navegador.</p>
-        <div className="sidebar-version">Marcianos · Planificador</div>
+        <div className={`api-badge api-badge--${apiStatus}`}>
+          <span />{apiStatus === 'ok' ? 'API conectada' : apiStatus === 'checking' ? 'Conectando API…' : 'API sin conexión'}
+        </div>
+        <p>{apiStatus === 'off' ? 'Corré npm run dev:api para usar marketplace y plan logístico.' : 'Lotes y snapshots se guardan en este navegador.'}</p>
+        <div className="sidebar-version">AgroFlow · v0.2</div>
       </div>
     </aside>
   );
@@ -141,7 +170,7 @@ function WindowTag({ lot }) {
   return <span className="window-tag">{formatDate(window.inicio, { day: 'numeric', month: 'short' })} – {formatDate(window.fin, { day: 'numeric', month: 'short' })}</span>;
 }
 
-function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, onCreate }) {
+function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, onCreate, theme }) {
   const area = lots.reduce((total, lot) => total + lot.areaHa, 0);
   const withWindow = lots.filter((lot) => lot.sowingDate).length;
   const withSnapshot = lots.filter((lot) => snapshots[lot.id]).length;
@@ -154,13 +183,13 @@ function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, on
         eyebrow="CAMPAÑA ACTUAL"
         title="Decisiones claras, datos trazables."
         description="Organizá tus lotes y consultá la información disponible para planificar la cosecha."
-        action={<span className="period-chip"><span /> Datos guardados localmente</span>}
+        action={<span className="period-chip"><Activity size={14} aria-hidden="true" /> Campaña 2026/27</span>}
       />
       <div className="metrics-grid">
-        <MetricCard label="Lotes registrados" value={lots.length} unit="" detail={lots.length ? 'Puntos geográficos cargados' : 'Agregá tu primer lote'} icon="▦" />
-        <MetricCard label="Superficie declarada" value={formatNumber(area)} unit=" ha" detail="Ingresada manualmente" icon="⌁" tone="blue" />
-        <MetricCard label="Ventanas configuradas" value={withWindow} unit="" detail="Según fecha de siembra y ciclo" icon="◷" tone="amber" />
-        <MetricCard label="Con datos de clima" value={withSnapshot} unit="" detail="Snapshots importados" icon="↗" tone="violet" />
+        <MetricCard label="Lotes registrados" value={lots.length} unit="" detail={lots.length ? 'Puntos geográficos cargados' : 'Agregá tu primer lote'} icon={<Sprout size={18} />} />
+        <MetricCard label="Superficie total" value={formatNumber(area)} unit=" ha" detail={lots.some((lot) => lot.boundary) ? 'Medida en el mapa o declarada' : 'Ingresada manualmente'} icon={<MapIcon size={18} />} tone="blue" />
+        <MetricCard label="Ventanas configuradas" value={withWindow} unit="" detail="Según fecha de siembra y ciclo" icon={<Wheat size={18} />} tone="amber" />
+        <MetricCard label="Con datos de clima" value={withSnapshot} unit="" detail="Snapshots importados" icon={<CloudSun size={18} />} tone="violet" />
       </div>
       <div className="summary-main-grid">
         <div className="summary-map-column">
@@ -168,7 +197,7 @@ function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, on
             <div><h3>Vista de los lotes</h3><p>Ubicaciones y límites importados por vos</p></div>
             <button type="button" className="text-button" onClick={() => onNavigate('lots')}>Abrir mapa <span>→</span></button>
           </div>
-          <MapView lots={lots} selectedLot={selectedLot} onSelectLot={onSelectLot} compact />
+          <MapView lots={lots} selectedLot={selectedLot} onSelectLot={onSelectLot} theme={theme} compact />
         </div>
         <section className="panel upcoming-panel">
           <div className="section-heading">
@@ -226,9 +255,9 @@ function SummaryPage({ lots, selectedLot, snapshots, onNavigate, onSelectLot, on
           <div className="planning-prompt-icon">✳</div>
           <div>
             <span className="eyebrow">PLANIFICACIÓN</span>
-            <h3>Una ventana no es una recomendación.</h3>
-            <p>El rango se estima con fecha de siembra y duración de ciclo. El tránsito no se evalúa sin datos locales calibrados.</p>
-            <button type="button" className="text-button" onClick={() => onNavigate('planning')}>Ver planificación <span>→</span></button>
+            <h3>Cosecha y despacho sin colas.</h3>
+            <p>Simulá el plan de tu lote: destino con mejor margen, maquinaria a pedir y proveedores del marketplace, evitando los días de puerto saturado.</p>
+            <button type="button" className="text-button" onClick={() => onNavigate('despacho')}>Simular plan logístico <span>→</span></button>
           </div>
         </section>
       </div>
@@ -250,14 +279,14 @@ function LotDetails({ lot, snapshotRecord, onBoundary, onSnapshot, onDelete }) {
         <div><span className="eyebrow">{nombreCultivo(lot.crop)}</span><h2>{lot.name}</h2></div>
       </div>
       <div className="detail-stats">
-        <div><span>Superficie declarada</span><strong>{formatNumber(lot.areaHa)} ha</strong></div>
+        <div><span>{lot.boundary?.properties?.areaHa ? 'Superficie medida' : 'Superficie declarada'}</span><strong>{formatNumber(lot.areaHa, 2)} ha</strong></div>
         <div><span>Ciclo ingresado</span><strong>{lot.cycleDays} días</strong></div>
         <div><span>Fecha de siembra</span><strong>{formatDate(lot.sowingDate)}</strong></div>
         <div><span>Coordenadas del punto</span><strong>{lot.latitude.toFixed(4)}, {lot.longitude.toFixed(4)}</strong></div>
       </div>
       <div className="detail-block">
-        <div className="detail-block-heading"><strong>Límite del lote</strong><span className={`status-pill ${lot.boundary ? 'status-pill--success' : 'status-pill--muted'}`}>{lot.boundary ? 'Importado' : 'Pendiente'}</span></div>
-        <p>{lot.boundary ? `Polígono ${lot.boundary.geometry.type} importado. La superficie se mantiene como valor declarado.` : 'El mapa muestra solo el punto de referencia hasta que importes un polígono.'}</p>
+        <div className="detail-block-heading"><strong>Límite del lote</strong><span className={`status-pill ${lot.boundary ? 'status-pill--success' : 'status-pill--muted'}`}>{lot.boundary ? 'Cargado' : 'Pendiente'}</span></div>
+        <p>{lot.boundary ? `Polígono ${lot.boundary.properties?.origen === 'dibujado en AgroFlow' ? 'dibujado en el mapa' : 'importado'}${lot.boundary.properties?.areaHa ? ` · superficie medida ${formatNumber(lot.boundary.properties.areaHa, 2)} ha` : ''}.` : 'Dibujá el límite en el mapa para medir la superficie, o importá un GeoJSON.'}</p>
         <BoundaryImport onImport={onBoundary} />
       </div>
       <div className="detail-block">
@@ -277,21 +306,19 @@ function LotDetails({ lot, snapshotRecord, onBoundary, onSnapshot, onDelete }) {
   );
 }
 
-function LotsPage({ lots, selectedLot, snapshots, onSelectLot, onBoundary, onSnapshot, onDelete, onCreate }) {
+function LotsPage({ lots, selectedLot, snapshots, onSelectLot, onBoundary, onSnapshot, onDelete, onCreate, onDrawnBoundary, onCreateFromDrawing, theme }) {
   return (
     <>
       <PageIntro
         eyebrow="EXPLORADOR"
         title="Lotes y mapa"
-        description="Ubicaciones declaradas, límites reales y datos asociados."
-        action={<button type="button" className="button button--primary button--small" onClick={onCreate}>＋ Nuevo lote</button>}
+        description="Dibujá el límite de cada campo sobre el satélite y AgroFlow calcula su superficie."
+        action={<button type="button" className="button button--primary button--small" onClick={onCreate}><Plus size={15} /> Nuevo lote</button>}
       />
       <div className="lots-workspace">
         <div className="lots-map-column">
-          <MapView lots={lots} selectedLot={selectedLot} onSelectLot={onSelectLot} />
-          {lots.length > 0 && (
-            <div className="map-key"><span className="map-key-dot" /> Punto de lote <span className="map-key-line" /> Límite importado</div>
-          )}
+          <MapView lots={lots} selectedLot={selectedLot} onSelectLot={onSelectLot} onSaveBoundary={onDrawnBoundary} onCreateFromDrawing={onCreateFromDrawing} theme={theme} />
+          <div className="map-key"><span className="map-key-dot" /> Punto de lote <span className="map-key-line" /> Límite del lote <span className="map-key-line map-key-line--draft" /> Dibujo en curso</div>
         </div>
         <aside className="panel lot-sidebar-panel">
           {lots.length > 1 && (
@@ -491,6 +518,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState('');
   const [toast, setToast] = useState('');
+  const [theme, toggleTheme] = useTheme();
+  const [apiStatus, setApiStatus] = useState('checking');
+  const [draftLot, setDraftLot] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    const check = () => api.salud().then(() => alive && setApiStatus('ok')).catch(() => alive && setApiStatus('off'));
+    check();
+    const id = window.setInterval(check, 30000);
+    return () => { alive = false; window.clearInterval(id); };
+  }, []);
 
   useEffect(() => {
     Promise.all([listarLotes(), listarSnapshots()])
@@ -525,6 +563,24 @@ export default function App() {
     setToast('Límite asignado al lote.');
   }
 
+  async function saveDrawnBoundary(lot, feature, { ha, center }) {
+    const boundary = { ...feature, properties: { ...feature.properties, areaHa: ha } };
+    const updated = { ...lot, boundary, areaHa: Math.round(ha * 100) / 100, longitude: center[0], latitude: center[1] };
+    await guardarLote(updated);
+    setLots((current) => current.map((item) => item.id === lot.id ? updated : item));
+    setToast(`Límite guardado · ${formatNumber(ha, 2)} ha medidas.`);
+  }
+
+  function createFromDrawing(feature, { ha, center }) {
+    setDraftLot({
+      areaHa: ha.toFixed(2),
+      latitude: center[1].toFixed(6),
+      longitude: center[0].toFixed(6),
+      boundary: { ...feature, properties: { ...feature.properties, areaHa: ha } },
+    });
+    setShowCreateDialog(true);
+  }
+
   async function saveSnapshot(lot, snapshot) {
     await guardarSnapshot(lot.id, snapshot);
     setSnapshots((current) => ({ ...current, [lot.id]: { lotId: lot.id, snapshot } }));
@@ -552,14 +608,17 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar page={page} onNavigate={navigate} />
-      <main className="main-content">
+      <a className="skip-link" href="#contenido">Saltar al contenido</a>
+      <Sidebar page={page} onNavigate={navigate} apiStatus={apiStatus} />
+      <main className="main-content" id="contenido">
         <Header
           page={page}
           lots={lots}
           selectedLot={selectedLot}
           onSelectLot={setSelectedLotId}
           onCreate={() => setShowCreateDialog(true)}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
         {storageError && <div className="app-alert" role="alert">No se pudo abrir la base local: {storageError}. Recargá la página o probá otro navegador.</div>}
         {loading ? (
@@ -567,16 +626,18 @@ export default function App() {
         ) : (
           <div className="page-content">
             <Suspense fallback={<div className="loading-state" role="status">Cargando mapa…</div>}>
-              {page === 'summary' && <SummaryPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onNavigate={navigate} onSelectLot={setSelectedLotId} onCreate={() => setShowCreateDialog(true)} />}
-              {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onBoundary={saveBoundary} onSnapshot={saveSnapshot} onDelete={removeLot} onCreate={() => setShowCreateDialog(true)} />}
+              {page === 'summary' && <SummaryPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onNavigate={navigate} onSelectLot={setSelectedLotId} onCreate={() => setShowCreateDialog(true)} theme={theme} />}
+              {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onBoundary={saveBoundary} onSnapshot={saveSnapshot} onDelete={removeLot} onCreate={() => setShowCreateDialog(true)} onDrawnBoundary={saveDrawnBoundary} onCreateFromDrawing={createFromDrawing} theme={theme} />}
               {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSnapshot={saveSnapshot} />}
               {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
               {page === 'technical' && <TechnicalPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} />}
+              {page === 'marketplace' && <MarketplacePage lot={selectedLot} onToast={setToast} onNavigate={navigate} />}
             </Suspense>
           </div>
         )}
       </main>
-      {showCreateDialog && <FieldDialog onClose={() => setShowCreateDialog(false)} onCreate={createLot} />}
+      {showCreateDialog && <FieldDialog initial={draftLot} onClose={() => { setShowCreateDialog(false); setDraftLot(null); }} onCreate={createLot} />}
+      <ChatBubble lots={lots} selectedLot={selectedLot} onNavigate={navigate} />
       {toast && <div className="toast-message" role="status"><span>✓</span>{toast}</div>}
     </div>
   );

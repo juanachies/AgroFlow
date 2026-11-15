@@ -213,7 +213,7 @@ test('IMERG solicita una celda de la granula correcta y convierte tasa horaria a
 });
 
 test('ERA5-Land descarga la salida del proceso asíncrono tras aceptar sus términos', async () => {
-  const directory = await mkdtemp(path.join(os.tmpdir(), 'marcianos-era5-'));
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'agroflow-era5-'));
   const requests = [];
   const adapter = new Era5LandAdapter({
     apiToken: 'private-test-token',

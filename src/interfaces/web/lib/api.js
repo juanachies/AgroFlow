@@ -4,6 +4,13 @@
 
 const BASE = (import.meta.env?.VITE_API_URL ?? '').replace(/\/$/, '');
 
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function pedir(ruta, { metodo = 'GET', cuerpo } = {}) {
   let respuesta;
   try {
@@ -13,19 +20,29 @@ async function pedir(ruta, { metodo = 'GET', cuerpo } = {}) {
       body: cuerpo ? JSON.stringify(cuerpo) : undefined,
     });
   } catch {
-    throw new Error('No se pudo conectar con la API. ¿Está corriendo `npm start`?');
+    throw new ApiError('No se pudo conectar con la API. ¿Está corriendo `npm start` o `npm run dev:api`?', 0);
   }
   const datos = await respuesta.json().catch(() => ({}));
-  if (!respuesta.ok) throw new Error(datos.error ?? `La API respondió ${respuesta.status}`);
+  if (!respuesta.ok) throw new ApiError(datos.error ?? `La API respondió ${respuesta.status}`, respuesta.status);
   return datos;
 }
 
+const query = (params) => {
+  const entries = Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '');
+  return entries.length ? `?${new URLSearchParams(entries)}` : '';
+};
+
 export const api = {
   salud: () => pedir('/api/salud'),
+  ejemplo: () => pedir('/api/ejemplo'),
   simular: (entrada) => pedir('/api/simular', { metodo: 'POST', cuerpo: entrada }),
   explicar: (simulacionId, pregunta) => pedir('/api/explicar', { metodo: 'POST', cuerpo: { simulacionId, ...(pregunta ? { pregunta } : {}) } }),
   escenario: (simulacionId, escenario) => pedir('/api/escenario', { metodo: 'POST', cuerpo: { simulacionId, escenario } }),
   confirmar: (simulacionId, loteId) => pedir('/api/reservas', { metodo: 'POST', cuerpo: { simulacionId, loteId } }),
+  reservas: (params = {}) => pedir(`/api/reservas${query(params)}`),
+  ofertas: (params = {}) => pedir(`/api/ofertas${query(params)}`),
+  publicarOferta: (oferta) => pedir('/api/ofertas', { metodo: 'POST', cuerpo: oferta }),
+  saturacion: (params) => pedir(`/api/saturacion${query(params)}`),
 };
 
 // Valores de referencia editables para precargar el formulario (USD/t y qq/ha). No son cotizaciones.
