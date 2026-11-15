@@ -74,6 +74,50 @@ function uuid(value, field) {
   return value;
 }
 
+function validarLimiteCampo(value) {
+  if (value == null) return null;
+  const feature = object(value, 'el perímetro del campo');
+  const geometry = object(feature.geometry, 'la geometría del perímetro');
+  if (feature.type !== 'Feature' || geometry.type !== 'Polygon' || !Array.isArray(geometry.coordinates)) {
+    throw new ErrorHttp(400, 'el perímetro tiene que ser un polígono GeoJSON');
+  }
+  const [ring] = geometry.coordinates;
+  if (!Array.isArray(ring) || ring.length < 4 || ring.length > 501) {
+    throw new ErrorHttp(400, 'el perímetro necesita entre 3 y 500 vértices');
+  }
+  const coordinates = ring.map((position) => {
+    if (!Array.isArray(position) || position.length < 2) {
+      throw new ErrorHttp(400, 'el perímetro contiene coordenadas inválidas');
+    }
+    return [
+      number(position[0], 'longitud del perímetro', { min: -180, max: 180 }),
+      number(position[1], 'latitud del perímetro', { min: -90, max: 90 }),
+    ];
+  });
+  const first = coordinates[0];
+  const last = coordinates.at(-1);
+  if (first[0] !== last[0] || first[1] !== last[1]) {
+    throw new ErrorHttp(400, 'el perímetro tiene que estar cerrado');
+  }
+  return {
+    type: 'Feature',
+    properties: {},
+    geometry: { type: 'Polygon', coordinates: [coordinates] },
+  };
+}
+
+function areaPoligonoHa(ring) {
+  const radius = 6378137;
+  let total = 0;
+  for (let index = 0; index < ring.length - 1; index += 1) {
+    const [longitude1, latitude1] = ring[index];
+    const [longitude2, latitude2] = ring[index + 1];
+    total += ((longitude2 - longitude1) * Math.PI / 180)
+      * (2 + Math.sin(latitude1 * Math.PI / 180) + Math.sin(latitude2 * Math.PI / 180));
+  }
+  return Math.abs(total * radius * radius / 2) / 10000;
+}
+
 export function validarDetallesOferta(serviceType, value = {}) {
   const details = object(value, 'los detalles del servicio');
   if (serviceType === 'transporte') {
@@ -98,11 +142,23 @@ export function validarCampo(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new ErrorHttp(400, 'los datos del campo son obligatorios');
   }
+  const boundary = validarLimiteCampo(input.boundary);
+  if (!boundary) throw new ErrorHttp(400, 'dibujá el perímetro del campo en el mapa');
+  const ring = boundary.geometry.coordinates[0];
+  const vertices = ring.slice(0, -1);
+  const areaHa = areaPoligonoHa(ring);
+  if (!Number.isFinite(areaHa) || areaHa <= 0) throw new ErrorHttp(400, 'el perímetro del campo debe encerrar una superficie válida');
+  const [longitude, latitude] = vertices.reduce(
+    ([sumLongitude, sumLatitude], [pointLongitude, pointLatitude]) => [sumLongitude + pointLongitude, sumLatitude + pointLatitude],
+    [0, 0],
+  ).map((sum) => sum / vertices.length);
   return {
     name: text(input.name, 'nombre del campo'),
-    areaHa: number(input.areaHa, 'hectáreas', { min: Number.MIN_VALUE }),
-    latitude: number(input.latitude, 'latitud', { min: -90, max: 90 }),
-    longitude: number(input.longitude, 'longitud', { min: -180, max: 180 }),
+    city: text(input.city, 'ciudad o localidad', { max: 120 }),
+    areaHa,
+    latitude,
+    longitude,
+    boundary,
   };
 }
 
@@ -133,6 +189,8 @@ export function validarOferta(input) {
     capacityUnit: input.capacityUnit,
     baseLatitude: number(input.baseLatitude, 'latitud de base', { min: -90, max: 90 }),
     baseLongitude: number(input.baseLongitude, 'longitud de base', { min: -180, max: 180 }),
+    city: text(input.city, 'ciudad o localidad', { max: 120 }),
+    baseAddress: text(input.baseAddress, 'dirección o zona aproximada', { required: false, max: 160 }),
     serviceRadiusKm: number(input.serviceRadiusKm, 'radio de servicio', { min: Number.MIN_VALUE }),
     availableFrom,
     availableUntil,
@@ -149,6 +207,10 @@ export function validarFiltroServicio(value) {
 
 export function validarIdentificadorSolicitud(value) {
   return uuid(value, 'el identificador de solicitud');
+}
+
+export function validarIdentificadorCampo(value) {
+  return uuid(value, 'el identificador del campo');
 }
 
 export function validarSolicitudCotizacion(input) {
@@ -235,9 +297,17 @@ export function validarAltaCuenta(input) {
   const profile = validarDatosPerfil(input);
   if (!ROLE_VALUES.has(input.role)) throw new ErrorHttp(400, 'seleccioná productor o prestador');
   if (input.role === 'productor') {
-    return { ...profile, role: input.role, field: validarCampo(input.field) };
+    return {
+      ...profile,
+      role: input.role,
+      ...(input.field ? { field: validarCampo(input.field) } : {}),
+    };
   }
-  return { ...profile, role: input.role, offering: validarOferta(input.offering) };
+  return {
+    ...profile,
+    role: input.role,
+    ...(input.offering ? { offering: validarOferta(input.offering) } : {}),
+  };
 }
 
 export function validarActualizacionPerfil(input) {

@@ -115,7 +115,7 @@ El acceso usa Neon Auth y los perfiles se guardan en PostgreSQL mediante las fun
 
 Antes del primer uso, aplicá el esquema con `npm run db:migrate:accounts`; el script local requiere `DATABASE_URL_UNPOOLED` en `.env.local`. Probá primero en una rama de desarrollo de Neon y verificá la URL antes de ejecutar migraciones en producción. En Neon Auth agregá el dominio de producción de Vercel a **Trusted Domains**. En Vercel usá preset Vite, `npm run build`, directorio de salida `dist` e instalación `npm install`.
 
-Los perfiles distinguen productores (uno o más campos con superficie y coordenadas) y prestadores (una oferta con tipo de servicio, capacidad, precio, cobertura y disponibilidad). Los productores pueden solicitar cotizaciones específicas para transporte, almacenamiento o maquinaria; tras la aceptación se habilita el contacto entre las partes. Cada usuario solo puede consultar y modificar sus propios datos.
+El registro guarda primero el perfil básico. Luego los productores agregan campos por ciudad y dibujan su perímetro; la superficie y el punto de referencia se derivan del polígono. Los prestadores configuran su oferta por separado y marcan una ubicación aproximada en el mapa. La búsqueda de localidades se inicia explícitamente con Photon (OpenStreetMap), con atribución visible. Las coordenadas de campos y prestadores no se publican en el directorio ni en solicitudes pendientes; la aceptación de una cotización habilita el contacto entre las partes. Cada usuario solo puede consultar y modificar sus propios datos.
 
 ```bash
 npm run actualizar-tarifas

@@ -37,6 +37,7 @@ test('valida detalles operativos propios de cada tipo de oferta', () => {
     capacityUnit: 'toneladas',
     baseLatitude: -33,
     baseLongitude: -60,
+    city: 'Rosario · Santa Fe · Argentina',
     serviceRadiusKm: 80,
     details: {
       storageTypes: ['silo_bolsa', 'silo_fijo'],
@@ -60,6 +61,7 @@ test('valida detalles operativos propios de cada tipo de oferta', () => {
     capacityUnit: 'hectareas_dia',
     baseLatitude: -33,
     baseLongitude: -60,
+    city: 'Rosario · Santa Fe · Argentina',
     serviceRadiusKm: 100,
     details: { activities: ['vuelo'] },
   }), /opciones inválidas/);

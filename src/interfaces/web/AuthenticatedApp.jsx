@@ -40,10 +40,11 @@ function AccountSetup({ user, onCreated, onSignOut }) {
       <section className="panel account-setup-card">
         <span className="eyebrow">UN PASO MÁS</span>
         <h1>Completá tu perfil</h1>
-        <p>Tu cuenta está activa como {user.email}. Elegí tu tipo de usuario y guardá los datos que necesitamos para la aplicación.</p>
+        <p>Tu cuenta está activa como {user.email}. Completá solo tus datos personales; después cargarás el campo o el servicio desde la aplicación.</p>
         <AccountDetailsForm
           initial={{ displayName: user.name ?? '' }}
           allowRoleChange
+          profileOnly
           submitLabel={saving ? 'Guardando…' : 'Guardar perfil'}
           onSubmit={createProfile}
         />

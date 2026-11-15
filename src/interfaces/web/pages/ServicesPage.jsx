@@ -292,7 +292,7 @@ export default function ServicesPage({ account, onNavigate }) {
             <div><span>Capacidad</span><strong>{formatNumber(offering.capacity)} {CAPACITY_UNIT_LABELS[offering.capacityUnit]}</strong></div>
             <div><span>Cobertura</span><strong><MapPin size={15} /> {formatNumber(offering.serviceRadiusKm)} km de radio</strong></div>
             <div><span>Disponibilidad</span><strong><CalendarRange size={15} /> <Availability from={offering.availableFrom} until={offering.availableUntil} /></strong></div>
-            <div><span>Base del servicio</span><strong>{formatNumber(offering.baseLatitude)}, {formatNumber(offering.baseLongitude)}</strong></div>
+            <div><span>Base del servicio</span><strong>{offering.baseAddress || offering.city || 'Ubicación sin completar'}</strong></div>
           </div>
           <p className="provider-service-capabilities">{serviceDetails(offering)}</p>
           {offering.notes && <p className="provider-service-notes">{offering.notes}</p>}

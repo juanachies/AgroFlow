@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, BadgeCheck, CalendarRange, MapPin, MessageSquareText, Package, Search, Send, Tractor, Truck } from 'lucide-react';
 import { accountApi } from '../lib/accountApi.js';
-import { distanciaKm } from '../lib/data.js';
 
 const SERVICE_TYPES = [
   { id: '', label: 'Todos', icon: Package },
@@ -62,13 +61,7 @@ function requestDetailsLabel(request) {
 
 function ProviderCard({ entry, field, onRequest }) {
   const { offering, providerId, providerName } = entry;
-  const distance = field
-    ? distanciaKm(
-      { latitude: field.latitude, longitude: field.longitude },
-      { latitude: offering.baseLatitude, longitude: offering.baseLongitude },
-    )
-    : null;
-  const covered = distance != null && distance <= offering.serviceRadiusKm;
+  const covered = field ? entry.covered === true : null;
   const tags = offering.serviceType === 'transporte'
     ? (offering.details?.loadTypes ?? []).map((value) => CARGO_LABELS[value] ?? value)
     : offering.serviceType === 'almacenamiento'
@@ -94,14 +87,14 @@ function ProviderCard({ entry, field, onRequest }) {
       <div className="service-provider-facts">
         <span>{offering.currency} {formatNumber(offering.price)} {PRICE_UNITS[offering.priceUnit]}</span>
         <span>Capacidad: {formatNumber(offering.capacity)} {CAPACITY_UNITS[offering.capacityUnit]}</span>
-        <span><MapPin size={14} /> Radio {formatNumber(offering.serviceRadiusKm)} km</span>
+        <span><MapPin size={14} /> {offering.city || 'Ubicación sin completar'} · cobertura {formatNumber(offering.serviceRadiusKm)} km</span>
       </div>
       {tags.length > 0 && <div className="service-detail-chips">{tags.map((tag) => <span key={tag}>{tag}</span>)}</div>}
       {offering.notes && <p className="service-provider-notes">{offering.notes}</p>}
-      {distance != null && (
+      {covered != null && (
         <div className={`service-coverage${covered ? ' service-coverage--ok' : ''}`}>
           {covered ? <BadgeCheck size={14} /> : <MapPin size={14} />}
-          {covered ? `Cubre tu campo · ${formatNumber(distance)} km` : `Fuera de cobertura · ${formatNumber(distance)} km`}
+          {covered ? 'Cubre este campo' : 'Fuera de cobertura'}
         </div>
       )}
       <button
@@ -276,6 +269,7 @@ function ProducerRequestCard({ request, onAction, busy }) {
         <div className="service-contact-details">
           <strong>Contacto del prestador</strong>
           <span>{request.provider.phone || 'No informó teléfono de contacto'}</span>
+          {request.provider.address && <span>{request.provider.address}</span>}
         </div>
       )}
     </article>
@@ -300,7 +294,7 @@ export default function ServiceMarketplace({ fields, onNavigate, onToast }) {
     setError('');
     try {
       const [offeringResult, requestResult] = await Promise.all([
-        accountApi.listServiceOfferings(),
+        accountApi.listServiceOfferings(selectedFieldId),
         accountApi.listServiceRequests(),
       ]);
       setOfferings(offeringResult.offerings);
@@ -312,7 +306,7 @@ export default function ServiceMarketplace({ fields, onNavigate, onToast }) {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [selectedFieldId]);
 
   const selectedField = fields.find((field) => field.id === selectedFieldId) ?? fields[0] ?? null;
   const visibleOfferings = useMemo(() => {

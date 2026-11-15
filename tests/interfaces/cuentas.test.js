@@ -1,19 +1,56 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { validarAltaCuenta } from '../../src/interfaces/http/accountValidation.js';
+import { validarAltaCuenta, validarCampo } from '../../src/interfaces/http/accountValidation.js';
 
 const perfil = { displayName: 'Ana Productora', phone: '+54 9 11 1234 5678' };
 
-test('valida una cuenta de productor con coordenadas y hectáreas', () => {
+test('el alta de productor guarda solo el perfil y difiere los datos del campo', () => {
   const account = validarAltaCuenta({
     ...perfil,
     role: 'productor',
-    field: { name: 'La Esperanza', areaHa: '125.5', latitude: '-32.95', longitude: '-60.64' },
   });
 
   assert.equal(account.role, 'productor');
-  assert.equal(account.field.areaHa, 125.5);
-  assert.equal(account.field.latitude, -32.95);
+  assert.equal('field' in account, false);
+});
+
+test('valida perímetro, localidad y deriva superficie y centro del campo', () => {
+  const field = validarCampo({
+    name: 'La Esperanza',
+    city: 'Pergamino · Buenos Aires · Argentina',
+    boundary: {
+      type: 'Feature',
+      properties: { areaHa: 999999 },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [-60.7, -32.9],
+          [-60.69, -32.9],
+          [-60.69, -32.89],
+          [-60.7, -32.89],
+          [-60.7, -32.9],
+        ]],
+      },
+    },
+  });
+
+  assert.ok(field.areaHa > 0);
+  assert.notEqual(field.areaHa, 999999);
+  assert.ok(Math.abs(field.latitude - -32.895) < 1e-10);
+  assert.ok(Math.abs(field.longitude - -60.695) < 1e-10);
+  assert.deepEqual(field.boundary.properties, {});
+});
+
+test('rechaza campos sin perímetro o con polígonos abiertos', () => {
+  assert.throws(() => validarCampo({ name: 'Campo', city: 'Pergamino' }), /dibujá el perímetro/);
+  assert.throws(() => validarCampo({
+    name: 'Campo',
+    city: 'Pergamino',
+    boundary: {
+      type: 'Feature',
+      geometry: { type: 'Polygon', coordinates: [[[-60.7, -32.9], [-60.69, -32.9], [-60.69, -32.89], [-60.7, -32.89]]] },
+    },
+  }), /tiene que estar cerrado/);
 });
 
 test('valida una oferta de prestador con capacidad, precio y disponibilidad', () => {
@@ -30,6 +67,8 @@ test('valida una oferta de prestador con capacidad, precio y disponibilidad', ()
       capacityUnit: 'toneladas',
       baseLatitude: '-32.95',
       baseLongitude: '-60.64',
+      city: 'Rosario · Santa Fe · Argentina',
+      baseAddress: 'Zona rural al oeste',
       serviceRadiusKm: '120',
       availableFrom: '2026-03-01',
       availableUntil: '2026-06-30',
@@ -57,6 +96,7 @@ test('rechaza roles desconocidos y periodos de disponibilidad invertidos', () =>
       capacityUnit: 'toneladas',
       baseLatitude: -32.95,
       baseLongitude: -60.64,
+      city: 'Rosario · Santa Fe · Argentina',
       serviceRadiusKm: 50,
       availableFrom: '2026-06-30',
       availableUntil: '2026-03-01',

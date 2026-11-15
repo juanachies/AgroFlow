@@ -7,6 +7,7 @@ import {
   validarCampo,
   validarCotizacion,
   validarFiltroServicio,
+  validarIdentificadorCampo,
   validarIdentificadorSolicitud,
   validarOferta,
   validarSolicitudCotizacion,
@@ -122,7 +123,12 @@ export async function manejarCuenta(req, res, resource, dependencies = {}) {
     }
     if (resource === 'service-offerings' && req.method === 'GET') {
       const serviceType = validarFiltroServicio(url.searchParams.get('serviceType'));
-      const offerings = await repository.listServiceOfferings(userId, serviceType);
+      const fieldId = url.searchParams.get('fieldId');
+      const offerings = await repository.listServiceOfferings(
+        userId,
+        serviceType,
+        fieldId ? validarIdentificadorCampo(fieldId) : null,
+      );
       return responderJson(res, 200, { offerings }, headers);
     }
     if (resource === 'service-requests' && req.method === 'GET') {

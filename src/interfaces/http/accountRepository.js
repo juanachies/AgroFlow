@@ -19,9 +19,11 @@ function campoDesdeFila(row) {
   return {
     id: row.id,
     name: row.name,
+    city: row.city,
     areaHa: Number(row.area_ha),
     latitude: Number(row.latitude),
     longitude: Number(row.longitude),
+    boundary: row.boundary ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -43,6 +45,8 @@ function ofertaDesdeFila(row) {
     serviceRadiusKm: Number(row.service_radius_km),
     availableFrom: row.available_from,
     availableUntil: row.available_until,
+    city: row.city,
+    baseAddress: row.base_address,
     details: row.details ?? {},
     notes: row.notes,
     createdAt: row.created_at,
@@ -58,12 +62,12 @@ function solicitudDesdeFila(row) {
     field: {
       id: row.field_id,
       name: row.field_name,
-      latitude: Number(row.field_latitude),
-      longitude: Number(row.field_longitude),
+      city: row.field_city,
     },
     provider: {
       displayName: row.provider_name,
       phone: row.provider_phone,
+      address: row.provider_address,
     },
     requester: {
       displayName: row.requester_name,
@@ -95,11 +99,12 @@ const SOLICITUD_SELECT = `
     request.service_type, request.quantity, request.quantity_unit, request.needed_from, request.needed_until,
     request.request_details, request.message, request.status, request.quote_price, request.quote_currency,
     request.quote_price_unit, request.quote_message, request.quote_valid_until, request.created_at, request.updated_at,
-    field.name AS field_name, field.latitude AS field_latitude, field.longitude AS field_longitude,
+    field.name AS field_name, field.city AS field_city,
     provider.display_name AS provider_name,
     CASE WHEN request.status = 'accepted' THEN provider.phone END AS provider_phone,
     requester.display_name AS requester_name,
     CASE WHEN request.status = 'accepted' THEN requester.phone END AS requester_phone,
+    CASE WHEN request.status = 'accepted' THEN offering.base_address END AS provider_address,
     offering.subtype
   FROM service_requests request
   JOIN app_user_profiles provider ON provider.user_id = request.provider_user_id
@@ -192,11 +197,11 @@ async function leerCuenta(client, userId) {
   if (!profile) return { profile: null, fields: [], offering: null };
   const [fieldsResult, offeringResult] = await Promise.all([
     client.query(
-      'SELECT id, name, area_ha, latitude, longitude, created_at, updated_at FROM account_fields WHERE user_id = $1 ORDER BY created_at, id',
+      'SELECT id, name, city, area_ha, latitude, longitude, boundary, created_at, updated_at FROM account_fields WHERE user_id = $1 ORDER BY created_at, id',
       [userId],
     ),
     client.query(
-      'SELECT id, service_type, subtype, price, currency, price_unit, capacity, capacity_unit, base_latitude, base_longitude, service_radius_km, available_from, available_until, details, notes, created_at, updated_at FROM service_offerings WHERE user_id = $1',
+      'SELECT id, service_type, subtype, price, currency, price_unit, capacity, capacity_unit, base_latitude, base_longitude, city, base_address, service_radius_km, available_from, available_until, details, notes, created_at, updated_at FROM service_offerings WHERE user_id = $1',
       [userId],
     ),
   ]);
@@ -222,10 +227,10 @@ async function exigirRol(client, userId, role) {
 
 async function insertarCampo(client, userId, field) {
   const result = await client.query(
-    `INSERT INTO account_fields (user_id, name, area_ha, latitude, longitude)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, name, area_ha, latitude, longitude, created_at, updated_at`,
-    [userId, field.name, field.areaHa, field.latitude, field.longitude],
+    `INSERT INTO account_fields (user_id, name, city, area_ha, latitude, longitude, boundary)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, name, city, area_ha, latitude, longitude, boundary, created_at, updated_at`,
+    [userId, field.name, field.city, field.areaHa, field.latitude, field.longitude, field.boundary],
   );
   return campoDesdeFila(result.rows[0]);
 }
@@ -234,9 +239,9 @@ async function guardarOferta(client, userId, offering) {
   const result = await client.query(
     `INSERT INTO service_offerings (
        user_id, service_type, subtype, price, currency, price_unit, capacity, capacity_unit,
-       base_latitude, base_longitude, service_radius_km, available_from, available_until, details, notes
+       base_latitude, base_longitude, city, base_address, service_radius_km, available_from, available_until, details, notes
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
      ON CONFLICT (user_id) DO UPDATE SET
        service_type = EXCLUDED.service_type,
        subtype = EXCLUDED.subtype,
@@ -247,6 +252,8 @@ async function guardarOferta(client, userId, offering) {
        capacity_unit = EXCLUDED.capacity_unit,
        base_latitude = EXCLUDED.base_latitude,
        base_longitude = EXCLUDED.base_longitude,
+       city = EXCLUDED.city,
+       base_address = EXCLUDED.base_address,
        service_radius_km = EXCLUDED.service_radius_km,
        available_from = EXCLUDED.available_from,
        available_until = EXCLUDED.available_until,
@@ -254,7 +261,7 @@ async function guardarOferta(client, userId, offering) {
        notes = EXCLUDED.notes,
        updated_at = now()
      RETURNING id, service_type, subtype, price, currency, price_unit, capacity, capacity_unit,
-       base_latitude, base_longitude, service_radius_km, available_from, available_until, details, notes,
+       base_latitude, base_longitude, city, base_address, service_radius_km, available_from, available_until, details, notes,
        created_at, updated_at`,
     [
       userId,
@@ -267,6 +274,8 @@ async function guardarOferta(client, userId, offering) {
       offering.capacityUnit,
       offering.baseLatitude,
       offering.baseLongitude,
+      offering.city,
+      offering.baseAddress,
       offering.serviceRadiusKm,
       offering.availableFrom,
       offering.availableUntil,
@@ -316,7 +325,7 @@ export const accountRepository = {
   listFields: async (userId) => {
     await exigirRol(obtenerPool(), userId, 'productor');
     const result = await obtenerPool().query(
-      'SELECT id, name, area_ha, latitude, longitude, created_at, updated_at FROM account_fields WHERE user_id = $1 ORDER BY created_at, id',
+      'SELECT id, name, city, area_ha, latitude, longitude, boundary, created_at, updated_at FROM account_fields WHERE user_id = $1 ORDER BY created_at, id',
       [userId],
     );
     return result.rows.map(campoDesdeFila);
@@ -330,10 +339,10 @@ export const accountRepository = {
   updateField: async (userId, fieldId, field) => {
     const result = await obtenerPool().query(
       `UPDATE account_fields
-       SET name = $3, area_ha = $4, latitude = $5, longitude = $6, updated_at = now()
+       SET name = $3, city = $4, area_ha = $5, latitude = $6, longitude = $7, boundary = $8, updated_at = now()
        WHERE id = $1 AND user_id = $2
-       RETURNING id, name, area_ha, latitude, longitude, created_at, updated_at`,
-      [fieldId, userId, field.name, field.areaHa, field.latitude, field.longitude],
+       RETURNING id, name, city, area_ha, latitude, longitude, boundary, created_at, updated_at`,
+      [fieldId, userId, field.name, field.city, field.areaHa, field.latitude, field.longitude, field.boundary],
     );
     if (!result.rowCount) throw new ErrorHttp(404, 'no se encontró ese campo en tu cuenta');
     return campoDesdeFila(result.rows[0]);
@@ -351,7 +360,7 @@ export const accountRepository = {
     await exigirRol(obtenerPool(), userId, 'prestador');
     const result = await obtenerPool().query(
       `SELECT id, service_type, subtype, price, currency, price_unit, capacity, capacity_unit,
-        base_latitude, base_longitude, service_radius_km, available_from, available_until, details, notes,
+        base_latitude, base_longitude, city, base_address, service_radius_km, available_from, available_until, details, notes,
         created_at, updated_at
        FROM service_offerings WHERE user_id = $1`,
       [userId],
@@ -364,13 +373,25 @@ export const accountRepository = {
     return guardarOferta(client, userId, offering);
   }),
 
-  listServiceOfferings: async (userId, serviceType) => {
+  listServiceOfferings: async (userId, serviceType, fieldId = null) => {
     await exigirRol(obtenerPool(), userId, 'productor');
+    let field = null;
+    if (fieldId) {
+      const fieldResult = await obtenerPool().query(
+        'SELECT latitude, longitude FROM account_fields WHERE id = $1 AND user_id = $2',
+        [fieldId, userId],
+      );
+      if (!fieldResult.rows[0]) throw new ErrorHttp(404, 'no se encontró ese campo en tu cuenta');
+      field = {
+        latitude: Number(fieldResult.rows[0].latitude),
+        longitude: Number(fieldResult.rows[0].longitude),
+      };
+    }
     const result = await obtenerPool().query(
       `SELECT offering.id, offering.user_id, profile.display_name, offering.service_type, offering.subtype,
         offering.price, offering.currency, offering.price_unit, offering.capacity, offering.capacity_unit,
-        offering.base_latitude, offering.base_longitude, offering.service_radius_km,
-        offering.available_from, offering.available_until, offering.details, offering.notes,
+        offering.base_latitude, offering.base_longitude, offering.city, offering.base_address,
+        offering.service_radius_km, offering.available_from, offering.available_until, offering.details, offering.notes,
         offering.created_at, offering.updated_at
        FROM service_offerings offering
        JOIN app_user_profiles profile ON profile.user_id = offering.user_id
@@ -378,11 +399,18 @@ export const accountRepository = {
        ORDER BY offering.service_type, profile.display_name, offering.updated_at DESC`,
       [serviceType],
     );
-    return result.rows.map((row) => ({
-      providerId: row.user_id,
-      providerName: row.display_name,
-      offering: ofertaDesdeFila(row),
-    }));
+    return result.rows.map((row) => {
+      const { baseLatitude, baseLongitude, baseAddress, ...publicOffering } = ofertaDesdeFila(row);
+      const distance = field
+        ? distanciaKm(field, { latitude: baseLatitude, longitude: baseLongitude })
+        : null;
+      return {
+        providerId: row.user_id,
+        providerName: row.display_name,
+        offering: publicOffering,
+        covered: distance == null ? null : distance <= Number(row.service_radius_km),
+      };
+    });
   },
 
   listServiceRequests: async (userId) => {
