@@ -2,8 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { GeolocateControl, Map, NavigationControl, ScaleControl, setWorkerUrl } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import {
-  Check, Eraser, Layers, MousePointerClick, PenLine, Plus, SquareDashedMousePointer, Undo2, X,
+  Check, Eraser, Layers, MousePointerClick, PenLine, Plus, RefreshCw, SquareDashedMousePointer, Undo2, X,
 } from 'lucide-react';
+import { VARIABLES_CLIMA } from '../lib/climaTiempoReal.js';
+import { CAPAS_PROXIMAMENTE, horaActualizacion, propiedadesClima } from '../lib/climaCapas.js';
+import { useClimaTiempoReal } from '../lib/useClimaTiempoReal.js';
 import { areaHa, centroide, perimetroM, poligonoDesdeVertices, verticesDe } from '../lib/geo.js';
 
 setWorkerUrl(workerUrl);
@@ -16,36 +19,39 @@ const SATELLITE_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/Wo
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const CENTER_ROSARIO = [-60.64, -32.95];
 const COLORS = { lot: '#22c55e', lotSelected: '#15803d', draft: '#eab308', halo: '#ffffff' };
-
-const UNAVAILABLE_LAYERS = [
-  { title: 'Precipitación', note: 'Hay pronóstico puntual; no hay raster para cubrir el mapa.' },
-  { title: 'Humedad del suelo', note: 'Modelo regional puntual, no una capa de campo.' },
-  { title: 'Elevación y pendiente', note: 'Hay cotas puntuales; no hay DEM procesado.' },
-  { title: 'Transitabilidad', note: 'No hay modelo calibrado por lote.' },
-  { title: 'Vegetación (NDVI)', note: 'No hay índices satelitales procesados.' },
-];
+const LABEL_FONT = ['Noto Sans Regular'];
 
 const fmt = (value, digits = 1) => new Intl.NumberFormat('es-AR', { maximumFractionDigits: digits }).format(value);
 
-function pointsFor(lots, selectedId) {
+function pointsFor(lots, selectedId, clima) {
   return {
     type: 'FeatureCollection',
     features: lots.map((lot) => ({
       type: 'Feature',
-      properties: { lotId: lot.id, name: lot.name, selected: lot.id === selectedId },
+      properties: {
+        lotId: lot.id,
+        name: lot.name,
+        selected: lot.id === selectedId,
+        ...propiedadesClima(lot.id, clima.variableId, clima.porLote),
+      },
       geometry: { type: 'Point', coordinates: [lot.longitude, lot.latitude] },
     })),
   };
 }
 
-function boundariesFor(lots, selectedId, hiddenId) {
+function boundariesFor(lots, selectedId, hiddenId, clima) {
   return {
     type: 'FeatureCollection',
     features: lots
       .filter((lot) => lot.boundary && lot.id !== hiddenId)
       .map((lot) => ({
         type: 'Feature',
-        properties: { lotId: lot.id, name: lot.name, selected: lot.id === selectedId },
+        properties: {
+          lotId: lot.id,
+          name: lot.name,
+          selected: lot.id === selectedId,
+          ...propiedadesClima(lot.id, clima.variableId, clima.porLote),
+        },
         geometry: lot.boundary.geometry,
       })),
   };
@@ -87,16 +93,28 @@ function installLayers(map, data, satelliteVisible) {
     if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: value });
   }
   const add = (layer) => { if (!map.getLayer(layer.id)) map.addLayer(layer); };
-  add({ id: 'boundaries-fill', type: 'fill', source: 'boundaries', paint: { 'fill-color': ['case', ['get', 'selected'], COLORS.lotSelected, COLORS.lot], 'fill-opacity': ['case', ['get', 'selected'], 0.28, 0.14] } });
+  add({ id: 'boundaries-fill', type: 'fill', source: 'boundaries', paint: {
+    'fill-color': ['case', ['has', 'climaColor'], ['get', 'climaColor'], ['case', ['get', 'selected'], COLORS.lotSelected, COLORS.lot]],
+    'fill-opacity': ['case', ['has', 'climaColor'], 0.34, ['case', ['get', 'selected'], 0.28, 0.14]],
+  } });
   add({ id: 'boundaries-line', type: 'line', source: 'boundaries', paint: { 'line-color': ['case', ['get', 'selected'], COLORS.lotSelected, COLORS.lot], 'line-width': ['case', ['get', 'selected'], 3, 1.5] } });
-  add({ id: 'lot-points', type: 'circle', source: 'lots', paint: { 'circle-radius': ['case', ['get', 'selected'], 8, 6], 'circle-color': ['case', ['get', 'selected'], COLORS.lotSelected, COLORS.lot], 'circle-stroke-width': 2.5, 'circle-stroke-color': COLORS.halo } });
+  add({ id: 'lot-points', type: 'circle', source: 'lots', paint: {
+    'circle-radius': ['case', ['get', 'selected'], 8, 6],
+    'circle-color': ['case', ['has', 'climaColor'], ['get', 'climaColor'], ['case', ['get', 'selected'], COLORS.lotSelected, COLORS.lot]],
+    'circle-stroke-width': ['case', ['get', 'selected'], 2.5, 2.5],
+    'circle-stroke-color': ['case', ['all', ['has', 'climaColor'], ['get', 'selected']], COLORS.lotSelected, COLORS.halo],
+  } });
+  add({ id: 'clima-labels', type: 'symbol', source: 'lots', filter: ['has', 'climaLabel'], layout: {
+    'text-field': ['get', 'climaLabel'], 'text-font': LABEL_FONT, 'text-size': 11,
+    'text-offset': [0, 1.5], 'text-anchor': 'top', 'text-optional': true,
+  }, paint: { 'text-color': '#ffffff', 'text-halo-color': '#0f172a', 'text-halo-width': 1.8 } });
   add({ id: 'draft-fill', type: 'fill', source: 'draft', filter: ['==', ['get', 'kind'], 'area'], paint: { 'fill-color': COLORS.draft, 'fill-opacity': 0.22 } });
   add({ id: 'draft-line', type: 'line', source: 'draft', filter: ['==', ['get', 'kind'], 'line'], paint: { 'line-color': COLORS.draft, 'line-width': 2.5, 'line-dasharray': [2, 1.2] } });
   add({ id: 'draft-mid', type: 'circle', source: 'draft', filter: ['==', ['get', 'kind'], 'mid'], paint: { 'circle-radius': 4.5, 'circle-color': COLORS.halo, 'circle-opacity': 0.85, 'circle-stroke-width': 1.5, 'circle-stroke-color': COLORS.draft } });
   add({ id: 'draft-vertices', type: 'circle', source: 'draft', filter: ['==', ['get', 'kind'], 'vertex'], paint: { 'circle-radius': ['case', ['get', 'first'], 8, 6.5], 'circle-color': ['case', ['get', 'first'], COLORS.draft, COLORS.halo], 'circle-stroke-width': 2.5, 'circle-stroke-color': COLORS.draft } });
 }
 
-export default function MapView({ lots, selectedLot, onSelectLot, onSaveBoundary, onCreateFromDrawing, theme = 'light', compact = false }) {
+export default function MapView({ lots, selectedLot, onSelectLot, onSaveBoundary, onCreateFromDrawing, onOpenClima, theme = 'light', compact = false }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const selectRef = useRef(onSelectLot);
@@ -104,6 +122,7 @@ export default function MapView({ lots, selectedLot, onSelectLot, onSaveBoundary
   const [mapError, setMapError] = useState('');
   const [baseMap, setBaseMap] = useState('streets');
   const [showLayers, setShowLayers] = useState(false);
+  const [variableActiva, setVariableActiva] = useState(null);
   const [mode, setMode] = useState('view'); // view | draw | edit
   const [vertices, setVertices] = useState([]);
   const [history, setHistory] = useState([]);
@@ -112,14 +131,23 @@ export default function MapView({ lots, selectedLot, onSelectLot, onSaveBoundary
   const dragRef = useRef(null);
   const dataRef = useRef({});
 
+  const { datos, cargando, error, recargar } = useClimaTiempoReal(compact ? [] : lots);
+  const climaPorLote = useMemo(
+    () => new globalThis.Map((datos?.lotes ?? []).map((lote) => [lote.loteId, lote])),
+    [datos],
+  );
+  const clima = useMemo(() => ({ variableId: variableActiva, porLote: climaPorLote }), [variableActiva, climaPorLote]);
+  const variableClima = VARIABLES_CLIMA.find(({ id }) => id === variableActiva) ?? null;
+  const actualizadoA = horaActualizacion(datos?.consultadoEn);
+
   selectRef.current = onSelectLot;
   modeRef.current = mode;
   verticesRef.current = vertices;
 
   const editingId = mode !== 'view' ? selectedLot?.id : null;
   dataRef.current = {
-    lots: pointsFor(lots, selectedLot?.id),
-    boundaries: boundariesFor(lots, selectedLot?.id, editingId),
+    lots: pointsFor(lots, selectedLot?.id, clima),
+    boundaries: boundariesFor(lots, selectedLot?.id, editingId, clima),
     draft: draftFor(vertices, mode),
   };
 
@@ -271,7 +299,7 @@ export default function MapView({ lots, selectedLot, onSelectLot, onSaveBoundary
     const map = mapRef.current;
     if (!ready || !map) return;
     for (const [id, value] of Object.entries(dataRef.current)) map.getSource(id)?.setData(value);
-  }, [lots, selectedLot, vertices, mode, ready]);
+  }, [lots, selectedLot, vertices, mode, ready, variableActiva, datos]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -373,13 +401,37 @@ export default function MapView({ lots, selectedLot, onSelectLot, onSaveBoundary
 
       {!compact && showLayers && (
         <div className="map-layer-panel glass">
-          <span className="eyebrow">Capas del lote · sin raster procesado</span>
-          {UNAVAILABLE_LAYERS.map((layer) => (
-            <div className="layer-option" key={layer.title} title={layer.note}>
-              <span className="layer-toggle" aria-hidden="true" />
-              <span><strong>{layer.title}</strong><small>{layer.note}</small></span>
+          <span className="eyebrow">Capas en vivo</span>
+          {cargando && <div className="layer-status"><RefreshCw size={14} className="spin" aria-hidden="true" /> Cargando…</div>}
+          {error && (
+            <div className="layer-status layer-status--error">
+              <span>{String(error).slice(0, 90)}</span>
+              <button type="button" className="text-button" onClick={recargar}>Reintentar</button>
             </div>
-          ))}
+          )}
+          {!error && VARIABLES_CLIMA.map((v) => {
+            const active = variableActiva === v.id;
+            return (
+              <div className="layer-option layer-option--live" key={v.id}>
+                <button type="button" className={`layer-switch${active ? ' is-on' : ''}`} aria-pressed={active} onClick={() => setVariableActiva(active ? null : v.id)}>
+                  <span className="layer-toggle" aria-hidden="true" />
+                  <span><strong>{v.titulo}</strong></span>
+                </button>
+                {onOpenClima && (
+                  <button type="button" className="layer-detail-link" onClick={() => onOpenClima(v.id)}>Ver detalle →</button>
+                )}
+              </div>
+            );
+          })}
+          <div className="layer-soon">
+            <span className="eyebrow">Próximamente</span>
+            {CAPAS_PROXIMAMENTE.map((layer) => (
+              <div className="layer-option layer-option--soon" key={layer.id} title="Sin datos">
+                <span className="layer-toggle" aria-hidden="true" />
+                <span><strong>{layer.titulo}</strong><small>Próximamente</small></span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -450,6 +502,23 @@ export default function MapView({ lots, selectedLot, onSelectLot, onSaveBoundary
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {!drawing && variableClima && (
+        <div className="clima-legend glass" aria-label="Leyenda de clima">
+          <div className="clima-legend-title">{variableClima.titulo}</div>
+          <div className="clima-legend-scale">
+            {variableClima.escala.map((s) => (
+              <span key={s.etiqueta} className="clima-legend-item"><i style={{ background: s.color }} /> {s.etiqueta}</span>
+            ))}
+          </div>
+          <div className="clima-legend-foot">
+            <span>Open-Meteo · actualizado {actualizadoA ?? '—'}</span>
+            <button type="button" className="text-button" onClick={recargar} disabled={cargando} title="Recargar clima">
+              <RefreshCw size={14} className={cargando ? 'spin' : ''} aria-hidden="true" /> Recargar
+            </button>
+          </div>
         </div>
       )}
 

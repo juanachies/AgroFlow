@@ -1,5 +1,5 @@
 import {
-  CalendarRange, ChartNoAxesCombined, Compass, House, LayoutDashboard, Map as MapIcon, Package, Route, Store, Truck, UserRound,
+  CalendarRange, ChartNoAxesCombined, CloudSun, Compass, House, LayoutDashboard, Map as MapIcon, Package, Route, Store, Truck, UserRound,
 } from 'lucide-react';
 
 const PRODUCER_PAGES = [
@@ -7,6 +7,7 @@ const PRODUCER_PAGES = [
   { id: 'estrategias', label: 'Estrategia y decisiones', icon: Compass, group: 'campo' },
   { id: 'centro', label: 'Centro logístico', icon: LayoutDashboard, group: 'campo' },
   { id: 'lots', label: 'Lotes y mapa', icon: MapIcon, group: 'campo' },
+  { id: 'clima', label: 'Clima en vivo', icon: CloudSun, group: 'campo' },
   { id: 'planning', label: 'Planificación', icon: CalendarRange, group: 'campo' },
   { id: 'technical', label: 'Análisis técnico', icon: ChartNoAxesCombined, group: 'campo' },
   { id: 'silobolsas', label: 'Silobolsas', icon: Package, group: 'campo' },

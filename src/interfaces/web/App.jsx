@@ -29,6 +29,7 @@ import {
 import { useTheme } from './lib/theme.js';
 import { getHomePageForRole, getWorkspacePages } from './lib/workspacePages.js';
 import AccountPage from './pages/AccountPage.jsx';
+import ClimaPage from './pages/ClimaPage.jsx';
 import EstrategiasPage from './pages/EstrategiasPage.jsx';
 import MarketplacePage from './pages/MarketplacePage.jsx';
 import ServicesPage from './pages/ServicesPage.jsx';
@@ -46,6 +47,7 @@ const SECTIONS = [
     id: 'lotes', label: 'Gestionar lotes', icon: MapIcon,
     pages: [
       { id: 'lots', label: 'Lotes y mapa' },
+      { id: 'clima', label: 'Clima en vivo' },
       { id: 'planning', label: 'Planificación' },
       { id: 'technical', label: 'Análisis técnico' },
     ],
@@ -63,7 +65,7 @@ const SECTIONS = [
 
 const PAGES = SECTIONS.flatMap(({ pages }) => pages);
 const sectionOf = (pageId) => SECTIONS.find(({ pages }) => pages.some(({ id }) => id === pageId));
-const PAGES_WITH_LOT_SELECTOR = new Set(['summary', 'estrategias', 'centro', 'lots', 'planning', 'technical', 'despacho', 'marketplace']);
+const PAGES_WITH_LOT_SELECTOR = new Set(['summary', 'estrategias', 'centro', 'lots', 'clima', 'planning', 'technical', 'despacho', 'marketplace']);
 
 function BrandMark() {
   return (
@@ -378,7 +380,7 @@ function LotDetails({ lot, snapshotRecord, onEdit, onSow, onClearSowing, onDelet
   );
 }
 
-function LotsPage({ lots, selectedLot, snapshots, onSelectLot, onEdit, onSow, onClearSowing, onDelete, onCreate, onDrawnBoundary, onCreateFromDrawing, theme }) {
+function LotsPage({ lots, selectedLot, snapshots, onSelectLot, onEdit, onSow, onClearSowing, onDelete, onCreate, onDrawnBoundary, onCreateFromDrawing, onOpenClima, theme }) {
   return (
     <>
       <PageIntro
@@ -389,7 +391,7 @@ function LotsPage({ lots, selectedLot, snapshots, onSelectLot, onEdit, onSow, on
       />
       <div className="lots-workspace">
         <div className="lots-map-column">
-          <MapView lots={lots} selectedLot={selectedLot} onSelectLot={onSelectLot} onSaveBoundary={onDrawnBoundary} onCreateFromDrawing={onCreateFromDrawing} theme={theme} />
+          <MapView lots={lots} selectedLot={selectedLot} onSelectLot={onSelectLot} onSaveBoundary={onDrawnBoundary} onCreateFromDrawing={onCreateFromDrawing} onOpenClima={onOpenClima} theme={theme} />
           <div className="map-key"><span className="map-key-dot" /> Punto de lote <span className="map-key-line" /> Límite del lote <span className="map-key-line map-key-line--draft" /> Dibujo en curso</div>
         </div>
         <aside className="panel lot-sidebar-panel">
@@ -587,6 +589,7 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
   const [lots, setLots] = useState([]);
   const [snapshots, setSnapshots] = useState({});
   const [selectedLotId, setSelectedLotId] = useState('');
+  const [climaVariable, setClimaVariable] = useState('precipitacion');
   const [dialog, setDialog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [storageError, setStorageError] = useState('');
@@ -753,7 +756,8 @@ export function WorkspaceApp({ user, account, onAccountChange, onSignOut, guest 
             <Suspense fallback={<div className="loading-state" role="status">Cargando mapa…</div>}>
               {page === 'summary' && <SummaryPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onNavigate={navigate} onSelectLot={setSelectedLotId} onCreate={openCreate} theme={theme} />}
               {page === 'estrategias' && <EstrategiasPage lot={selectedLot} />}
-              {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onEdit={(lot) => setDialog({ type: 'lot', lot })} onSow={(lot) => setDialog({ type: 'sow', lot })} onClearSowing={(lot) => setDialog({ type: 'clear', lot })} onDelete={(lot) => setDialog({ type: 'delete', lot })} onCreate={openCreate} onDrawnBoundary={saveDrawnBoundary} onCreateFromDrawing={createFromDrawing} theme={theme} />}
+              {page === 'lots' && <LotsPage lots={lots} selectedLot={selectedLot} snapshots={snapshots} onSelectLot={setSelectedLotId} onEdit={(lot) => setDialog({ type: 'lot', lot })} onSow={(lot) => setDialog({ type: 'sow', lot })} onClearSowing={(lot) => setDialog({ type: 'clear', lot })} onDelete={(lot) => setDialog({ type: 'delete', lot })} onCreate={openCreate} onDrawnBoundary={saveDrawnBoundary} onCreateFromDrawing={createFromDrawing} onOpenClima={(v) => { setClimaVariable(v); navigate('clima'); }} theme={theme} />}
+              {page === 'clima' && <ClimaPage lots={lots} selectedLot={selectedLot} initialVariable={climaVariable} onSelectLot={setSelectedLotId} />}
               {page === 'planning' && <PlanningPage lot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} onSow={() => setDialog({ type: 'sow', lot: selectedLot })} onNavigate={navigate} />}
               {page === 'despacho' && <Suspense fallback={<div className="panel compact-empty">Cargando…</div>}><PlanDespacho lot={selectedLot} /></Suspense>}
               {page === 'centro' && <CentroLogistico lots={lots} selectedLot={selectedLot} snapshotRecord={selectedLot ? snapshots[selectedLot.id] : null} theme={theme} onSelectLot={setSelectedLotId} onNavigate={navigate} />}
