@@ -6,6 +6,50 @@ Desafío 02 del Hackatón Nasa Space Apps. Posicionamiento y diferencial en [doc
 
 **URL pública:** https://agroflow-mctx.onrender.com
 
+<p align="center">
+  <img src="docs/img/03-centro-logistico.png" alt="Centro logístico de AgroFlow: decisión de cosecha y despacho del lote activo" width="900">
+</p>
+
+**Enlaces:** [App web (Vercel)](https://marcianos-hazel.vercel.app) · [Informe de entrega NASA Space Apps](docs/INFORME_NASA_SPACE_APPS.md) · Presentación: [Español](docs/presentaciones/AgroFlow-presentacion.pptx) · [English](docs/presentaciones/AgroFlow-presentation-en.pptx)
+
+---
+
+## Capturas
+
+Capturas de la app (entrando como visitante, con lotes y silobolsas de ejemplo).
+
+| | |
+| --- | --- |
+| **Resumen** · estado de los lotes y la campaña<br><img src="docs/img/01-resumen.png" alt="Resumen" width="440"> | **Estrategias** · comparación de estrategias de cosecha, destino y venta<br><img src="docs/img/02-estrategias.png" alt="Estrategias" width="440"> |
+| **Centro logístico** · decisión, camiones, almacenaje y ganancia en una vista<br><img src="docs/img/03-centro-logistico.png" alt="Centro logístico" width="440"> | **Lotes y mapa** · límite del lote sobre mapa o satélite, con cálculo de hectáreas<br><img src="docs/img/04-lotes-mapa.png" alt="Lotes y mapa" width="440"> |
+| **Clima en vivo** · pronóstico y capas climáticas sobre el mapa<br><img src="docs/img/05-clima.png" alt="Clima en vivo" width="440"> | **Planificación** · ciclo del cultivo y ventana de cosecha<br><img src="docs/img/06-planificacion.png" alt="Planificación" width="440"> |
+| **Silobolsas** · riesgo por CO₂, humedad y temperatura, y "sacar y vender"<br><img src="docs/img/07-silobolsas.png" alt="Silobolsas" width="440"> | **Marketplace** · ofertas de contratistas y transportistas<br><img src="docs/img/09-marketplace.png" alt="Marketplace" width="440"> |
+
+### Plan y despacho (tema oscuro)
+
+Destino por margen neto, explicación (IA o plantilla de respaldo), saturación del puerto día por día y pedido de cadetes.
+
+<img src="docs/img/08-plan-despacho.png" alt="Plan y despacho: margen por destino, saturación del puerto y pedido al marketplace" width="900">
+
+### Espacio del prestador de servicios
+
+Oferta activa, solicitudes de cotización y estado de cada pedido.
+
+<img src="docs/img/11-prestador.png" alt="Espacio del prestador de servicios" width="900">
+
+### Acceso y tema oscuro
+
+| Ingreso con visitante productor o prestador | Estrategias en tema oscuro |
+| --- | --- |
+| <img src="docs/img/00-login.png" alt="Ingreso" width="440"> | <img src="docs/img/10-estrategias-oscuro.png" alt="Estrategias en tema oscuro" width="440"> |
+
+## Presentaciones
+
+| Idioma | Archivo |
+| --- | --- |
+| Español | [docs/presentaciones/AgroFlow-presentacion.pptx](docs/presentaciones/AgroFlow-presentacion.pptx) |
+| English | [docs/presentaciones/AgroFlow-presentation-en.pptx](docs/presentaciones/AgroFlow-presentation-en.pptx) |
+
 ---
 
 ## Problema
@@ -166,6 +210,7 @@ Hexagonal: las reglas del negocio viven en `src/domain`, sin red ni dependencias
 
 | Documento | Contenido |
 | --- | --- |
+| [docs/INFORME_NASA_SPACE_APPS.md](docs/INFORME_NASA_SPACE_APPS.md) | Informe de entrega (inglés) para NASA Space Apps: descripción, impacto, datos NASA, competencia y uso de IA |
 | [docs/FRENTE.md](docs/FRENTE.md) | Posicionamiento, problema, diferencial frente a lo que existe, barreras y guion de pitch |
 | [docs/MARKETPLACE.md](docs/MARKETPLACE.md) | Marketplace de cadetes, reservas y pronóstico de saturación del puerto |
 | [docs/API.md](docs/API.md) | API HTTP para el front: endpoints, entradas, respuestas y errores |
